@@ -1,0 +1,49 @@
+
+.inputForm {
+  height: 43px;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-left: 32px;
+  border-radius: 0;
+  border: none;
+  background-color: $color_grey2;
+  border-bottom: 1.5px solid $color_orange1;
+
+  &__input {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    font-size: 16px;
+    font-weight: 400;
+    padding-left: 16px;
+    color: black;
+    background-color: $color_grey2;
+    outline: none;
+  }
+
+  &__icon {
+    position: absolute;
+    left: 20px;
+  }
+
+  &__eye {
+    position: absolute;
+    right: 15px;
+    cursor: pointer;
+  }
+
+  &--email {
+    margin-bottom: 101px;
+  }
+
+  &--matched {
+    border-bottom: 1.5px solid $color_green1;
+  }
+
+  &--error {
+    border-bottom: 1.5px solid $color_red;
+  }
+}

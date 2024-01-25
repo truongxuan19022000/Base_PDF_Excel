@@ -1,0 +1,125 @@
+.selectInventoryAction {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  margin-right: 10px;
+  padding-right: 13px;
+  padding-left: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: $color_brown1;
+
+  &--active {
+    border-radius: 6px 6px 0 0;
+  }
+
+  &--detail {
+    border: 0.5px solid #acacac;
+  }
+
+  &__label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    cursor: pointer;
+
+    img {
+      width: 10px;
+      transition: 0.1s all ease-in;
+      user-select: none;
+    }
+  }
+
+  &__arrowDown {
+    &--rotate {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__action {
+    font-size: 16px;
+    font-weight: 500;
+    text-transform: capitalize;
+    color: white;
+    user-select: none;
+    display: flex;
+    align-items: center;
+
+    &--icon {
+      margin-right: 15px;
+      margin-left: 5px;
+    }
+
+    img {
+      width: 17px;
+      margin-right: 10px;
+      margin-bottom: 3px;
+    }
+  }
+
+  &__list {
+    width: calc(100% + 0px);
+    height: fit-content;
+    position: absolute;
+    top: 34px;
+    left: 0px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 6px 6px;
+    background-color: $color_white;
+    overflow-y: auto;
+    z-index: 2;
+  }
+
+  &__option {
+    width: 100%;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    padding: 5px 0 5px 15px;
+    font-weight: 400;
+    color: #000000;
+    text-transform: capitalize;
+    user-select: none;
+    border: 0.5px solid $color_black80;
+    border-top: none;
+    border-bottom: none;
+    cursor: pointer;
+
+    &--icon {
+      padding-left: 4px;
+      padding-right: 15px;
+
+      img {
+        margin-right: -5px;
+        margin-left: -2px;
+      }
+    }
+
+    &:first-child {
+      border-radius: 0;
+      border-top: none;
+    }
+
+    &:last-child {
+      border-radius: 0 0 6px 6px;
+      margin-bottom: 0;
+      border-bottom: 0.5px solid $color_black80;
+    }
+
+    &:hover {
+      border-top: none;
+      border-bottom: none;
+      background-color: $color_brown3;
+
+      &:last-child {
+        border-bottom: 0.5px solid $color_black80;
+      }
+    }
+  }
+}

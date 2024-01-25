@@ -1,0 +1,41 @@
+
+.toggle {
+  width: 40px;
+  height: 20px;
+  position: relative;
+
+  &__switch {
+    display: block;
+    width: 40px;
+    height: 20px;
+    background-color: #eaecf0;
+    border-radius: 10px;
+    position: absolute;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  &__switch::after {
+    content: "";
+    width: 18px;
+    height: 18px;
+    background-color: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    transition: left 0.3s;
+  }
+
+  input[type="checkbox"] {
+    display: none;
+  }
+
+  input[type="checkbox"]:checked + .toggle__switch {
+    background-color: $color_brown1;
+  }
+
+  input[type="checkbox"]:checked + .toggle__switch::after {
+    left: calc(100% - 19px);
+  }
+}

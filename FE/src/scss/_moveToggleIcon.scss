@@ -1,0 +1,38 @@
+.moveToggleIcon {
+  display: flex;
+  align-items: center;
+  margin-left: 5px;
+
+  &__icon {
+    position: relative;
+    top: -1px;
+
+    &--moveIcon {
+      position: absolute;
+      padding: 4px 10px;
+      border-radius: 6px;
+      left: -25px;
+      top: -5px;
+
+      &:hover {
+        background-color: #d5d5d5a6;
+        cursor: grab;
+      }
+    }
+
+    &--position {
+      top: -12px;
+    }
+  }
+
+  &__arrowDown {
+    margin-right: 8px;
+    transition: 0.2s all ease-in;
+    cursor: pointer;
+  }
+
+  &__arrowDownRotate {
+    transform: rotate(-90deg);
+    transition: 0.2s all ease-in;
+  }
+}

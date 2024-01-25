@@ -1,0 +1,117 @@
+
+.paymentRecord {
+  width: 608px;
+  height: max-content;
+  padding-right: 32px;
+
+  &__headline {
+    width: 100%;
+    height: 48px;
+    font-size: 16px;
+    font-weight: 500;
+    padding-left: 20px;
+    padding-top: 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    margin-bottom: 23px;
+    border-bottom: 1px solid #eaecf0;
+  }
+
+  &__table {
+    width: 100%;
+    margin-top: 12px;
+    max-height: 700px;
+    padding-left: 25px;
+    overflow-x: auto;
+
+    .recordTable {
+      width: 100%;
+      border-collapse: collapse;
+
+      thead {
+        height: 60px;
+        z-index: 1;
+        border-top: 1px solid #dfdfdf;
+        border-bottom: 1px solid #dfdfdf;
+        background-color: $color_white;
+
+        th {
+          position: sticky;
+          top: 0;
+          background-color: $color_white;
+          border-bottom: 2px solid #eaeaea;
+          z-index: 1;
+          user-select: none;
+          cursor: pointer;
+        }
+      }
+
+      tbody {
+        tr {
+          transition: 0.3s all ease-in;
+          cursor: pointer;
+
+          td {
+            border-bottom: 1px solid #eaeaea;
+          }
+        }
+      }
+
+      &__td {
+        display: flex;
+        align-items: center;
+        width: fit-content;
+      }
+
+      &__title {
+        color: #000;
+        font-size: 16px;
+        font-weight: 400;
+      }
+
+      &__money {
+        color: #000;
+        font-size: 16px;
+        font-weight: 600;
+        margin-left: 5px;
+      }
+
+      td,
+      th {
+        height: 60px;
+        padding-left: 16px;
+      }
+
+      th {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 1px;
+      }
+    }
+  }
+
+  &__buttons {
+    width: 100%;
+    display: flex;
+    margin-top: 45px;
+    justify-content: center;
+    align-items: center;
+
+    button {
+      width: 163px;
+      height: 35px;
+      color: $color_brown1;
+      margin-right: 15px;
+      border-radius: 5px;
+      border: 1px solid $color_grey1;
+      background-color: $color_white;
+      cursor: pointer;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+  }
+}

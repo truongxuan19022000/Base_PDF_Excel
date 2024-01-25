@@ -1,0 +1,139 @@
+.sidebar {
+  min-width: 250px;
+  width: 250px;
+  background-color: #ede5d8;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition:
+    width 0.4s,
+    min-width 0.4s;
+  overflow: hidden;
+  z-index: 12;
+
+  &__hidden {
+    min-width: 0px;
+    width: 0;
+    transition:
+      width 0.4s,
+      min-width 0.4s;
+  }
+
+  &__header {
+    width: 147px;
+    height: 147px;
+  }
+
+  &__logo {
+    width: 100%;
+    height: 100%;
+  }
+
+  &__content {
+    padding: 0 13px;
+    width: 100%;
+  }
+
+  &__link {
+    height: 32px;
+    margin: 8px 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 15px;
+    outline: none;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: none;
+    }
+
+    &--active {
+      background-color: $color_brown1;
+      border-radius: 6px;
+
+      div {
+        color: #ffffff;
+      }
+
+      svg {
+        fill: #ffffff;
+
+        path:nth-child(2) {
+          stroke: #000000;
+        }
+      }
+    }
+
+    path:nth-child(2) {
+      stroke: #ffffff;
+    }
+  }
+
+  &__icon {
+    svg {
+      fill: #ffffff;
+    }
+  }
+
+  &__title {
+    padding-left: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    color: rgba(69, 53, 22, 0.8);
+    margin-top: 30px;
+    margin-bottom: 10px;
+  }
+
+  &__text {
+    padding-left: 18px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #000000;
+    text-decoration: none;
+    min-width: 196px;
+    padding-top: 2px;
+  }
+
+  &__toggle {
+    position: relative;
+    right: 25px;
+
+    &--hidden {
+      color: #000000;
+    }
+  }
+
+  .subLink {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    margin-left: 22px;
+    border-left: 1.5px solid #000000;
+    padding: 4px 0;
+    padding-left: 27px;
+    animation: swingInTop 0.2s ease 0s 1 normal forwards;
+
+    &__content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__subCaption {
+    }
+
+    &__title {
+      font-weight: 600;
+      cursor: pointer;
+
+      &--active {
+        color: $color_brown1;
+        font-weight: 600;
+      }
+    }
+  }
+}

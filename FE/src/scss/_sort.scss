@@ -1,0 +1,12 @@
+.arrow {
+  margin-left: 10px;
+
+  &__up {
+    position: relative;
+    top: 1px;
+  }
+  &__down {
+    position: relative;
+    bottom: 3px;
+  }
+}

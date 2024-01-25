@@ -1,0 +1,346 @@
+.quotation {
+  padding: 35px 32px;
+  padding-bottom: 50px;
+  position: relative;
+
+  &__message {
+    position: absolute;
+    width: calc(100% - 64px);
+    top: 236px;
+    left: 33px;
+  }
+
+  &__summary {
+    width: 100%;
+    height: 163px;
+    display: flex;
+    gap: 23px;
+    margin-bottom: 26px;
+    justify-content: space-between;
+
+    .quotationBox {
+      height: 170px;
+      width: 100%;
+      display: flex;
+      gap: 13px;
+
+      &__wrapper {
+        flex: 1;
+        min-width: 1035px;
+        height: 100%;
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: $color_brown5;
+        padding: 24px;
+      }
+
+      &__header {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+
+        img {
+          width: 34px;
+          height: 34px;
+        }
+      }
+
+      &__headerTitle {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      &__headerText {
+        font-size: 15px;
+        color: #343a40;
+      }
+
+      &__filterWrapper {
+        position: relative;
+        cursor: pointer;
+      }
+
+      &__filter {
+        width: 103px;
+        height: 24px;
+        border-radius: 16px;
+        color: #343a40;
+        font-size: 14px;
+        padding: 0 11px;
+        align-items: center;
+        background-color: #fff;
+        display: flex;
+        justify-content: space-between;
+
+        img {
+          width: 8px;
+        }
+      }
+
+      &__filterBox {
+        position: absolute;
+        background-color: #fff;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: fit-content;
+        border: 0.5px solid rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        top: 30px;
+        left: 0;
+      }
+
+      &__filterItem {
+        padding: 7px 11px 4px 11px;
+        font-size: 13px;
+        color: #000;
+
+        &--select {
+          background-color: #ede5d8;
+        }
+
+        &:hover {
+          background-color: #ede5d8;
+        }
+      }
+
+      &__count {
+        width: 244px;
+        height: 100%;
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        background-color: $color_brown5;
+        padding: 24px;
+      }
+
+      &__reportWrapper {
+        display: flex;
+        gap: 44px;
+        width: 100%;
+        margin-top: 34px;
+      }
+
+      &__reportInner {
+        flex: 1;
+        border-right: 1px solid rgba(172, 172, 172, 0.5);
+        height: 60px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+
+        &:last-child {
+          border: none;
+        }
+      }
+
+      &__reportInnerText {
+        font-size: 22px;
+        font-weight: bold;
+        color: #121415;
+      }
+
+      &__status {
+        width: fit-content;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 16px;
+        text-transform: capitalize;
+        color: rgba(0, 0, 0, 0.6);
+        border: none;
+
+        &--partial {
+          color: #bf8932;
+        }
+
+        &--unpaid {
+          color: #b42318;
+        }
+
+        &--paid {
+          color: #027a48;
+        }
+
+        &--rejected {
+          color: #1877de;
+        }
+
+        &--cancelled {
+          color: #00000099;
+        }
+      }
+
+      &__icon {
+        margin-bottom: 14px;
+      }
+
+      &__value {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      &__title {
+        font-size: 16px;
+        font-weight: 500;
+        color: Gray;
+      }
+    }
+  }
+
+  &__content {
+    width: 100%;
+    height: fit-content;
+  }
+
+  &__table {
+    width: 100%;
+    margin-top: 12px;
+    max-height: 480px;
+    overflow-x: auto;
+
+    .quotationTable {
+      width: 100%;
+      border-collapse: collapse;
+
+      thead {
+        height: 60px;
+        z-index: 1;
+        background-color: $color_white;
+
+        tr {
+          border: 1px solid $color_black3;
+        }
+
+        th {
+          position: sticky;
+          top: 0;
+          background-color: $color_white2;
+          border-bottom: 2px solid $color_black3;
+          z-index: 1;
+          user-select: none;
+        }
+      }
+
+      tbody {
+        tr {
+          transition: 0.3s all ease-in;
+          border: 1px solid $color_black3;
+        }
+      }
+
+      td,
+      th {
+        height: 60px;
+        padding-left: 16px;
+      }
+
+      th {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 1px;
+      }
+
+      &__selected {
+        background-color: $color_milk2;
+      }
+
+      &__td {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+
+        &--checkbox {
+          width: 4%;
+        }
+
+        &--textBox {
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        &--buttons {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+        }
+      }
+
+      &__th {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+
+        &--checkbox {
+          width: 4%;
+        }
+
+        &--reference {
+          width: 30%;
+        }
+
+        &--customer {
+          width: 20%;
+        }
+      }
+
+      &__icon {
+        cursor: pointer;
+      }
+
+      &__status {
+        width: fit-content;
+        padding: 5px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 16px;
+        text-transform: capitalize;
+        border: none;
+
+        &--partial {
+          color: #bf8932;
+          background-color: rgba(235, 208, 145, 0.2);
+        }
+
+        &--unpaid {
+          color: #b42318;
+          background-color: #fef3f2;
+        }
+
+        &--paid {
+          color: #027a48;
+          background-color: #ecfdf3;
+        }
+
+        &--rejected {
+          color: #1877de;
+          background-color: #e7f2fe;
+        }
+
+        &--cancelled {
+          color: #00000099;
+          background-color: rgba(180, 180, 180, 0.3);
+        }
+      }
+    }
+  }
+
+  &__paginate {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 814px;
+    left: 0;
+  }
+}

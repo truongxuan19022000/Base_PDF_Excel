@@ -1,0 +1,45 @@
+.conversations {
+  width: 100%;
+  height: calc(100vh - 63px);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #d9dce0;
+  position: relative;
+
+  &__search {
+    width: 100%;
+  }
+
+  &__dialog {
+    width: 170px;
+    padding: 5px 0;
+    border-radius: 6px;
+    border: 0.5px solid $color_black40;
+    background-color: white;
+    box-shadow: 0px 1px 1px 0px $color_black40;
+    z-index: 1;
+    position: absolute;
+    left: 170px;
+    top: 44px;
+
+    &--item {
+      width: 100%;
+      font-size: 16px;
+      font-weight: 400;
+      padding: 6px 18px;
+      user-select: none;
+      cursor: pointer;
+
+      &:hover {
+        background-color: $color_orange2;
+      }
+    }
+  }
+
+  .conversation {
+    width: 100%;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+  }
+}

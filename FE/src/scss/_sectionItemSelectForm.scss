@@ -1,0 +1,120 @@
+.sectionItemSelectForm {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  padding-right: 13px;
+  display: flex;
+  justify-content: center;
+
+  &--active {
+    border-radius: 6px 6px 0 0;
+  }
+
+  &--tableSelect {
+    padding-right: 10px;
+  }
+
+  &__label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+
+    img {
+      width: 10px;
+      transition: 0.1s all ease-in;
+      user-select: none;
+    }
+  }
+
+  &__arrowDown {
+    &--rotate {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__action {
+    font-size: 15px;
+    font-weight: 400;
+    text-transform: capitalize;
+    color: $color_black99;
+    user-select: none;
+
+    &--selected {
+      width: 100%;
+      color: #000000;
+    }
+
+    &--input {
+      width: 100%;
+      text-transform: capitalize;
+    }
+
+    &--spinner {
+      margin-right: 10px;
+    }
+  }
+
+  &__list {
+    width: 140px;
+    height: fit-content;
+    position: absolute;
+    top: 28px;
+    left: -11px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 6px 6px;
+    border: 0.5px solid #00000033;
+    background-color: $color_white;
+    overflow-y: auto;
+    z-index: 2;
+
+    &--item {
+      width: 250px;
+    }
+
+    &--tableSelect {
+      width: 345px;
+      left: -11px;
+      top: 27px;
+    }
+  }
+
+  &__option {
+    width: 100%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    padding: 5px 0 5px 15px;
+    color: #000000;
+    text-transform: capitalize;
+    user-select: none;
+    cursor: pointer;
+
+    &:first-child {
+      border-top: none;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+      border-radius: 0 0 6px 6px;
+    }
+
+    &:not(.selectCustomerForm__option--message):hover {
+      border-top: none;
+      border-bottom: none;
+      background-color: $color_brown3;
+    }
+
+    &--message {
+      text-transform: none;
+    }
+
+    &--selected {
+      background: $color_brown4;
+    }
+  }
+}

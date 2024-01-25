@@ -1,0 +1,33 @@
+version: '2.4'
+
+x-default: &default
+    networks:
+        - traefik-net
+    restart: always
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "10M"
+            max-file: "3"
+
+networks:
+    traefik-net:
+        external: true
+
+services:
+
+    prod_mc_frontend:
+        << : *default
+        build: .
+        image: multi/mc_frontend:latest
+        container_name: prod_mc_frontend
+        hostname: prod_mc_frontend
+        ports:
+            - "3000:80"
+        labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik-net"
+        - "traefik.http.routers.prod_mc_frontend.rule=Host(`multi-contracts.axalize.vn`)"
+        - "traefik.http.routers.prod_mc_frontend.entrypoints=https"
+        - "traefik.http.routers.prod_mc_frontend.tls.certresolver=ssl"
+        - "traefik.http.services.prod_mc_frontend.loadbalancer.server.port=80"

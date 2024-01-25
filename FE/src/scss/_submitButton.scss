@@ -1,0 +1,20 @@
+
+.submitButton {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-top: 65px;
+  padding-bottom: 26px;
+
+  &__btn {
+    position: relative;
+    width: 410px;
+    height: 43px;
+    font-size: 16px;
+    font-weight: 600;
+    color: $color_white;
+    border-radius: 6px;
+    background-color: $color_orange1;
+    outline: none;
+  }
+}

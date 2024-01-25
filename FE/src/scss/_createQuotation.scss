@@ -1,0 +1,269 @@
+.createQuotation {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &__content {
+    height: calc(100vh - 123px);
+    overflow-y: auto;
+    padding-left: 70px;
+    padding-top: 28px;
+    padding-bottom: 100px;
+  }
+
+  &__contentInner {
+    max-width: 931px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  .box {
+    width: 100%;
+    margin-bottom: 30px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &__title {
+      width: fit-content;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 7px;
+    }
+
+    &__input {
+      width: 429px;
+      height: 40px;
+      padding-left: 15px;
+      font-size: 16px;
+      font-weight: 400;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      border: 0.5px solid $color_black2;
+
+      &::placeholder {
+        color: rgba(0, 0, 0, 0.25);
+      }
+
+      &--error {
+        border: 0.5px solid $color_red;
+      }
+
+      &--address {
+        width: 100%;
+        margin-right: 0;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    &__phone {
+      width: 429px;
+      height: 40px;
+      padding-left: 10px;
+      font-size: 16px;
+      font-weight: 400;
+      border-radius: 6px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      border: 0.5px solid $color_black2;
+
+      select {
+        height: 100%;
+        width: 55px;
+        cursor: pointer;
+      }
+
+      .box__divider {
+        width: 1px;
+        height: 25px;
+        margin-left: 15px;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      input {
+        width: 100%;
+        height: 100%;
+        padding-left: 18px;
+        position: relative;
+        background-color: $color_white;
+
+        &::placeholder {
+          color: rgba(0, 0, 0, 0.25);
+        }
+      }
+
+      &--error {
+        border: 0.5px solid $color_red;
+      }
+    }
+
+    &__message {
+      color: $color_red;
+      margin-top: 0px;
+      margin-bottom: 10px;
+
+      &--phone {
+        margin-top: 5px;
+      }
+    }
+  }
+
+  .box--group {
+    width: 100%;
+    display: flex;
+
+    .box {
+      &__left {
+        width: 429px;
+        margin-right: 74px;
+      }
+    }
+  }
+
+  &__section {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  &__formData {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+    width: 100%;
+    max-width: 428px;
+    position: relative;
+
+    &--textArea {
+      max-width: unset;
+    }
+
+    &--icon {
+      width: 16px;
+      height: 16px;
+      position: absolute;
+      top: 39px;
+      right: 18px;
+    }
+
+    .selectForm__action {
+      color: rgba(0, 0, 0, 0.25);
+    }
+
+    .selectForm__action--selected {
+      color: #181818;
+    }
+
+    label {
+      color: #343a40;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .inputPaymentTerm {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      &__title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 7px;
+      }
+
+      &__body {
+        width: 100%;
+        height: 40px;
+        display: flex;
+        border-radius: 6px;
+        border: 0.5px solid #00000033;
+
+        &--box {
+          width: 88%;
+          display: flex;
+          align-items: center;
+        }
+
+        &--disabled {
+          background-color: #f4f4f4;
+        }
+
+        &--input {
+          width: 100%;
+          height: 100%;
+          padding-left: 12px;
+          border-radius: 6px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        &--inputDisabled {
+          background-color: #f4f4f4;
+        }
+
+        &--select {
+          width: 55px;
+          border-left: 0.5px solid #00000080;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        &--error {
+          border: 0.5px solid red;
+        }
+      }
+
+      &__message {
+        color: $color_red;
+        margin-top: 5px;
+      }
+    }
+  }
+
+  &__input {
+    height: 40px;
+    border: 1px solid #00000033;
+    width: 100%;
+    border-radius: 5px;
+    padding: 13px 14px 8px 14px;
+    font-size: 16px;
+    display: flex;
+
+    &::placeholder {
+      color: rgba(0, 0, 0, 0.25);
+    }
+
+    img {
+      cursor: pointer;
+    }
+
+    &--textArea {
+      height: 184px;
+      max-height: 200px;
+      min-height: 150px;
+    }
+
+    &--textAreaError {
+      border: 0.5px solid red;
+    }
+
+    &--error {
+      border: 0.5px solid red;
+    }
+  }
+
+  &__inputWithIcon {
+    width: 100%;
+  }
+
+  &__error {
+    color: red;
+  }
+}

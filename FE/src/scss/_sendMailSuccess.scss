@@ -1,0 +1,46 @@
+
+.sendEmail {
+  margin-top: -4px;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+
+  &__notice {
+    margin-bottom: 47px;
+    font-size: 16px;
+    font-weight: 400;
+
+    p {
+      margin-bottom: 14px;
+    }
+  }
+
+  &__resend {
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  &__timer{
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  &__count{
+    font-weight: 500;
+  }
+
+  &__url {
+    font-size: 16px;
+    margin-left: 5px;
+    font-weight: 600;
+    color: $color_brown1;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &--disabled{
+      margin-left: 50px;
+      color: $color_grey1;
+      cursor: pointer;
+    }
+  }
+}

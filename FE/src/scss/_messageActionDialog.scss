@@ -1,0 +1,47 @@
+
+.messageActionDialog {
+  width: 100%;
+  border-radius: 6px;
+  background-color: $color_white;
+  border: 0.5px solid $color_black40;
+  box-shadow: 0px 6px 6px 0px $color_black40;
+
+  &__act {
+    width: 100%;
+    font-size: 16px;
+    font-weight: 400;
+    padding: 10px 18px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    cursor: pointer;
+
+    img {
+      margin-right: 10px;
+    }
+
+    span {
+      line-height: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &:first-child {
+      border-radius: 3px 3px 0 0;
+    }
+
+    &:last-child {
+      border-radius: 0 0 3px 3px;
+    }
+
+    &:hover {
+      background-color: #ede5d8;
+
+      &:not(:first-child):not(:last-child) {
+        border-radius: 0;
+      }
+    }
+  }
+}

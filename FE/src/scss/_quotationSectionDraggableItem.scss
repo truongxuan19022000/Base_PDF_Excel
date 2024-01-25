@@ -1,0 +1,73 @@
+.quotationSectionDraggableItem {
+  width: 100%;
+  padding-bottom: 30px;
+
+  &__header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    padding-right: 36px;
+    padding-left: 36px;
+
+    &--left {
+      width: fit-content;
+      display: flex;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    &--sectionName {
+      font-size: 16px;
+      font-weight: 500;
+      padding-right: 50px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+    }
+
+    &--input {
+      width: 420px;
+      height: 40px;
+      border: 0.5px solid #00000080;
+      font-size: 16px;
+      font-weight: 500;
+      border-radius: 6px;
+      padding-left: 7px;
+    }
+
+    &--right {
+      display: flex;
+      align-items: center;
+    }
+
+    &--rightIcon {
+      width: 16px;
+      height: 16px;
+      margin-right: 17px;
+      user-select: none;
+      cursor: pointer;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+  }
+
+  &__section {
+    width: 100%;
+    padding: 15px 34px;
+    display: flex;
+    flex-direction: column;
+
+    &--item {
+      margin-bottom: 10px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

@@ -1,0 +1,165 @@
+.chatInput {
+  width: 100%;
+  padding: 0 38px;
+  padding-top: 16px;
+  padding-bottom: 24px;
+  background-color: $color_grey2;
+  position: relative;
+
+  &__errorMessage {
+    width: 100%;
+    text-align: right;
+    font-size: 15px;
+    color: $color_red;
+    padding-right: 50px;
+  }
+
+  &__gallery {
+    height: 100px;
+    width: 100%;
+    top: -110px;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #dfdfdf;
+    padding: 15px 10px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-self: flex-start;
+    box-shadow: 0 2px 5px 0 #d9d9e3;
+  }
+
+  &__innerBox {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    border-radius: 12px;
+    padding: 8px 16px;
+  }
+
+  &__reply {
+    width: 100%;
+    height: fit-content;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    &--replyBox {
+      width: 90%;
+      max-height: 100px;
+      overflow: auto;
+    }
+
+    &--icon {
+      width: 35px;
+      height: 35px;
+      border-radius: 100%;
+      margin-right: 15px;
+      margin-left: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #dfdfdf;
+      }
+    }
+  }
+
+  &__dialog {
+    position: absolute;
+    width: 187px;
+    left: 43px;
+    top: -70px;
+    z-index: 1;
+  }
+
+  &__box {
+    width: 100%;
+    height: fit-content;
+    margin-right: 22px;
+    border: 0.5px solid $color_white;
+    position: relative;
+    display: flex;
+    align-items: center;
+    transition: 0.3s all ease-in;
+
+    &--error {
+      border: 0.5px solid $color_red;
+    }
+
+    &--icon {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      margin-right: 13px;
+      user-select: none;
+
+      img {
+        width: 100%;
+        height: 100%;
+        margin-right: 16px;
+        cursor: pointer;
+      }
+    }
+
+    &--fileIcon {
+      width: 30px;
+      height: 30px;
+      display: flex;
+    }
+  }
+
+  &__input {
+    padding: 10px 40px 10px 0;
+    line-height: 30px;
+    min-height: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    max-height: 200px;
+    width: 100%;
+    margin-right: 35px;
+    resize: none;
+  }
+
+  &__button {
+    width: 24px;
+    height: 23px;
+    right: 16px;
+    position: absolute;
+    cursor: pointer;
+
+    &:hover {
+      color: #1877de;
+    }
+  }
+
+  &__message {
+    width: 100%;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    color: #89969d;
+  }
+
+  .emoji {
+    position: absolute;
+    bottom: 70px;
+    left: 0;
+    width: 0;
+    height: 0;
+    transition: 0.5s ease;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid #d9dce0;
+
+    &--open {
+      width: unset;
+      height: unset;
+    }
+  }
+}

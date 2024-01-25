@@ -1,0 +1,17 @@
+
+.customerDiagram {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  &__diagram {
+    width: 482px;
+    height: 306px;
+  }
+}

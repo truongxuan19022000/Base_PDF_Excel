@@ -1,0 +1,75 @@
+
+.msgActionForm {
+  width: 100%;
+  padding-top: 16px;
+  padding-bottom: 24px;
+  background-color: $color_grey2;
+
+  &__box {
+    width: 100%;
+    height: 56px;
+    padding: 0 38px;
+    background-color: $color_white;
+    border: 0.5px solid #acacac4d;
+    border-left: none;
+    border-right: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__left {
+    width: fit-content;
+    display: flex;
+    align-items: center;
+
+    &--icon {
+      margin-right: 20px;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    &--label {
+      font-weight: 500;
+      margin-right: 10px;
+      user-select: none;
+    }
+
+    &--number {
+      padding: 7px 11px;
+      font-weight: 600;
+      border-radius: 100%;
+      background-color: #dba44d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    &--numberBig {
+      padding: 7px;
+    }
+  }
+
+  &__right {
+    width: fit-content;
+    display: flex;
+    align-items: center;
+
+    &--icon {
+      width: 30px;
+      height: 30px;
+      margin-right: 15px;
+      color: #bfb9b0;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    &--iconActive {
+      color: #dba44d;
+    }
+
+    &--iconDelete {
+      margin-top: 3px;
+    }
+  }
+}

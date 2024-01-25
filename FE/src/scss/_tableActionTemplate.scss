@@ -1,0 +1,90 @@
+.tableActionTemplate {
+  width: 100%;
+  height: 57px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 17px;
+  border-radius: 6px 6px 0 0;
+  border: 0.5px solid #acacac;
+  background: #EAEAEA;
+
+  &__title {
+    font-weight: 500;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-start;
+    width: fit-content;
+  }
+
+  &__searchBox {
+    width: 210px;
+    height: 35px;
+    border-radius: 6px;
+    background-color: $color_white;
+    border: 0.5px solid $color_black80;
+    display: flex;
+    align-items: center;
+
+    img {
+      width: 14px;
+      height: 13px;
+      margin: 0 11px;
+      cursor: pointer;
+    }
+  }
+
+  &__search {
+    height: 100%;
+    width: 100%;
+    border-radius: 6px;
+    font-size: 16px;
+    color: $color_dark;
+  }
+
+  &__filter {
+    width: 110px;
+    height: 35px;
+    margin: 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $color_black99;
+    border-radius: 6px;
+    border: 0.5px solid $color_black80;
+    background-color: $color_white;
+    user-select: none;
+    cursor: pointer;
+
+    img {
+      margin-right: 10px;
+    }
+
+    &--active {
+      background-color: $color_orange2;
+    }
+  }
+
+  &__select {
+    width: 128px;
+    height: 35px;
+    margin-right: 10px;
+  }
+
+  &__button {
+    width: 149px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #7f7462;
+    color: #7f7462;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 6px;
+    background-color: white;
+    cursor: pointer;
+  }
+}

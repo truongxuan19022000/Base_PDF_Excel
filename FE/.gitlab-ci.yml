@@ -1,0 +1,20 @@
+image: ubuntu:22.04
+
+stages:
+  - staging
+
+deploy:
+  stage: staging
+  before_script:
+    - apt-get update
+    - apt-get install -y rsync
+    - apt-get install -y openssh-client
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+  script:
+    - ssh ubuntu@$SSH_HOST 'cd /home/ubuntu/webdorks_multicontracts-crm && git pull origin develop; bash deploy.sh; git checkout .'
+  only:
+    - develop

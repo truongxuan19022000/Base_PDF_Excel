@@ -1,0 +1,52 @@
+.groupMsg {
+  width: 100%;
+
+  &__date {
+    width: 100%;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+
+    &--date {
+      height: 28px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 400;
+      color: $color_dark;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: $color_white;
+      box-shadow: 0px 1px 1px 0px $color_black40;
+    }
+
+    &--box {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 5px 0;
+      background-color: #ffffffde;
+      border-top: 1px solid #dadada27;
+      border-bottom: 1px solid #acacac49;
+    }
+
+    &--unread {
+      font-weight: 500;
+    }
+
+    &--today {
+      color: $color_white;
+      background: #7f7462;
+    }
+  }
+
+  &__messages {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+}

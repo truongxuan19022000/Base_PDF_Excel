@@ -1,0 +1,67 @@
+
+.emoji {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  position: relative;
+  z-index: 4;
+
+  &__icon {
+    font-size: 25px;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      transform: scale(1.3);
+    }
+
+    p {
+      padding-top: 3px;
+      line-height: 25px;
+    }
+  }
+
+  .dropdown {
+    &__menu {
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+    }
+
+    &__toggle {
+      &::after {
+        display: none;
+      }
+
+      display: flex;
+      background-color: #f7f7fa;
+      align-items: center;
+      justify-content: center;
+      box-shadow: none;
+      padding-top: 5px;
+      border: none;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+
+      :hover {
+        transform: scale(1.3);
+      }
+    }
+  }
+
+  &__emojiBox {
+    position: absolute;
+    right: -150%;
+    top: -50px;
+    z-index: 5;
+
+    &--admin {
+      right: unset;
+      left: 100%;
+    }
+  }
+}

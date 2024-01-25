@@ -1,0 +1,68 @@
+.chatList {
+  width: 100%;
+  height: 100%;
+
+  &__content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  &__chatListWrapper {
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: "flex";
+    flex-direction: column;
+    height: fit-content;
+  }
+
+  &__chatList {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    &--loading {
+      width: 100%;
+      bottom: 10px;
+      padding: 15px 0;
+    }
+  }
+
+  &__listBox {
+    width: 100%;
+    padding-bottom: 20px;
+  }
+
+  &__item {
+    width: 100%;
+    border-bottom: 0.5px solid #0000000a;
+    cursor: pointer;
+
+    &:first-child {
+      border-top: 0.5px solid #0000000a;
+    }
+  }
+
+  &__noData {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 20px 15px;
+
+    span {
+      width: fit-content;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: $color_grey2;
+    }
+  }
+
+  &__endMessageText {
+    padding: 20px;
+    text-align: center;
+  }
+}

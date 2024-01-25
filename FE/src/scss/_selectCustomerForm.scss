@@ -1,0 +1,147 @@
+.selectCustomerForm {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  margin-right: 10px;
+  padding-right: 13px;
+  padding-left: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: $color_white;
+  border: 0.5px solid #cccccc;
+
+  &--active {
+    border-radius: 6px 6px 0 0;
+  }
+
+  &--error {
+    border: 0.5px solid red;
+  }
+
+  &__label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+
+    img {
+      width: 10px;
+      transition: 0.1s all ease-in;
+      user-select: none;
+    }
+  }
+
+  &__arrowDown {
+    &--rotate {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__action {
+    font-size: 16px;
+    font-weight: 400;
+    text-transform: capitalize;
+    color: $color_black99;
+    user-select: none;
+
+    &--selected {
+      width: 100%;
+      color: #000000;
+    }
+
+    &--input {
+      width: 100%;
+      text-transform: capitalize;
+    }
+
+    &--spinner {
+      margin-right: 10px;
+    }
+  }
+
+  &__list {
+    width: calc(100% + 2px);
+    height: fit-content;
+    position: absolute;
+    top: 37px;
+    left: -1px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 6px 6px;
+    border: 0.5px solid #00000033;
+    background-color: $color_white;
+    overflow-y: auto;
+    z-index: 2;
+    padding-bottom: 5px;
+
+    &--button {
+      height: 42px;
+      width: 97%;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid $color_brown1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $color_brown1;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    &--endMessageText {
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+  }
+
+  &__listWrapper {
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+  }
+
+  &__option {
+    width: 100%;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    padding: 5px 0 5px 15px;
+    color: #000000;
+    text-transform: capitalize;
+    user-select: none;
+    cursor: pointer;
+
+    &:first-child {
+      border-radius: 0;
+      border-top: none;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:not(.selectCustomerForm__option--message):hover {
+      border-top: none;
+      border-bottom: none;
+      background-color: $color_brown3;
+    }
+
+    &--message {
+      text-transform: none;
+    }
+
+    &--selected {
+      width: 100%;
+      color: #ffffff;
+      background: $color_brown2;
+    }
+  }
+}

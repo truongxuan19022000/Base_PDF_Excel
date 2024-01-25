@@ -1,0 +1,99 @@
+.inventoryForm {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &__content {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  &__groups {
+    width: 100%;
+    height: 100%;
+    max-width: 1180px;
+    min-width: 900px;
+    padding: 28px 70px;
+  }
+
+  &__activity {
+    width: 333px;
+    height: calc(100vh - 123px);
+  }
+
+  &__successMessage {
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    position: absolute;
+  }
+
+  .inventoryCell {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+
+    &--error {
+      margin-bottom: 40px;
+    }
+
+    &__item {
+      width: 45%;
+      display: flex;
+      flex-direction: column;
+
+      &--label {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 7px;
+      }
+
+      &--select {
+        width: 100%;
+        height: 40px;
+      }
+
+      &--selectBox {
+        width: 100%;
+        height: 40px;
+        display: flex;
+        align-items: center;
+      }
+
+      &--option {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        margin-right: 32px;
+        transition: 0.3s all ease-in;
+        cursor: pointer;
+
+        &:last-child {
+          margin-right: 0;
+        }
+      }
+
+      &--checkbox {
+        font-size: 16px;
+        font-weight: 400;
+        margin-right: 11px;
+
+        img {
+          margin-bottom: 3px;
+        }
+      }
+
+      &--message {
+        color: red;
+        margin-top: 5px;
+      }
+
+      &--messageSelect {
+        color: red;
+        margin-top: 30px;
+      }
+    }
+  }
+}

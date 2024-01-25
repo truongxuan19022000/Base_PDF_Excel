@@ -1,0 +1,85 @@
+.customerDetail {
+  width: 100%;
+  height: calc(100vh - 63px);
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    width: 65%;
+    height: 90px;
+    padding-left: 36px;
+    font-size: 25px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__warning {
+    width: 100%;
+    height: 50px;
+    position: relative;
+
+    .customerDetail__warningBanner {
+      display: flex;
+      align-items: center;
+      height: 50px;
+    }
+  }
+
+  &__close {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+  }
+
+  .detailRoute {
+    width: 100%;
+    height: 48px;
+    display: flex;
+    color: $color_black99;
+    padding-left: 36px;
+    border-bottom: 1px solid #eaecf0;
+
+    &__url {
+      text-transform: capitalize;
+      font-size: 16px;
+      font-weight: 500;
+      margin-right: 39px;
+      padding: 0 4px;
+      padding-top: 11px;
+      padding-bottom: 16px;
+      user-select: none;
+      cursor: pointer;
+
+      &:last-child {
+        margin-right: 0;
+      }
+
+      &--active {
+        color: #453516cc;
+        border-bottom: 2px solid #453516cc;
+      }
+    }
+  }
+
+  &__content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+
+    &--message {
+      position: absolute;
+      width: calc(100% - 62px);
+      top: 19px;
+      left: 32px;
+    }
+  }
+
+  &__actionBar {
+    width: 100%;
+  }
+}
