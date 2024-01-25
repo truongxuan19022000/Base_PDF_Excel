@@ -1,0 +1,41 @@
+# image: lorisleiva/laravel-docker:8.0
+
+# stages:
+#   - deployDev
+
+# deploy:
+#   stage: deployDev
+#   before_script:
+#     - mkdir -p ~/.ssh
+#     - chmod 700 ~/.ssh
+#     - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+#     - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+#     - chmod 400 ~/.ssh/id_rsa
+#   script:
+#     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts --ignore-platform-reqs
+#     - rsync -avzq --exclude '.git/' ./ $SSH_USERNAME@$SSH_HOST:/var/www/webdorks_multicontracts-crm-backend
+#     - ssh $SSH_USERNAME@$SSH_HOST 'sudo chmod -R 755 /var/www/webdorks_multicontracts-crm-backend'
+#     - ssh $SSH_USERNAME@$SSH_HOST 'sudo chmod -R 777 /var/www/webdorks_multicontracts-crm-backend/storage'
+#     - ssh $SSH_USERNAME@$SSH_HOST 'sudo chmod -R 777 /var/www/webdorks_multicontracts-crm-backend/public'
+#   only:
+#     - develop
+image: ubuntu:22.04
+
+stages:
+  - staging
+
+deploy:
+  stage: staging
+  before_script:
+    - apt-get update
+    - apt-get install -y rsync
+    - apt-get install -y openssh-client
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+  script:
+    - ssh ubuntu@$SSH_HOST 'cd /home/ubuntu/webdorks_multicontracts-crm-backend && git pull origin develop; bash deploy.sh; git checkout .'
+  only:
+    - develop

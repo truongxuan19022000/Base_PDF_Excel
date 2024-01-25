@@ -1,0 +1,170 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Activity;
+use App\Repositories\ActivityRepository;
+use App\Repositories\DocumentRepository;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+
+class DocumentService
+{
+    private $documentRepository;
+    private $activityRepository;
+
+    public function __construct(
+        DocumentRepository $documentRepository,
+        ActivityRepository $activityRepository
+    ){
+        $this->documentRepository = $documentRepository;
+        $this->activityRepository = $activityRepository;
+    }
+
+    public function getDocuments($searchParams)
+    {
+        $documents = $this->documentRepository->getDocuments($searchParams);
+        $results = [
+            'documents' => $documents,
+        ];
+
+        return $results;
+    }
+
+    public function getDocumentDetail($documentId)
+    {
+        $document = $this->documentRepository->getDocumentDetail($documentId);
+        $results = [
+            'document' => $document,
+        ];
+
+        return $results;
+    }
+
+    public function delete($documentId)
+    {
+        try {
+            $result = $this->documentRepository->delete($documentId);
+            if (!$result) {
+                return false;
+            }
+            $user = Auth::guard('api')->user();
+            $document = $this->documentRepository->findDocumentDeleted($documentId);
+            $activity_logs = [
+                'customer_id' => $document->customer_id,
+                'document_id' => $document->id,
+                'type'        => Activity::TYPE_DOCUMENT,
+                'user_id'     => $user->id,
+                'action_type' => Activity::ACTION_DELETED,
+                'created_at'  => Carbon::now(),
+            ];
+            $this->activityRepository->create($activity_logs);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('CLASS "DocumentService" FUNCTION "delete" ERROR: ' . $e->getMessage());
+        }
+        return false;
+    }
+
+    public function multiDeleteDocument($documentId)
+    {
+        try {
+            $result = $this->documentRepository->multiDeleteDocument($documentId);
+            if (!$result) {
+                return false;
+            }
+            $user = Auth::guard('api')->user();
+            $quotations = $this->documentRepository->findDocumentMultiDeleted($documentId);
+            foreach ($quotations as $quotation) {
+                $activity_logs = [
+                    'customer_id'  => $quotation->customer_id,
+                    'quotation_id' => $quotation->id,
+                    'type'         => Activity::TYPE_DOCUMENT,
+                    'user_id'      => $user->id,
+                    'action_type'  => Activity::ACTION_DELETED,
+                    'created_at'   => Carbon::now(),
+                ];
+                $this->activityRepository->create($activity_logs);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('CLASS "DocumentService" FUNCTION "multiDeleteDocument" ERROR: ' . $e->getMessage());
+        }
+        return false;
+    }
+
+    public function createDocument($credentials)
+    {
+        try {
+            $document = [
+                'document_name' => $credentials['document_name'],
+                'customer_id'   => $credentials['customer_id'],
+                'file'          => $credentials['file'],
+                'file_type'     => $credentials['file_type'],
+                'created_at'    => Carbon::now(),
+            ];
+            $result = $this->documentRepository->create($document);
+
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'customer_id'  => $document['customer_id'],
+                'document_id'  => $result->id,
+                'type'         => Activity::TYPE_DOCUMENT,
+                'user_id'      => $user->id,
+                'action_type'  => Activity::ACTION_CREATED,
+                'created_at'   => $document['created_at'],
+            ];
+            $this->activityRepository->create($activity_logs);
+
+            return [
+                'status' => true,
+                'data' => $result
+            ];
+        } catch (\Exception $e) {
+            Log::error('CLASS "DocumentService" FUNCTION "createDocument" ERROR: ' . $e->getMessage());
+        }
+        return [
+            'status' => false,
+        ];
+    }
+
+    public function updateDocument($credentials)
+    {
+        try {
+            $updateData = [
+                'document_name' => $credentials['document_name'],
+                'customer_id'   => $credentials['customer_id'],
+                'file'          => $credentials['file'],
+                'file_type'     => $credentials['file_type'],
+                'updated_at'    => Carbon::now(),
+            ];
+
+            $result = $this->documentRepository->update($credentials['document_id'], $updateData);
+            if (!$result) {
+                return false;
+            }
+
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'customer_id' => $updateData['customer_id'],
+                'document_id' => $credentials['document_id'],
+                'type'        => Activity::TYPE_DOCUMENT,
+                'user_id'     => $user->id,
+                'action_type' => Activity::ACTION_UPDATED,
+                'created_at'  => $updateData['updated_at'],
+            ];
+            $this->activityRepository->create($activity_logs);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('CLASS "DocumentService" FUNCTION "updateDocument" ERROR: ' . $e->getMessage());
+        }
+
+        return false;
+    }
+}
+
+
