@@ -6,8 +6,10 @@ use App\Exports\ExportMultiMaterial;
 use App\Http\Controllers\Controller;
 use App\Imports\ImportMultiMaterial;
 use App\Services\MaterialService;
+use App\Services\ProductItemService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Excel as ExcelExcel;
@@ -16,10 +18,15 @@ use Maatwebsite\Excel\Facades\Excel;
 class MaterialController extends Controller
 {
     private $materialService;
+    /**
+     * @var ProductItemService
+     */
+    private $productItemService;
 
-    public function __construct(MaterialService $materialService)
+    public function __construct(MaterialService $materialService, ProductItemService $productItemService)
     {
         $this->materialService = $materialService;
+        $this->productItemService = $productItemService;
     }
 
     /**
@@ -233,7 +240,7 @@ class MaterialController extends Controller
                 Rule::requiredIf(function () use ($credentials) {
                     return $credentials['category'] === config('common.material_category.services');
                 }),
-                Rule::in(1, 2, 3, 4),
+                Rule::in(1, 2, 3, 4, 5),
                 'numeric',
                 'nullable'
             ],
@@ -514,7 +521,13 @@ class MaterialController extends Controller
                 'message' => $validator->messages()
             ]);
         }
-
+        $check = $this->productItemService->checkExistMaterial($credentials['material_id']);
+        if ($check)  {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.cannot_update')
+            ]);
+        }
         $result = $this->materialService->updateMaterial($credentials);
         if (!$result) {
             return response()->json([

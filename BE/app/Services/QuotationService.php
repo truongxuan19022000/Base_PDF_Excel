@@ -261,14 +261,20 @@ class QuotationService
         ];
     }
 
-    public function updateDiscount($credentials) {
+    public function update($credentials) {
         try {
             $quotationId = $credentials['quotation_id'];
             unset($credentials['quotation_id']);
+            if (!empty($credentials['discount_amount'])) {
+                $quotation = $this->quotationRepository->getQuotationDetail($quotationId);
+                $grand_total = floatval($quotation->amount) - floatval($credentials['discount_amount']);
+                $this->quotationRepository->update($quotationId, ['price' => $grand_total]);
+            }
             $result = $this->quotationRepository->update($quotationId, $credentials);
             if (!$result) {
                 return false;
             }
+
             return true;
         } catch (\Exception $e) {
             DB::rollBack();

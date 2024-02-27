@@ -10,6 +10,7 @@ use App\Repositories\InvoiceRepository;
 use App\Repositories\QuotationRepository;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Repositories\ClaimRepository;
 use Illuminate\Support\Facades\Auth;
 
 class CustomerService
@@ -19,19 +20,22 @@ class CustomerService
     private $invoiceRepository;
     private $documentRepository;
     private $activityRepository;
+    private $claimRepository;
 
     public function __construct(
         CustomerRepository $customerRepository,
         QuotationRepository $quotationRepository,
         InvoiceRepository $invoiceRepository,
         DocumentRepository $documentRepository,
-        ActivityRepository $activityRepository
+        ActivityRepository $activityRepository,
+        ClaimRepository $claimRepository
     ) {
         $this->customerRepository = $customerRepository;
         $this->quotationRepository = $quotationRepository;
         $this->invoiceRepository = $invoiceRepository;
         $this->documentRepository = $documentRepository;
         $this->activityRepository = $activityRepository;
+        $this->claimRepository = $claimRepository;
     }
 
     public function getCustomers($searchParams)
@@ -115,12 +119,14 @@ class CustomerService
         $invoices = $this->invoiceRepository->getInvoicesByCustomerId($customerId);
         $documents = $this->documentRepository->getDocumentsByCustomerId($customerId);
         $activities = $this->activityRepository->getActivitiesByCustomerId($customerId);
+        $claims = $this->claimRepository->getClaimByCustomerId($customerId);
         $results = [
             'customer' => $customer,
             'quotations' => $quotations,
             'invoices' => $invoices,
             'documents' => $documents,
-            'activities' => $activities
+            'activities' => $activities,
+            'claims' => $claims
         ];
 
         return $results;
@@ -239,6 +245,21 @@ class CustomerService
             $paginate = false;
         }
         $invoices = $this->invoiceRepository->getInvoicesByCustomer($searchParams, $paginate, $customerId);
+
+        $results = [
+            'invoices' => $invoices,
+        ];
+
+        return $results;
+    }
+
+    public function getClaimsByCustomer($searchParams, $customerId)
+    {
+        $paginate = true;
+        if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
+            $paginate = false;
+        }
+        $invoices = $this->claimRepository->getClaimByCustomer($searchParams, $paginate, $customerId);
 
         $results = [
             'invoices' => $invoices,

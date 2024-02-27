@@ -41,7 +41,7 @@ class ImportAluminiumLocalMaterial implements ToModel, HasReferencesToOtherSheet
         $price_unit = $priceUnit[$price_unit[0]] ?? null;
         $coating_price = floatval(str_replace(',', '', $coating_price ?? null));
 
-        $coating_price_status = isset($coating_price) ? 2 : '';
+        $coating_price_status = isset($coating_price) ? 1 : '';
         $coating_price_unit = isset($coating_price) ? 1 : '';
 
         $data = [

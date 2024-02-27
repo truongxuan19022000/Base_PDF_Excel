@@ -56,6 +56,16 @@ class ProductTemplateService
         return $results;
     }
 
+    public function getProductTemplateForQuotation($productTemplateId, $productItemId)
+    {
+        $product_templates = $this->productTemplateRepository->getProductTemplateForQuotation($productTemplateId, $productItemId);
+        $results = [
+            'product_templates' => $product_templates,
+        ];
+
+        return $results;
+    }
+
     public function createProductTemplate($credentials, $products)
     {
         try {
@@ -63,11 +73,12 @@ class ProductTemplateService
             $data = [
                 'item' => $credentials['item'],
                 'profile' => $credentials['profile'],
+                'create_type' => isset($credentials['create_type']) ? $credentials['create_type'] : 1,
                 'created_at' => Carbon::now(),
                 'updated_at' => null,
             ];
             $result = $this->productTemplateRepository->create($data);
-            if (!empty($result)) {
+            if (!empty($result) && isset($products)) {
                 foreach ($products as $item) {
                     $item['product_template_id'] = $result->id;
                     $this->productTemplateMaterialRepository->create($item);
@@ -110,7 +121,7 @@ class ProductTemplateService
                 }
             }
             //update
-            if (isset($credentials['create'])) {
+            if (isset($credentials['update'])) {
                 foreach ($credentials['update'] as $updateData) {
                     $updateData['product_template_id'] = $credentials['product_template_id'];
                     $this->productTemplateMaterialRepository->update($updateData['material_id'], $credentials['product_template_id'], $updateData);

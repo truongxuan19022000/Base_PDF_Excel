@@ -19,6 +19,8 @@ class Invoice extends Model
         'id',
         'invoice_no',
         'quotation_id',
+        'issue_date',
+        'total_amount',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -29,5 +31,10 @@ class Invoice extends Model
     public function quotation()
     {
         return $this->belongsTo(Quotation::class, 'quotation_id', 'id');
+    }
+
+    public function bill_schedules()
+    {
+        return $this->hasMany(BillSchedule::class, 'invoice_id', 'id');
     }
 }

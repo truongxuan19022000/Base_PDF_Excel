@@ -19,10 +19,13 @@ class Claim extends Model
     protected $fillable = [
         'id',
         'claim_no',
-        'reference_no',
-        'customer_id',
-        'price',
+        'quotation_id',
         'issue_date',
+        'payment_received_date',
+        'deposit_amount',
+        'total_from_claim',
+        'is_copied',
+        'previous_claim_no',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -30,11 +33,11 @@ class Claim extends Model
 
     protected $casts = [
         'issue_date' => 'date:d/m/Y',
-        'valid_till'   => 'date:d/m/Y',
+        'payment_received_date'   => 'date:d/m/Y',
     ];
 
-    public function customer()
+    public function quotation()
     {
-        return $this->hasOne(Customer::class, 'id', 'customer_id');
+        return $this->hasOne(Quotation::class, 'id', 'quotation_id');
     }
 }

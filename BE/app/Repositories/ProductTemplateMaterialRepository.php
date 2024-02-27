@@ -18,6 +18,10 @@ class ProductTemplateMaterialRepository
             ->update($updateData);
     }
 
+    public function updateItem($id, $updateData) {
+        return ProductTemplateMaterial::where('id', $id)->update($updateData);
+    }
+
     public function delete($materialId, $productTemplateId)
     {
         return ProductTemplateMaterial::where('product_template_id', $productTemplateId)

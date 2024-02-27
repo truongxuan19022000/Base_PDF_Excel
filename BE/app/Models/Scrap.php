@@ -18,13 +18,23 @@ class Scrap extends Model
 
     protected $fillable = [
         'id',
-        'quotation_section_id',
-        'product_id',
-        'material_id',
+        'quotation_id',
+        'product_item_id',
+        'product_template_material_id',
         'scrap_length',
+        'scrap_weight',
         'cost_of_scrap',
+        'status',
         'created_at',
         'updated_at',
         'deleted_at',
+    ];
+
+    protected $casts = [
+        'scrap_id' => 'integer',
+        'product_item_id' => 'integer',
+        'product_template_material_id' => 'integer',
+        'status' => 'integer',
+
     ];
 }

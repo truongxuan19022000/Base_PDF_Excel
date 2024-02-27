@@ -31,7 +31,7 @@ class ScrapController extends Controller
      *          @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
-     *          name="quotation_section_id",
+     *          name="quotation_id",
      *          in="query",
      *          description="number",
      *          @OA\Schema(type="number"),
@@ -57,8 +57,28 @@ class ScrapController extends Controller
      */
     public function getScraps(Request $request)
     {
-        $searchParams = $request->all();
-        $results = $this->scrapService->getScraps($searchParams);
+        $credentials = $request->all();
+        $rule = [
+            'quotation_id' => [
+                'required',
+                'numeric',
+                Rule::exists('quotations', 'id')
+            ],
+            'material_id' => [
+                'required',
+                'numeric',
+                Rule::exists('materials', 'id')
+            ],
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+        $results = $this->scrapService->getScraps($credentials);
         return response()->json([
             'status' => config('common.response_status.success'),
             'data' => $results,
@@ -76,11 +96,12 @@ class ScrapController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 @OA\Property(property="quotation_section_id", type="number"),
+     *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="product_id", type="number"),
      *                 @OA\Property(property="material_id", type="number"),
      *                 @OA\Property(property="scrap_length", type="number"),
      *                 @OA\Property(property="cost_of_scrap", type="number"),
+     *                 @OA\Property(property="status", type="number", description="1: unused, 2: used"),
      *             )
      *         )
      *     ),
@@ -95,10 +116,10 @@ class ScrapController extends Controller
     {
         $credentials = $request->all();
         $rule = [
-            'quotation_section_id' => [
+            'quotation_id' => [
                 'required',
                 'numeric',
-                Rule::exists('quotation_sections', 'id')
+                Rule::exists('quotations', 'id')
             ],
             'product_id' => [
                 'required',
@@ -177,11 +198,12 @@ class ScrapController extends Controller
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
      *                 @OA\Property(property="scrap_id", type="number"),
-     *                 @OA\Property(property="quotation_section_id", type="number"),
+     *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="product_id", type="number"),
      *                 @OA\Property(property="material_id", type="number"),
      *                 @OA\Property(property="scrap_length", type="number"),
      *                 @OA\Property(property="cost_of_scrap", type="number"),
+     *                 @OA\Property(property="status", type="number", description="1: unused, 2: used"),
      *             )
      *         )
      *     ),
@@ -201,10 +223,10 @@ class ScrapController extends Controller
                 'numeric',
                 Rule::exists('scraps', 'id')
             ],
-            'quotation_section_id' => [
+            'quotation_id' => [
                 'required',
                 'numeric',
-                Rule::exists('quotation_sections', 'id')
+                Rule::exists('quotations', 'id')
             ],
             'product_id' => [
                 'required',

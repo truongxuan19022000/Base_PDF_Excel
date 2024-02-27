@@ -27,6 +27,9 @@ class Quotation extends Model
         'description',
         'terms_of_payment_confirmation',
         'terms_of_payment_balance',
+        'terms_of_payment_balance',
+        'discount_amount',
+        'discount_type',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -37,6 +40,9 @@ class Quotation extends Model
         'valid_till'   => 'date:d/m/Y',
         'id' => 'integer',
         'customer_id' => 'integer',
+        'status' => 'integer',
+        'terms_of_payment_confirmation' => 'integer',
+        'terms_of_payment_balance' => 'integer',
     ];
 
     public function customer()
@@ -52,5 +58,15 @@ class Quotation extends Model
     public function other_fees()
     {
         return $this->hasMany(OtherFee::class, 'quotation_id', 'id');
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(Claim::class,'quotation_id', 'id');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Claim::class,'quotation_id', 'id');
     }
 }

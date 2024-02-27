@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ExportPDFController;
+use App\Http\Controllers\ExportInvoicePDFController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,3 +20,4 @@ Route::get('/', function () {
 });
 
 Route::get('/quotation/export-pdf/{quotationId}', [ExportPDFController::class, 'exportPDF']);
+Route::get('/invoice/export-pdf/{invoiceId}', [ExportInvoicePDFController::class, 'exportPDF']);

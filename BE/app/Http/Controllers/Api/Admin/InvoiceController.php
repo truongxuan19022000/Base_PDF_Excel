@@ -93,6 +93,225 @@ class InvoiceController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/invoices/{invoiceId}/bill-schedule",
+     *     tags={"Invoices"},
+     *     summary="Get bill schedule by invoice",
+     *     description="Get bill schedule by invoice",
+     *     security={{"bearer":{}}},
+     * @OA\Parameter(
+     *     name="invoiceId",
+     *     in="path",
+     *     description="ID of the invoice show detail",
+     *     @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation.",
+     *     )
+     * )
+     *
+     */
+    public function getBillScheduleByInvoiceId($invoiceId)
+    {
+        $results = $this->invoiceService->getBillScheduleByInvoiceId($invoiceId);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/invoices/{invoiceId}/bill-schedule/handle",
+     *    tags={"Invoices"},
+     *     summary="Handle bill schedule",
+     *     description="Handle bill schedule",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *          @OA\JsonContent(
+     *              @OA\Property(property="invoice_id", type="number", example=1),
+     *              @OA\Property(property="total_amount", type="number", example=34815),
+     *              @OA\Property(property="create", type="array",
+     *                  @OA\Items(
+     *                      @OA\Property(property="type_invoice_statement", type="string", example="create new"),
+     *                      @OA\Property(property="type_percentage", type="number", example=30),
+     *                      @OA\Property(property="amount", type="number", example=12000),
+     *                      @OA\Property(property="order_number", type="number", example=1),
+     *                  )
+     *              ),
+     *              @OA\Property(property="update", type="array",
+     *                  @OA\Items(
+     *                      @OA\Property(property="id", type="string", example="2"),
+     *                      @OA\Property(property="type_invoice_statement", type="string", example="create new"),
+     *                      @OA\Property(property="type_percentage", type="number", example=30),
+     *                      @OA\Property(property="amount", type="number", example=12000),
+     *                      @OA\Property(property="order_number", type="number", example=1),
+     *                  )
+     *              ),
+     *              @OA\Property(property="delete", type="array", @OA\Items(type="number"), example={3, 4}),
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          description="Successful",
+     *      )
+     * )
+     *
+     */
+    public function handleBillSchedule(Request $request)
+    {
+        $credentials = $request->all();
+
+        $rule = [
+            'invoice_id' =>  [
+                'required',
+                'numeric',
+                Rule::exists('invoices', 'id')
+            ],
+            'total_amount' =>  ['required', 'numeric'],
+            'create' => 'array',
+            'create.*.type_invoice_statement' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['create']);
+                }),
+                'string'
+            ],
+            'create.*.type_percentage' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['create']);
+                }),
+                'numeric'
+            ],
+            'create.*.amount' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['create']);
+                }),
+                'numeric'
+            ],
+            'create.*.order_number' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['create']);
+                }),
+                'numeric'
+            ],
+            'update' => 'array',
+            'update.*.id' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['update']);
+                }),
+                'numeric'
+            ],
+            'update.*.type_invoice_statement' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['update']);
+                }),
+                'string'
+            ],
+            'update.*.type_percentage' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['update']);
+                }),
+                'numeric'
+            ],
+            'update.*.amount' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['update']);
+                }),
+                'numeric'
+            ],
+            'update.*.order_number' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['update']);
+                }),
+                'numeric'
+            ],
+
+            'delete' => 'array',
+            'delete.*' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['delete']);
+                }),
+                'numeric'
+            ]
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        };
+
+        $results = $this->invoiceService->handleBillSchedule($credentials);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/invoices/{invoiceId}/bill-schedule/update-order-number",
+     *    tags={"Invoices"},
+     *     summary="Update order bill schedule",
+     *     description="Update order bill schedule",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *          @OA\JsonContent(
+     *              @OA\Property(property="bill_schedules", type="array",
+     *                  @OA\Items(
+     *                      @OA\Property(property="id", type="number", example="2"),
+     *                      @OA\Property(property="order_number", type="number", example=2),
+     *                  )
+     *              ),
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          description="Successful",
+     *      )
+     * )
+     *
+     */
+    public function updateOrderNumber(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'bill_schedules' => 'required|array',
+            'bill_schedules.*.id' => [
+                'required', 'numeric'
+            ],
+            'bill_schedules.*.order_number' => [
+                'required', 'numeric'
+            ],
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        };
+
+        $result = $this->invoiceService->updateOrderNumber($credentials);
+
+        if (!$result['status']) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.cannot_update')
+            ]);
+        }
+
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.update_success')
+        ], 200);
+    }
+
+    /**
      * @OA\Post(
      *     path="/admin/invoices/overview",
      *     tags={"Invoices"},
@@ -137,7 +356,7 @@ class InvoiceController extends Controller
      *             @OA\Schema(
      *                 @OA\Property(property="invoice_no", type="string"),
      *                 @OA\Property(property="quotation_id", type="number"),
-     *                 @OA\Property(property="customer_id", type="number"),
+     *                 @OA\Property(property="issue_date", type="date"),
      *             )
      *         )
      *     ),
@@ -152,8 +371,7 @@ class InvoiceController extends Controller
     {
         $credentials = $request->only([
             'invoice_no',
-            'quotation_id',
-            'customer_id'
+            'quotation_id'
         ]);
 
         $rule = [
@@ -164,7 +382,6 @@ class InvoiceController extends Controller
                 Rule::unique('invoices','invoice_no')
             ],
             'quotation_id' => 'required|numeric',
-            'customer_id' => 'required|numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -205,7 +422,6 @@ class InvoiceController extends Controller
      *                 @OA\Property(property="invoice_id", type="number"),
      *                 @OA\Property(property="invoice_no", type="string"),
      *                 @OA\Property(property="quotation_id", type="number"),
-     *                 @OA\Property(property="customer_id", type="number"),
      *             )
      *         )
      *     ),
@@ -228,7 +444,6 @@ class InvoiceController extends Controller
                 Rule::unique('invoices','invoice_no')->ignore($credentials['invoice_id'])
             ],
             'quotation_id' => 'required|numeric',
-            'customer_id' => 'required|numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);

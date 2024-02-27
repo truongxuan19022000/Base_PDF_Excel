@@ -20,6 +20,7 @@ class ProductTemplate extends Model
         'id',
         'item',
         'profile',
+        'create_type',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -28,6 +29,10 @@ class ProductTemplate extends Model
     public function productTemplateMaterial()
     {
         return $this->hasMany(ProductTemplateMaterial::class, 'product_template_id', 'id');
+    }
+
+    public function product_item() {
+        return $this->hasMany(ProductItem::class, 'product_template_id', 'id');
     }
 
     protected $casts = [

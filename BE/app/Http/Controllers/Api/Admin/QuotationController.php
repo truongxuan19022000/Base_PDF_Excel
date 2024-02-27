@@ -167,25 +167,18 @@ class QuotationController extends Controller
             'terms_of_payment_confirmation' => 'required|numeric',
             'terms_of_payment_balance' => 'required|numeric',
             'description' => 'nullable|string',
-            'name' => [
+        ];
+
+        if (!isset($credentials['customer_id'])) {
+            $rule['name'] = [
                 'nullable',
                 'string',
                 'max:255',
                 Rule::requiredIf(function () use ($credentials) {
                     return empty($credentials['customer_id']);
                 }),
-            ],
-            'phone_number' => [
-                Rule::requiredIf(function () use ($credentials) {
-                    return empty($credentials['customer_id']);
-                }),
-                Rule::unique('customers', 'phone_number')->where(function ($query) {
-                    return $query->whereNull('deleted_at');
-                }),
-                'nullable',
-                'numeric',
-            ],
-            'email' => [
+            ];
+            $rule['email'] = [
                 'nullable',
                 'string',
                 'email',
@@ -193,36 +186,45 @@ class QuotationController extends Controller
                 Rule::requiredIf(function () use ($credentials) {
                     return empty($credentials['customer_id']);
                 }),
-            ],
-            'address_1' => [
+            ];
+            $rule['address_1'] = [
                 'nullable',
                 'string',
                 'max:255',
                 Rule::requiredIf(function () use ($credentials) {
                     return empty($credentials['customer_id']);
                 }),
-            ],
-            'address_2' => [
+            ];
+            $rule['address_2'] = [
                 'nullable',
                 'string',
                 'max:255',
-            ],
-            'postal_code' => [
+            ];
+            $rule['postal_code'] = [
                 'nullable',
                 'string',
                 'max:255',
                 Rule::requiredIf(function () use ($credentials) {
                     return empty($credentials['customer_id']);
                 }),
-            ],
-            'company_name' => [
+            ];
+            $rule['company_name'] = [
                 'nullable',
                 'string',
                 'max:255',
-            ],
-
-        ];
-
+            ];
+            $rule['phone_number'] = [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['customer_id']);
+                }),
+                Rule::unique('customers', 'phone_number')->where(function ($query) use ($credentials){
+                    return $query->whereNull('deleted_at');
+                }),
+                'nullable',
+                'numeric',
+            ];
+        }
+        
         $validator = Validator::make($credentials, $rule);
         if ($validator->fails()) {
             return response()->json([
@@ -578,7 +580,7 @@ class QuotationController extends Controller
     }
 
     /**
-     * @OA\Get(
+     * @OA\Post(
      *     path="/admin/quotations/update-discount",
      *     tags={"Quotations"},
      *     summary="Update discount of quotation",
@@ -590,6 +592,7 @@ class QuotationController extends Controller
      *             @OA\Schema(
      *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="discount_amount", type="number", example="123000"),
+     *                 @OA\Property(property="discount_type", type="number", example="1", description="1: Percentage, 2:Amount"),
      *             )
      *         )
      *     ),
@@ -616,7 +619,7 @@ class QuotationController extends Controller
             ]);
         };
 
-        $result = $this->quotationService->updateDiscount($credentials);
+        $result = $this->quotationService->update($credentials);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),

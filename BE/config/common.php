@@ -90,5 +90,20 @@ return [
         2 => 'Balcony',
         3 => 'Kitchen',
         4 => 'Dining Area',
+        5=> 'Common Toilet',
+        6 => 'Master Room Toilet',
+        7 => 'Master Room',
+        8 => 'Bedroom 1',
+        9 => 'Bedroom 2',
+        10 => 'Bedroom 3',
+        11 => 'Store Room',
     ],
+    'screen_type' => [
+        'product_template_screen' => 1,
+        'quotation_screen' => 2
+    ],
+    'product_item_screen' => [
+        'product_item' => 1,
+        'material_item' => 2
+    ]
 ];

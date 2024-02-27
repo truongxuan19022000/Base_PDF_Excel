@@ -17,6 +17,7 @@ class Activity extends Model
     const TYPE_QUOTATION_SECTIONS = 6;
     const TYPE_MATERIALS = 7;
     const TYPE_OTHER_FEES = 8;
+    const TYPE_CLAIM = 9;
     const ACTION_CREATED  = 1;
     const ACTION_UPDATED  = 2;
     const ACTION_UPLOADED = 3;

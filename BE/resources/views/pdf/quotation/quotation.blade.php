@@ -24,10 +24,6 @@
 				font-size: 13px;
 			}
 
-			.header-content-right {
-				margin-left: 300px;
-			}
-
 			.font-weight-bold {
 				font-weight: bold;
 			}
@@ -162,6 +158,7 @@
 				width: 50%;
 			}
         </style>
+        <title>{{ $quotation ? $quotation->reference_no : null }}</title>
     </head>
     <body>
 		<header>
@@ -169,25 +166,27 @@
 		</header>
 
 		<div class="content">
-			<div class="content-header">
-				<div class="header-content-left" style="float: left">
+			@if ($quotation)
+			<div class="content-header" style="position: relative;">
+				<div class="header-content-left" style="position: absolute; top: 0; left: 0">
 					<div style="margin-bottom: 12px">Our Reference: {{ $quotation->reference_no }}</div>
 					<div class="font-weight-bold">{{ $quotation->customer->company_name }}</div>
-					<div>{{ $quotation->customer->address['address_1'] . ' ' . $quotation->customer->address['address_2'] }}</div>
-					<div></div>
-					<div class="mb-20">{{ $quotation->customer->address['address_1'] . ' ' . $quotation->customer->address['address_2'] . ' ' . $quotation->customer->postal_code }}</div>
+					<div>{{ $quotation->customer->address['address_1'] }}</div>
+					<div>{{ $quotation->customer->address['address_2'] }}</div>
+					<div class="mb-20">{{ $quotation->customer->postal_code }}</div>
 					<div class="font-weight-bold text-underline">Attention: {{ $quotation->customer->name }}</div>
 				</div>
-				<div class="header-content-right">
+				<div class="header-content-right" style="position: absolute; top: 0; right: 0;">
 					<div style="margin-bottom: 12px">Date: {{ \Carbon\Carbon::now()->format('j-M-y') }}</div>
 					<div>Tel: {{ $quotation->customer->phone_number }}</div>
-					<div>Fax: 6570 0413</div>
+					<div>Fax: </div>
 					<div>Email: {{ $quotation->customer->email }}</div>
 					<div class="mb-20" style="visibility: hidden;">Email: htar@jinmac.org</div>
-					<div class="font-weight-bold text-underline ml-12" style="visibility: hidden;">By Email only</div>
+					<div style="visibility: hidden;">By Email only</div>
 				</div>
 			</div>
-			<div class="header-description w-100 font-weight-bold mt-12 font-13">{{ $quotation['description'] }}</div>
+			<div class="header-description w-100 font-weight-bold mt-12 font-13" style="margin-top: {{ !empty($quotation->customer->company_name) ? '120px' : '110px' }}">{{ $quotation['description'] }}</div>
+			@endif
 			<div class="font-13 mt-12">We thank you for inviting us to quote for the above-mentioned works. We are pleased to append herein our quotation with our terms and condition for your perusal and confirmation.</div>
 		</div>
 		<table class="mt-24 page-1">
@@ -210,112 +209,129 @@
 					<td class="border-dash-right"></td>
 					<td class="boder-right-solid"></td>
 				</tr>
+				@if (count($quotation_notes) > 0)
 				@foreach ($quotation_notes as $key => $value)
 				<tr class={{ $key + 1 == count($quotation_notes->toArray()) ? "boder-bottom-solid" : ""}}>
 					<td class="text-center border-dash-right boder-left-solid">A.{{ $key + 1 }}</td>
-					<td class="border-dash-right">{{ $value['description'] }}</td>
+                    <td class="border-dash-right">{!! nl2br(e($value['description'])) !!}</td>
 					<td class="text-center border-dash-right"></td>
 					<td class="text-center border-dash-right"></td>
 					<td class="text-center border-dash-right"></td>
 					<td class="text-center boder-right-solid">{{ $value['type'] ? config('quotation.note_type')[$value['type']] : '' }}</td>
 				</tr>
 				@endforeach
+				@endif
 			</tbody>
 		</table>
 		<div class="page_break"></div>
 		<div class="second-page">
+			@if ($quotation)
 			<div class="content">
-				<div class="content-header">
-					<div class="header-content-left" style="float: left">
+				<div class="content-header" style="position: relative">
+					<div class="header-content-left" style="position: absolute; top: 0; left: 0">
 						<div style="margin-bottom: 12px">Our Reference: {{ $quotation['reference_no'] }}</div>
 						<div class="font-weight-bold">{{ $quotation->customer->company_name }}</div>
 						<div style="visibility: hidden;">Email: {{ $quotation->customer->email }}</div>
 						<div class="font-weight-bold text-underline">Attention: {{ $quotation->customer->name }}</div>
 					</div>
-					<div class="header-content-right">
+					<div class="header-content-right" style="position: absolute; top: 0; right: 0;">
 						<div style="margin-bottom: 12px">Date: {{ \Carbon\Carbon::now()->format('j-M-y') }}</div>
 						<div style="visibility: hidden;">Email</div>
-						<div class="font-weight-bold text-underline ml-12" style="visibility: hidden;">By Email only</div>
-						<div class="font-weight-bold text-underline ml-12" style="visibility: hidden;">By Email only</div>
+						<div class="" style="visibility: hidden;">By Email only</div>
+						<div class="" style="visibility: hidden;">By Email only</div>
 					</div>
 				</div>
-				<div class="header-description w-100 font-weight-bold mt-12 font-13">{{ $quotation['description'] }}</div>
+				<div class="header-description w-100 font-weight-bold mt-12 font-13" style="margin-top: 80px">{{ $quotation['description'] }}</div>
 			</div>
+			@endif
 			<table class="mt-24 page-1">
 				<thead>
-					<tr>
-						<th style="width: 8%">S/N</th>
-						<th class="description-column">DESCRIPTION</th>
-						<th style="width: 4%">UNIT</th>
-						<th style="width: 4%">QTY</th>
-						<th style="min-width: 15%">U/RATE</th>
-						<th style="min-width: 3%">RATE</th>
+					<tr class="boder-bottom-solid">
+						<th width="10%">S/N</th>
+						<th width="60%" colspan="4" class="description-column">DESCRIPTION</th>
+						<th width="5%">UNIT</th>
+						<th width="5%">QTY</th>
+						<th width="10%">U/RATE</th>
+						<th width="10%">RATE</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr>
+					<tr class="boder-bottom-solid">
 						<td class="text-center border-dash-right boder-left-solid">B</td>
-						<td class="text-underline border-dash-right">Schedule of Bills / Quotation:</td>
+						<td colspan="4" class="text-underline border-dash-right font-weight-bold">Schedule of Bills / Quotation:</td>
 						<td class="border-dash-right"></td>
 						<td class="border-dash-right"></td>
 						<td class="border-dash-right"></td>
 						<td class="boder-right-solid"></td>
 					</tr>
+					@if (count($quotation_sections) > 0)
+                        <tr>
+                            <td class="text-center border-dash-right boder-left-solid">B.1</td>
+                            <td colspan="4" class="border-dash-right">Supply, delivery and installation of POWDER COATED finish aluminium framed doors and windows, complete with ironmongeries or/and accessories to given schedule described but to aluminium fabricator details. </td>
+                            <td class="border-dash-right"></td>
+                            <td class="border-dash-right"></td>
+                            <td class="border-dash-right"></td>
+                            <td class="boder-right-solid"></td>
+                        </tr>
+                    @php
+                        $sumProducts = 0;
+                    @endphp
 					@foreach ($quotation_sections as $key => $value)
 						<tr class={{ $key + 1 == count($quotation_sections) ? "boder-bottom-solid" : ""}}>
-							<td class="text-center border-dash-right boder-left-solid">B.{{ $key + 1 }}</td>
-							<td class="border-dash-right">Supply, delivery and installation of POWDER COATED finish aluminium framed doors and windows, complete with ironmongeries or/and accessories to given schedule described but to aluminium fabricator details. </td>
+							<td class="text-center border-dash-right boder-left-solid">B.1.{{ $key + 1 }}</td>
+							<td colspan="4" class="text-underline border-dash-right font-weight-bold">{{ $value['section_name'] }}</td>
 							<td class="border-dash-right"></td>
 							<td class="border-dash-right"></td>
 							<td class="border-dash-right"></td>
 							<td class="boder-right-solid"></td>
 						</tr>
-						<tr class={{ $key + 1 == count($quotation_sections) ? "boder-bottom-solid" : ""}}>
-							<td class="text-center border-dash-right boder-left-solid">B.{{ $key + 1 }}.{{ $key + 1 }}</td>
-							<td class="text-underline border-dash-right font-weight-bold">{{ $value['section_name'] }}</td>
-							<td class="border-dash-right"></td>
-							<td class="border-dash-right"></td>
-							<td class="border-dash-right"></td>
-							<td class="boder-right-solid"></td>
-						</tr>
-						@php
-							$sumProducts = 0;
-						@endphp
 						@foreach ($value->products as $item_key => $item_value)
 						<tr class={{ $item_key + 1 == count($value->products) ? "boder-bottom-solid" : ""}}>
-							<td class="text-center border-dash-right boder-left-solid">B.{{ $key + 1 }}.{{ $item_key + 1 }}</td>
-							<td class="border-dash-right"><span class="font-weight-bold">{{ $item_value->product_code }}</span> <span class="text-italic">{{ ($item_value->storey ? config('common.storey_type')[$item_value->storey] : '').';'.($item_value->area ? config('common.area_type')[$item_value->area] : '') .' '. $item_value->glass_type }}</span> <span class="font-weight-bold">{{ $item_value->width.'x'.$item_value->height }}</span></td>
+
+							<td class="text-center border-dash-right boder-left-solid">B.1.{{ $key + 1 }}.{{ $item_key + 1 }}</td>
+                            <td class="font-weight-bold" colspan="1">{{ $item_value->product_code }}</td>
+                            <td class="text-italic" colspan="1">
+                                {{
+                                   (empty($item_value->storey_text) ? ($item_value->storey ? config('common.storey_type')[$item_value->storey] : '') : $item_value->storey_text) .';'.
+                                   (empty($item_value->area_text) ? ($item_value->area ? config('common.area_type')[$item_value->area] : '') : $item_value->area_text)
+                                }}
+                            </td>
+                            <td class="text-italic" colspan="1">{{ $item_value->glass_type }}</td>
+                            <td class="font-weight-bold border-dash-right" colspan="1">{{ $item_value->width.' x '.$item_value->height . ' '. 'mm'}}</td>
 							<td class="text-center border-dash-right font-weight-bold">No</td>
 							<td class="text-center border-dash-right font-weight-bold">{{ $item_value->quantity }}</td>
-							<td class="text-center border-dash-right font-weight-bold">{{ $item_value->subtotal }}</td>
-							<td class="text-center boder-right-solid font-weight-bold">{{ $item_value->subtotal * $item_value->quantity }}</td>
+							<td class="text-center border-dash-right font-weight-bold">$ {{ number_format($item_value->subtotal, '2' , '.', ',') }}</td>
+							<td class="text-center boder-right-solid font-weight-bold">$ {{ number_format($item_value->subtotal * $item_value->quantity, '2' , '.', ',') }}</td>
 						</tr>
 						@php
 							$sumProducts += $item_value->subtotal * $item_value->quantity;
 						@endphp
 						@endforeach
 					@endforeach
+					@endif
 				</tbody>
 			</table>
 		</div>
 		<div class="page_break"></div>
 		<div class="last-page">
 			<div class="content">
-				<div class="content-header">
-					<div class="header-content-left" style="float: left">
+				@if ($quotation)
+				<div class="content-header" style="position: relative">
+					<div class="header-content-left" style="position: absolute; top: 0; left: 0">
 						<div style="margin-bottom: 12px">Our Reference: {{ $quotation->reference_no }}</div>
 						<div class="font-weight-bold">{{ $quotation->customer->company_name }}</div>
 						<div style="visibility: hidden;">Email: htar@jinmac.org</div>
 						<div class="font-weight-bold text-underline">Attention: {{ $quotation->customer->name }}</div>
 					</div>
-					<div class="header-content-right">
+					<div class="header-content-right" style="position: absolute; top: 0; right: 0">
 						<div style="margin-bottom: 12px">Date: {{ \Carbon\Carbon::now()->format('j-M-y') }}</div>
 						<div style="visibility: hidden;">Email: htar@jinmac.org</div>
-						<div class="font-weight-bold text-underline ml-12"style="visibility: hidden;">By Email only</div>
-						<div class="font-weight-bold text-underline ml-12"style="visibility: hidden;">By Email only</div>
+						<div class=""style="visibility: hidden;">By Email only</div>
+						<div class=""style="visibility: hidden;">By Email only</div>
 					</div>
 				</div>
-				<div class="header-description w-100 font-weight-bold mt-12 font-13">{{ $quotation['description'] }}</div>
+				<div class="header-description w-100 font-weight-bold mt-12 font-13" style="margin-top: 80px">{{ $quotation['description'] }}</div>
+				@endif
 			</div>
 			<table class="mt-12 page-1">
 				<thead>
@@ -331,16 +347,17 @@
 				<tbody>
 					<tr>
 						<td class="text-center border-dash-right boder-left-solid">C</td>
-						<td class="text-underline border-dash-right">Other Fees : (Optional)</td>
+                        <td class="text-underline border-dash-right"><span class="font-weight-bold">Other Fees : (Optional)</span></td>
 						<td class="border-dash-right"></td>
 						<td class="border-dash-right"></td>
 						<td class="border-dash-right"></td>
 						<td class="boder-right-solid"></td>
 					</tr>
+					@if ($other_fees)
 					@foreach ($other_fees as $key => $item)
 						<tr class={{ $key + 1 == count($other_fees) ? "boder-bottom-solid" : ""}}>
 							<td class="text-center border-dash-right boder-left-solid">C.{{ $key+1 }}</td>
-							<td class="border-dash-right"><span class="font-weight-bold">{{ $item->description }}</td>
+							<td class="border-dash-right">{{ $item->description }}</td>
 							<td class="text-center border-dash-right font-weight-bold">Sum</td>
 							<td class="text-center border-dash-right font-weight-bold"></td>
 							<td class="text-center border-dash-right font-weight-bold"></td>
@@ -349,7 +366,7 @@
 								$flippedArray = array_flip($otherFeetype);
 								$flippedArray = array_map('ucfirst', $flippedArray);
 							@endphp
-							<td class="text-center boder-right-solid font-weight-bold">{{ $item->type == config('quotation.other_fee_type.excluded') ? $flippedArray[$item->type] : $item->amount }}</td>
+							<td class="text-center boder-right-solid font-weight-bold">{{ $item->type == config('quotation.other_fee_type.excluded') ? $flippedArray[$item->type] : number_format($item->amount, '2' , '.', ',') }}</td>
 						</tr>
 					@endforeach
 					@php
@@ -360,57 +377,61 @@
 							}
 						}
 					@endphp
+					@endif
 					<tr style="border: 1px solid #ccc">
 						<td class="text-center font-weight-bold" style="border-right: 1px solid #ccc">C.6</td>
 						<td></td>
 						<td class="text-center font-weight-bold" colspan="3" style="border-left: 1px solid #ccc">Sub Total for C (Before GST):</td>
-						<td class="text-center font-weight-bold">${{ $sumOtherFee }}</td>
+						<td class="text-center font-weight-bold">$ {{ number_format(($sumOtherFee ?? 0), '2' , '.', ',')}}</td>
 					</tr>
 					<tr  style="border: 1px solid #ccc">
 						<td class="text-center font-weight-bold" style="border-right: 1px solid #ccc">D.1</td>
 						<td></td>
 						<td class="text-center font-weight-bold" colspan="3" style="border-left: 1px solid #ccc">Total for B + C (Before GST):</td>
-						<td class="text-center font-weight-bold">${{ $sumOtherFee + $sumProducts }}</td>
+						<td class="text-center font-weight-bold">$ {{ number_format(($sumOtherFee ?? 0) + ($sumProducts ?? 0), '2' , '.', ',') }}</td>
 					</tr>
 				</tbody>
 			</table>
-			<div class="w-100 text-underline font-weight-bold"><div class="font-13" style="margin-left: 44px">TERMS & CONDITIONS</div></div>
+            @if(strlen($quotation['description']) > 175 || count($other_fees) > 3)
+                <div class="page_break"></div>
+            @endif
+			<div class="w-100 text-underline font-weight-bold mt-12"><div class="font-13" style="margin-left: 44px">TERMS & CONDITIONS</div></div>
 			<table style="margin-left: 24px; width: 98%">
 				<tbody>
 					<tr>
-						<td style="width: 3%">1</td>
+						<td style="width: 3%" class="vertical-top">1</td>
 						<td>Above amount quoted subjected to prevailing GST.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">2</td>
+						<td style="width: 3%" class="vertical-top">2</td>
 						<td>Above amount and quantities quoted are based on the information / drawing provided by you at the time of preparing the quotation and subjected to remeasurement, if deviated from the original design intent. (without specification)</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">3</td>
+						<td style="width: 3%" class="vertical-top">3</td>
 						<td>The above aluminium framing offer herein are extruded in 6063-T5 alloy with one coat polyester powder coated finish system  (minimum 35 microns), cut and conventional assembled to aluminium fabricator details with one layer of protection tape onto surface finished. Subjected to remeasurement, if deviated from the original design intent.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">4</td>
+						<td style="width: 3%" class="vertical-top">4</td>
 						<td>Clients' to provide free and full general facilities inclusive attendance on site for materials hoisting, lift access for uploading & placing of materials to upper level, working staging, platform, works at height equipments, scaffolding, elevated mobile platform, grouting materials, water & electricity and including forming of opening, hacking and making good of concrete structures or adjacent finishes during the course of our installation works.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">5</td>
+						<td style="width: 3%" class="vertical-top">5</td>
 						<td>All steel framing support, RC stiffeners or lintel in connection to our aluminium works shall be provided by Clients'.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">6</td>
+						<td style="width: 3%" class="vertical-top">6</td>
 						<td>Terms of payments shall be {{ $quotation['terms_of_payment_confirmation'] }}% upon confirmation. Balance {{ $quotation['terms_of_payment_balance'] }}% shall be payable through our monthly progress claims with payments to be made to us within 30 days from the date of submission of each progress claim (e.g.: 45% on installation of outer frame, 55% on installation of inner panel against value of rate priced or based on individual element breakdown. The deposit sum collected shall be offset or deduction make in the way of monthly drawdown against the percentage of works done certified) and without retention.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">7</td>
+						<td style="width: 3%" class="vertical-top">7</td>
 						<td>Validity period of our quotation offer is 7 days from the date of this quotation.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">8</td>
+						<td style="width: 3%" class="vertical-top">8</td>
 						<td>Any items not specifically called out herein must be considered exclusive from this quotation.</td>
 					</tr>
 					<tr>
-						<td style="width: 3%">9</td>
+						<td style="width: 3%" class="vertical-top">9</td>
 						<td>In case of discrepancy, this quotation shall take precedence.</td>
 					</tr>
 				</tbody>
@@ -420,7 +441,7 @@
 				<tbody>
 					<tr>
 						<td style="width: 80%">Total amount for the above mentioned works quoted in Singapore dollar (Before GST) : </td>
-						<td class="font-weight-bold text-right text-underline">${{ $sumOtherFee + $sumProducts }}</td>
+						<td class="font-weight-bold text-right text-underline">$ {{ number_format(($sumOtherFee ?? 0) + ($sumProducts ?? 0), '2' , '.', ',') }}</td>
 					</tr>
 				</tbody>
 			</table>

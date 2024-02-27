@@ -9,6 +9,7 @@ use App\Services\QuotationNoteService;
 use App\Services\OtherFeeService;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Response;
 
 class ExportPDFController extends Controller
 {
@@ -39,13 +40,6 @@ class ExportPDFController extends Controller
         $quotation_notes = $this->quotationNoteService->getQuotationNotes($quotationId)['quotation_notes'];
         $otherFees = $this->otherFeeService->getOtherFees($quotationId)['other_fees'];
 
-        if (!$quotation || count($quotation_sections) == 0) {
-            return response()->json([
-                'status' => config('common.response_status.failed'),
-                'message' => trans('message.data_not_available'),
-            ]);
-        }
-
         $fileName = 'quotation_' . $quotation['reference_no'] . '.pdf';
         $quotation = Pdf::loadView('pdf.quotation.quotation', [
             'quotation' => $quotation,
@@ -54,6 +48,9 @@ class ExportPDFController extends Controller
             'other_fees' => $otherFees
         ])->setPaper('A4', 'portrait');
 
-        return $quotation->download($fileName);
+        return Response::make($quotation->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+        ]);
     }
 }

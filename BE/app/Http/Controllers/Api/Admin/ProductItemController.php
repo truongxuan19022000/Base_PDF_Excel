@@ -9,6 +9,7 @@ use App\Services\ScrapService;
 use App\Services\MaterialService;
 use App\Services\QuotationSectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -21,17 +22,20 @@ class ProductItemController extends Controller
     private $quotationSectionService;
 
     private $materialService;
+    private $scrapService;
 
     public function __construct(
         ProductItemService $productItemService,
         ProductTemplateService $productTemplateService,
         QuotationSectionService $quotationSectionService,
-        MaterialService $materialService
+        MaterialService $materialService,
+        ScrapService $scrapService
     ) {
         $this->productItemService = $productItemService;
         $this->productTemplateService = $productTemplateService;
         $this->quotationSectionService = $quotationSectionService;
         $this->materialService = $materialService;
+        $this->scrapService = $scrapService;
     }
 
     /**
@@ -49,6 +53,7 @@ class ProductItemController extends Controller
      *                 @OA\Property(property="material_id", type="number"),
      *                 @OA\Property(property="product_template_id", type="number"),
      *                 @OA\Property(property="quotation_section_id", type="number"),
+     *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="no_of_panels", type="number"),
      *                 @OA\Property(property="order_number", type="number"),
      *                 @OA\Property(property="type", type="number", description="1: Product, 2: Glass, 3: Extra Order"),
@@ -102,7 +107,8 @@ class ProductItemController extends Controller
                     return isset($credentials['type']) && $credentials['type'] != config('common.material_type.product');
                 }),
             ],
-            'quotation_section_id' => 'required|integer'
+            'quotation_section_id' => 'required|integer',
+            'quotation_id' => 'required|integer'
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -113,7 +119,15 @@ class ProductItemController extends Controller
             ]);
         };
 
-        $afterCalculate = $this->calculateQuotationAmount($credentials);
+        if ($credentials['type'] == config('common.material_type.product') && (empty($credentials['product_template_id']))) {
+            $productTemplateData = [
+                'item' => '',
+                'profile' => 1,
+                'create_type' => 2
+            ];
+            $productTemplate = $this->productTemplateService->createProductTemplate($productTemplateData, null);
+            $credentials['product_template_id'] = $productTemplate['data']->id;
+        }
         $result = $this->productItemService->createProductItem($credentials);
 
         if (!$result['status']) {
@@ -126,9 +140,6 @@ class ProductItemController extends Controller
         return response()->json([
             'status' => config('common.response_status.success'),
             'data' =>  $result['data'],
-            'total_cost_of_items' => $afterCalculate['totalCostOfItems'],
-            'scraps' => $afterCalculate['scraps'],
-            'product_template_materials' => $afterCalculate['afterCalculate']['product_template_materials']
         ]);
     }
 
@@ -154,6 +165,7 @@ class ProductItemController extends Controller
      *                 @OA\Property(property="title", type="string"),
      *                 @OA\Property(property="service_type", type="number"),
      *                 @OA\Property(property="unit_price", type="number", description="1: pc, 2: m2, 3: m, 4: panel"),
+     *                 @OA\Property(property="quotation_id", type="number"),
      *             )
      *         )
      *     ),
@@ -203,6 +215,7 @@ class ProductItemController extends Controller
                     return isset($credentials['type']) && $credentials['type'] != config('common.material_type.product');
                 }),
             ],
+            'quotation_id' => 'required|integer'
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -212,9 +225,17 @@ class ProductItemController extends Controller
                 'message' => $validator->messages()
             ]);
         }
+        if ($credentials['type'] == config('common.material_type.product') && (empty($credentials['product_template_id']))) {
+            $productTemplateData = [
+                'item' => '',
+                'profile' => 1,
+                'create_type' => 2
+            ];
+            $productTemplate = $this->productTemplateService->createProductTemplate($productTemplateData, null);
+            $credentials['product_template_id'] = $productTemplate['data']->id;
+        }
 
         $result = $this->productItemService->updateProductItem($credentials);
-
         if (!$result['status']) {
             return response()->json([
                 'status' => config('common.response_status.failed'),
@@ -238,6 +259,7 @@ class ProductItemController extends Controller
      *     @OA\RequestBody(
      *         @OA\JsonContent(
      *             @OA\Property(property="product_item_id", example=1),
+     *             @OA\Property(property="quotation_id", type="number"),
      *         )
      *     ),
      *     @OA\Response(
@@ -252,6 +274,7 @@ class ProductItemController extends Controller
         $credentials = $request->all();
         $rule = [
             'product_item_id' => 'required|numeric',
+            'quotation_id' => 'required|numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -262,7 +285,60 @@ class ProductItemController extends Controller
             ]);
         };
 
-        $result = $this->productItemService->deleteProductItem($credentials['product_item_id']);
+        $result = $this->productItemService->deleteProductItem($credentials['product_item_id'], $credentials['quotation_id']);
+        if (!$result) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.delete_failed')
+            ]);
+        }
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.delete_success')
+        ]);
+    }
+    /**
+     * @OA\Post(
+     *     path="/admin/quotation-sections/products/material-item/delete",
+     *     tags={"Quotation-Sections"},
+     *     summary="Delete item from product item in quotation sections",
+     *     description="Delete item from product item in quotation sections",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *               @OA\Property(property="product_item_template_id", type="number", example=1),
+     *               @OA\Property(property="product_item_id", type="number", example=1),
+     *               @OA\Property(property="product_template_material_id", type="number", example=1),
+     *               @OA\Property(property="scrap_id", type="number", example=1),
+     *               @OA\Property(property="used_scrap_id", type="number", example=1),
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful",
+     *     )
+     * )
+     *
+     */
+    public function deleteMaterialItem(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'product_item_template_id' => 'required|numeric',
+            'product_item_id' => 'required|numeric',
+            'product_template_material_id' => 'required|numeric',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        };
+
+        $result = $this->productItemService->deleteMaterialItem($credentials);
+        $this->quotationSectionService->handleCalculateQuotationForUpdate($credentials['quotation_id']);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),
@@ -274,40 +350,6 @@ class ProductItemController extends Controller
             'status' => config('common.response_status.success'),
             'message' => trans('message.delete_success')
         ]);
-    }
-
-    private function calculateQuotationAmount($credentials)
-    {
-        $afterCalculate = [];
-        $totalCostOfItems = 0;
-        $scraps = [];
-        if (isset($credentials['product_template_id']) && $credentials['type'] == config('common.material_type.product')) {
-            $productTemplate = $this->productTemplateService->getProductTemplateDetail($credentials['product_template_id']);
-            foreach ($productTemplate['product_templates']->productTemplateMaterial as $product) {
-                // If check item is aluminum, calculate according to the following formula:
-                if ($product->category === "Aluminium") {
-                    $aluminium = $this->quotationSectionService->calculateTypeAluminium($credentials, $product);
-                    $totalCostOfItems = $totalCostOfItems + $aluminium['totalCosOfRawMaterial'];
-                    $afterCalculate['product_template_materials'][] = $aluminium['afterCalculate'];
-                    $scraps[] = $aluminium['scraps'];
-                } else {
-                    $other = $this->quotationSectionService->calculateTypeOther($credentials, $product);
-                    $afterCalculate['product_template_materials'][] = $other['afterCalculate'];
-                    $totalCostOfItems = $totalCostOfItems + $other['totalCostOfItems'];
-                }
-            }
-        } else {
-            $detail = $this->materialService->getMaterialDetail($credentials['material_id']);
-            $meterialType = $this->quotationSectionService->calculateMaterial($credentials, $detail['materials']);
-            $afterCalculate['product_template_materials'][] = $meterialType['afterCalculate'];
-            $totalCostOfItems = $totalCostOfItems + $meterialType['totalCostOfItems'];
-        }
-
-        return [
-            'totalCostOfItems' => $totalCostOfItems,
-            'afterCalculate' => $afterCalculate,
-            'scraps' => $scraps
-        ];
     }
 
     /**
@@ -353,10 +395,210 @@ class ProductItemController extends Controller
             ]);
         };
 
-        $afterCalculate = $this->calculateQuotationAmount($credentials);
+        $afterCalculate = $this->productItemService->calculateQuotationAmount($credentials);
         return response()->json([
             'total_cost_of_items' => $afterCalculate['totalCostOfItems'],
-            'product_template_materials' => $afterCalculate['afterCalculate']['product_template_materials']
         ]);
     }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/quotation-sections/products/material-item/create",
+     *     tags={"Quotation-Sections"},
+     *     summary="Create material item in product item",
+     *     description="Create material item in product item",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *          @OA\JsonContent(
+     *              @OA\Property(property="width", type="number", example="1000", description="width from product"),
+     *              @OA\Property(property="height", type="number", example="3000", description="height from product"),
+     *              @OA\Property(property="category", type="string", example="Aluminium", description="Aluminium, Glass, Hardware, Services"),
+     *              @OA\Property(property="quotation_id", type="number", example=1),
+     *              @OA\Property(property="material_id", type="number", example=1),
+     *              @OA\Property(property="product_template_id", type="number", example=1),
+     *              @OA\Property(property="product_item_id", type="number", example=1),
+     *              @OA\Property(property="width_quantity", type="number", example=2),
+     *              @OA\Property(property="height_quantity", type="number", example=2),
+     *              @OA\Property(property="cost_of_powder_coating", type="number", example=14.5),
+     *              @OA\Property(property="cost_of_raw_aluminium", type="number", example=52.2),
+     *              @OA\Property(property="cost_of_scrap", type="number", example=3.2),
+     *              @OA\Property(property="product_template_material_id", type="number", example=1),
+     *              @OA\Property(property="scrap_id", type="number", example=1),
+     *              @OA\Property(property="scrap_length", type="number", example=2),
+     *              @OA\Property(property="scrap_weight", type="number", example=3),
+     *              @OA\Property(property="quantity", type="number", example=3),
+     *              @OA\Property(property="cost_of_item", type="number", example=3),
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          description="Successful",
+     *      )
+     * )
+     *
+     */
+    public function createMaterialItem(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'width' => 'required|numeric',
+            'height' => 'required|numeric',
+            'category' => 'required',
+            'cost_of_powder_coating' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_raw_aluminium' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_scrap' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_item' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] !== config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'quantity' => ['numeric', 'nullable'],
+            'quotation_id' => 'required|numeric',
+            'material_id' => 'numeric',
+            'product_template_id' => 'required|numeric',
+            'product_item_id' => 'required|numeric',
+        ];
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $data =  $this->productItemService->createMaterialItem($credentials);
+        if (!$data) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'data' => null
+            ]);
+        }
+
+
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/quotation-sections/products/material-item/update",
+     *     tags={"Quotation-Sections"},
+     *     summary="Update a material item in product item",
+     *     description="Update a material item in product item",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *          @OA\JsonContent(
+     *              @OA\Property(property="width", type="number", example="1000", description="width from product"),
+     *              @OA\Property(property="height", type="number", example="3000", description="height from product"),
+     *              @OA\Property(property="category", type="string", example="Aluminium", description="Aluminium, Glass, Hardware, Services"),
+     *              @OA\Property(property="product_item_template_id", type="number", example=1),
+     *              @OA\Property(property="quotation_id", type="number", example=1),
+     *              @OA\Property(property="material_id", type="number", example=1),
+     *              @OA\Property(property="product_template_material_id", type="number", example=1),
+     *              @OA\Property(property="product_template_id", type="number", example=1),
+     *              @OA\Property(property="width_quantity", type="number", example=2),
+     *              @OA\Property(property="height_quantity", type="number", example=2),
+     *              @OA\Property(property="cost_of_powder_coating", type="number", example=14.5),
+     *              @OA\Property(property="cost_of_raw_aluminium", type="number", example=52.2),
+     *              @OA\Property(property="cost_of_scrap", type="number", example=3.2),
+     *              @OA\Property(property="scrap_id", type="number", example=1),
+     *              @OA\Property(property="scrap_length", type="number", example=2),
+     *              @OA\Property(property="scrap_weight", type="number", example=3),
+     *              @OA\Property(property="quantity", type="number", example=3),
+     *              @OA\Property(property="raw_quantity", type="number", example=3),
+     *              @OA\Property(property="cost_of_item", type="number", example=3),
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          description="Successful",
+     *      )
+     * )
+     *
+     */
+    public function updateMaterialItem(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'width' => 'required|numeric',
+            'height' => 'required|numeric',
+            'cost_of_powder_coating' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_raw_aluminium' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_scrap' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'cost_of_item' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return !empty($credentials['category']) && $credentials['category'] !== config('common.material_category.aluminium');
+                }),
+                'numeric',
+                'nullable'
+            ],
+            'quantity' => ['numeric', 'nullable'],
+            'quotation_id' => 'nullable|numeric',
+            'material_id' => 'nullable|numeric',
+            'product_template_material_id' => 'nullable|numeric',
+            'product_template_id' => 'nullable|numeric',
+            'product_item_template_id' => 'required|numeric',
+        ];
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $material_item =  $this->productItemService->updateMaterialItem($credentials['product_item_template_id'], $credentials);
+        if (!$material_item) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.update_success')
+        ]);
+    }
+
 }

@@ -631,4 +631,52 @@ class CustomerController extends Controller
             'data' => $results,
         ]);
     }
+
+    /**
+     * @OA\Get(
+     *     path="/admin/customers/{customerId}/detail/claims",
+     *     tags={"Customers"},
+     *     summary="Get a list of claims By Customers",
+     *     description="Get a list of claims By Customers.",
+     *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="customerId",
+     *          in="path",
+     *          description="ID of the claims to edit",
+     *          @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *          name="search",
+     *          in="query",
+     *          description="Search with reference_no, claim_no",
+     *          @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *          name="start_date",
+     *          in="query",
+     *          description="Y-m-d",
+     *          @OA\Schema(type="string"),
+     *     ),
+     *     @OA\Parameter(
+     *          name="end_date",
+     *          in="query",
+     *          description="Y-m-d",
+     *          @OA\Schema(type="string"),
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation",
+     *     )
+     * )
+     *
+     */
+    public function getClaimsByCustomer(Request $request, $customerId)
+    {
+        $searchParams = $request->all();
+        $results = $this->customerService->getClaimsByCustomer($searchParams, $customerId);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
 }

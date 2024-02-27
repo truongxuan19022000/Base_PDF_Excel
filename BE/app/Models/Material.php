@@ -44,4 +44,12 @@ class Material extends Model
     protected $casts = [
         'id' => 'integer',
     ];
+
+    public function product_item() {
+        return $this->hasMany(ProductItem::class, 'material_id', 'id');
+    }
+
+    public function product_template_material() {
+        return $this->hasMany(ProductTemplateMaterial::class, 'material_id', 'id');
+    }
 }

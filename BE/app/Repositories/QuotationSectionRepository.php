@@ -28,7 +28,9 @@ class QuotationSectionRepository
                     'profile',
                     'glass_type',
                     'storey',
+                    'storey_text',
                     'area',
+                    'area_text',
                     'width',
                     'width_unit',
                     'height',
@@ -83,10 +85,18 @@ class QuotationSectionRepository
                                     'profile',
                                 );
                                 $qr->with(['productTemplateMaterial' => function ($qr) {
+//                                    $qr->where(function ($sq) {
+//                                        $sq->whereDoesntHave('product_item_templates')
+//                                            ->orwhereHas('product_item_templates', function ($q) {
+//                                                $q->where('product_item_templates.delete_status', 0);
+//                                            });
+//                                    });
                                     $qr->join('materials', 'materials.id', 'product_template_materials.material_id');
                                     $qr->select([
+                                        'product_template_materials.id',
                                         'product_template_id',
                                         'materials.id as material_id',
+                                        'type',
                                         'category',
                                         'profile',
                                         'item',
@@ -101,9 +111,13 @@ class QuotationSectionRepository
                                         'min_size',
                                         'price',
                                         'price_unit',
+                                        'coating_price_status',
                                         'coating_price',
+                                        'coating_price_unit',
                                         'quantity',
                                     ]);
+                                    $qr->with('product_item_templates');
+                                    $qr->with('all_product_item_templates');
                                 }]);
                             }
                         ]);

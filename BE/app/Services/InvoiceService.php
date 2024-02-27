@@ -4,22 +4,31 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Repositories\ActivityRepository;
+use App\Repositories\BillScheduleRepository;
 use App\Repositories\InvoiceRepository;
+use App\Repositories\QuotationRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
     private $invoiceRepository;
     private $activityRepository;
+    private $billScheduleRepository;
+    private $quotationRepository;
 
     public function __construct(
         InvoiceRepository $invoiceRepository,
-        ActivityRepository $activityRepository
+        ActivityRepository $activityRepository,
+        BillScheduleRepository $billScheduleRepository,
+        QuotationRepository $quotationRepository
     ){
         $this->invoiceRepository = $invoiceRepository;
         $this->activityRepository = $activityRepository;
+        $this->billScheduleRepository = $billScheduleRepository;
+        $this->quotationRepository = $quotationRepository;
     }
 
     public function getInvoices($searchParams)
@@ -50,14 +59,79 @@ class InvoiceService
         return $results;
     }
 
+    public function getBillScheduleByInvoiceId($invoiceId)
+    {
+        $conditions['status'] = config('quotation.status.unpaid');
+        $results = $this->invoiceRepository->getBillScheduleByInvoiceId($invoiceId, $conditions);
+
+        return $results;
+    }
+
+    public function handleBillSchedule($credentials)
+    {
+        try {
+            DB::beginTransaction();
+            $total_amount = round(floatval($credentials['total_amount']), 2) + (round(floatval($credentials['total_amount']), 2) * 9 / 100);
+            $this->invoiceRepository->update($credentials['invoice_id'], ['total_amount' => $total_amount]);
+            //delete
+            if (!empty($credentials['delete'])) {
+                $this->billScheduleRepository->multiDeleteBillSchedule($credentials['delete']);
+            }
+
+            //create
+            foreach ($credentials['create'] as $createData) {
+                $createData['invoice_id'] = $credentials['invoice_id'];
+                $this->billScheduleRepository->create($createData);
+            }
+
+            //update
+            foreach ($credentials['update'] as $updateData) {
+                $bill_schedule_id = $updateData['id'];
+                unset($updateData['id']);
+                $updateData['invoice_id'] = $credentials['invoice_id'];
+                $this->billScheduleRepository->update($bill_schedule_id, $updateData);
+            }
+
+            $result = $this->invoiceRepository->getBillScheduleByInvoiceId($credentials['invoice_id']);
+            DB::commit();
+            return [
+                'status' => true,
+                'data' => $result
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('CLASS "InvoiceService" FUNCTION "handleBillSchedule" ERROR: ' . $e->getMessage());
+            return [
+                'status' => false,
+            ];
+        }
+    }
+
+    public function updateOrderNumber($credentials)
+    {
+        try {
+            $result = false;
+            foreach ($credentials['bill_schedules'] as $updateData) {
+                $bill_schedule_id = $updateData['id'];
+                unset($updateData['id']);
+                $result = $this->billScheduleRepository->update($bill_schedule_id, $updateData);
+            }
+
+            return [
+                'status' => true,
+                'data' => $result
+            ];
+        } catch (\Exception $e) {
+            Log::error('CLASS "InvoiceService" FUNCTION "updateOrderNumber" ERROR: ' . $e->getMessage());
+            return [
+                'status' => false,
+            ];
+        }
+    }
+
     public function getInvoiceOverview($invoiceId)
     {
-        $invoice = $this->invoiceRepository->getInvoiceOverview($invoiceId);
-
-        $results = [
-            'invoice' => $invoice
-        ];
-
+        $results = $this->invoiceRepository->getInvoiceOverview($invoiceId);
         return $results;
     }
 
@@ -118,16 +192,28 @@ class InvoiceService
     public function createInvoice($credentials)
     {
         try {
+            $quotation = $this->quotationRepository->getQuotationDetail($credentials['quotation_id']);
+            $amount = floatval($quotation->amount) * intval($quotation->terms_of_payment_confirmation) / 100;
+            $total_amount = floatval($amount) + (round(floatval($amount), 2) * 9 / 100);
             $invoice = [
                 'invoice_no'   => $credentials['invoice_no'],
                 'quotation_id' => $credentials['quotation_id'],
+                'issue_date' => !empty($credentials['issue_date']) ? $credentials['issue_date'] : Carbon::now(),
+                'total_amount' => $total_amount,
                 'created_at'   => Carbon::now(),
             ];
             $result = $this->invoiceRepository->create($invoice);
-
+            $bill_schedule_data = [
+                'order_number' => 1,
+                'invoice_id' => $result->id,
+                'type_invoice_statement' => "To claim " . $quotation->terms_of_payment_confirmation . "% on confirmation.",
+                'type_percentage' => intval($quotation->terms_of_payment_confirmation),
+                'amount' => $amount,
+                'created_at'   => Carbon::now(),
+            ];
+            $this->billScheduleRepository->create($bill_schedule_data);
             $user = Auth::guard('api')->user();
             $activity_logs = [
-                'customer_id' => $credentials['customer_id'],
                 'invoice_id'  => $result->id,
                 'type'        => Activity::TYPE_INVOICE,
                 'user_id'     => $user->id,
@@ -154,6 +240,7 @@ class InvoiceService
             $updateData = [
                 'invoice_no'   => $credentials['invoice_no'],
                 'quotation_id' => $credentials['quotation_id'],
+                'issue_date' => !empty($credentials['issue_date']) ? $credentials['issue_date'] : Carbon::now(),
                 'updated_at'   => Carbon::now(),
             ];
 
@@ -164,7 +251,6 @@ class InvoiceService
 
             $user = Auth::guard('api')->user();
             $activity_logs = [
-                'customer_id' => $credentials['customer_id'],
                 'invoice_id'  => $credentials['invoice_id'],
                 'type'        => Activity::TYPE_INVOICE,
                 'user_id'     => $user->id,

@@ -26,4 +26,12 @@ class OtherFee extends Model
         'created_at',
         'updated_at',
     ];
+
+    public function quotation() {
+        return $this->belongsTo(Quotation::class,'quotation_id', 'id');
+    }
+
+    public function claim_progress() {
+        return $this->hasMany(ClaimProgress::class, 'other_fee_id', 'id');
+    }
 }

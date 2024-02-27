@@ -23,7 +23,9 @@ class Product extends Model
         'profile',
         'glass_type',
         'storey',
+        'storey_text',
         'area',
+        'area_text',
         'width',
         'width_unit',
         'height',
@@ -43,6 +45,11 @@ class Product extends Model
     public function product_items()
     {
         return $this->hasMany(ProductItem::class, 'product_id', 'productId');
+    }
+
+    public function claim_progress()
+    {
+        return $this->hasMany(ClaimProgress::class, 'product_id', 'id');
     }
 
     protected $casts = [

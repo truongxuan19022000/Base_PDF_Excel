@@ -59,6 +59,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{customerId}/detail/quotations', [CustomerController::class, 'getQuotationsByCustomer']);
                 Route::get('/{customerId}/detail/documents', [CustomerController::class, 'getDocumentsByCustomer']);
                 Route::get('/{customerId}/detail/invoices', [CustomerController::class, 'getInvoicesByCustomer']);
+                Route::get('/{customerId}/detail/claims', [CustomerController::class, 'getClaimsByCustomer']);
                 Route::get('/{customerId}/edit', [CustomerController::class, 'edit']);
                 Route::post('/update', [CustomerController::class, 'updateCustomer']);
                 Route::delete('/delete', [CustomerController::class, 'delete']);
@@ -70,7 +71,11 @@ Route::prefix('v1')->group(function () {
             Route::group(['prefix' => 'claims'], function () {
                 Route::get('/', [ClaimController::class, 'getClaims']);
                 Route::post('/create', [ClaimController::class, 'createClaim']);
+                Route::post('/copy', [ClaimController::class, 'copyClaim']);
+                Route::post('/update-claim-progress', [ClaimController::class, 'updateClaimProgress']);
+                Route::get('/claim-progress', [ClaimController::class, 'getClaimProgress']);
                 Route::get('/{claimId}/detail', [ClaimController::class, 'getClaimDetail']);
+                Route::get('/{claimId}/detail/quotations', [ClaimController::class, 'getClaimByQuotationId']);
                 Route::post('/update', [ClaimController::class, 'updateClaim']);
                 Route::delete('/delete', [ClaimController::class, 'delete']);
                 Route::post('/multi-delete', [ClaimController::class, 'multiDeleteClaims']);
@@ -122,12 +127,14 @@ Route::prefix('v1')->group(function () {
                 Route::get('/', [QuotationSectionController::class, 'getQuotationSections']);
                 Route::post('/handle', [QuotationSectionController::class, 'handleQuotationSections']);
                 Route::post('/create', [QuotationSectionController::class, 'createQuotationSection']);
+                Route::post('/update', [QuotationSectionController::class, 'updateQuotationSection']);
                 Route::post('/update-order-number', [QuotationSectionController::class, 'updateOrderNumber']);
                 Route::delete('/delete', [QuotationSectionController::class, 'delete']);
 
                 // Products
                 Route::group(['prefix' => 'products'], function () {
                     Route::post('/create', [ProductController::class, 'createProduct']);
+                    Route::post('/update', [ProductController::class, 'updateProduct']);
                     Route::post('/detail', [ProductController::class, 'getProductDetail']);
                     Route::post('/update-order-number', [ProductController::class, 'updateOrderNumber']);
                     Route::delete('/delete', [ProductController::class, 'deleteProduct']);
@@ -139,6 +146,12 @@ Route::prefix('v1')->group(function () {
                         Route::delete('/delete', [ProductItemController::class, 'deleteProductItem']);
                         Route::post('/calculate-amount', [ProductItemController::class, 'updateCalculate']);
                     });
+                    // material-item
+                    Route::group(['prefix' => 'material-item'], function () {
+                        Route::post('/create', [ProductItemController::class, 'createMaterialItem']);
+                        Route::post('/update', [ProductItemController::class, 'updateMaterialItem']);
+                        Route::post('/delete', [ProductItemController::class, 'deleteMaterialItem']);
+                    });
                 });
             });
 
@@ -148,6 +161,9 @@ Route::prefix('v1')->group(function () {
                 Route::post('/create', [InvoiceController::class, 'createInvoice']);
                 Route::post('/update', [InvoiceController::class, 'updateInvoice']);
                 Route::get('{invoiceId}/detail', [InvoiceController::class, 'getInvoiceDetail']);
+                Route::get('{invoiceId}/bill-schedule', [InvoiceController::class, 'getBillScheduleByInvoiceId']);
+                Route::post('{invoiceId}/bill-schedule/handle', [InvoiceController::class, 'handleBillSchedule']);
+                Route::post('{invoiceId}/bill-schedule/update-order-number', [InvoiceController::class, 'updateOrderNumber']);
                 Route::post('/overview', [InvoiceController::class, 'getInvoiceOverview']);
                 Route::delete('/delete', [InvoiceController::class, 'delete']);
                 Route::post('/multi-delete', [InvoiceController::class, 'multiDeleteInvoice']);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ProductService;
+use App\Services\QuotationSectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -11,10 +12,12 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     private $productService;
+    private $quotationSectionService;
 
-    public function __construct(ProductService $productService)
+    public function __construct(ProductService $productService,   QuotationSectionService $quotationSectionService)
     {
         $this->productService = $productService;
+        $this->quotationSectionService = $quotationSectionService;
     }
 
     /**
@@ -34,13 +37,14 @@ class ProductController extends Controller
      *                 @OA\Property(property="profile", type="number", example=1),
      *                 @OA\Property(property="glass_type", type="string", example="6mm Clear Tempered"),
      *                 @OA\Property(property="quantity", type="number", example=2),
-     *                 @OA\Property(property="storey", type="number", example=2),
-     *                 @OA\Property(property="area", type="number", example=3),
+     *                 @OA\Property(property="storey", type="number", example="1"),
+     *                 @OA\Property(property="storey_text", type="string", example="1st Storey"),
+     *                 @OA\Property(property="area", type="number", example="2"),
+     *                 @OA\Property(property="area_text", type="string", example="Living Room"),
      *                 @OA\Property(property="width", type="number", example=1500),
      *                 @OA\Property(property="width_unit", type="number", example=0),
      *                 @OA\Property(property="height", type="number", example=3000),
      *                 @OA\Property(property="height_unit", type="number", example=0),
-     *                 @OA\Property(property="subtotal", type="number"),
      *             )
      *         )
      *     ),
@@ -54,6 +58,7 @@ class ProductController extends Controller
     public function createProduct(Request $request)
     {
         $credentials = $request->all();
+        $quotation_section_id = $credentials['quotation_section_id'];
         $rule = [
             'quotation_section_id' => [
                 'required',
@@ -66,17 +71,41 @@ class ProductController extends Controller
                 'string',
                 'max:255',
                 Rule::unique('products', 'product_code')->whereNull('deleted_at')
+                    ->where(function ($query) use ($quotation_section_id) {
+                        $query->where('quotation_section_id', $quotation_section_id);
+                    })
             ],
             'profile' => 'required|numeric',
             'glass_type' => 'required|string|max:255',
             'quantity' => 'required|numeric',
-            'storey' => 'required|numeric',
-            'area' => 'required|numeric',
+            'storey' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['storey_text']);
+                }),
+                'numeric'
+            ],
+            'storey_text' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['storey']);
+                }),
+                'string'
+            ],
+            'area' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['area_text']);
+                }),
+                'numeric'
+            ],
+            'area_text' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['area']);
+                }),
+                'string'
+            ],
             'width' => 'required|numeric',
             'width_unit' => 'numeric',
             'height' => 'required|numeric',
             'height_unit' => 'numeric',
-            'subtotal' => 'numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -119,12 +148,15 @@ class ProductController extends Controller
      *                 @OA\Property(property="profile", type="number", example=1),
      *                 @OA\Property(property="glass_type", type="string", example="6mm Clear Tempered"),
      *                 @OA\Property(property="quantity", type="number", example=2),
-     *                 @OA\Property(property="storey", type="number", example=2),
-     *                 @OA\Property(property="area", type="number", example=3),
+     *                 @OA\Property(property="storey", type="number", example="1"),
+     *                 @OA\Property(property="storey_text", type="string", example="1st Storey"),
+     *                 @OA\Property(property="area", type="number", example="2"),
+     *                 @OA\Property(property="area_text", type="string", example="Living Room"),
      *                 @OA\Property(property="width", type="number", example=1500),
      *                 @OA\Property(property="width_unit", type="number", example=0),
      *                 @OA\Property(property="height", type="number", example=3000),
      *                 @OA\Property(property="height_unit", type="number", example=0),
+     *                 @OA\Property(property="quotation_id", type="number", example=0),
      *             )
      *         )
      *     ),
@@ -138,6 +170,7 @@ class ProductController extends Controller
     public function updateProduct(Request $request)
     {
         $credentials = $request->all();
+        $quotation_section_id = $credentials['quotation_section_id'];
         $rule = [
             'product_id' => [
                 'required',
@@ -154,17 +187,45 @@ class ProductController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('products', 'product_code')->whereNull('deleted_at')
+                Rule::unique('products', 'product_code')
+                    ->ignore($credentials['product_id'])
+                    ->whereNull('deleted_at')
+                    ->where(function ($query) use ($quotation_section_id) {
+                        $query->where('quotation_section_id', $quotation_section_id);
+                    })
             ],
             'profile' => 'required|numeric',
             'glass_type' => 'required|string|max:255',
             'quantity' => 'required|numeric',
-            'storey' => 'required|numeric',
-            'area' => 'required|numeric',
+            'storey' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['storey_text']);
+                }),
+                'numeric'
+            ],
+            'storey_text' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['storey']);
+                }),
+                'string'
+            ],
+            'area' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['area_text']);
+                }),
+                'numeric'
+            ],
+            'area_text' => [
+                Rule::requiredIf(function () use ($credentials) {
+                    return empty($credentials['area']);
+                }),
+                'string'
+            ],
             'width' => 'required|numeric',
             'width_unit' => 'numeric',
             'height' => 'required|numeric',
             'height_unit' => 'numeric',
+            'quotation_id' => 'required|numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -232,6 +293,7 @@ class ProductController extends Controller
      *     @OA\RequestBody(
      *         @OA\JsonContent(
      *             @OA\Property(property="product_id", example=1),
+     *             @OA\Property(property="quotation_id", example=1),
      *         )
      *     ),
      *     @OA\Response(
@@ -256,7 +318,7 @@ class ProductController extends Controller
             ]);
         };
 
-        $result = $this->productService->deleteProduct($credentials['product_id']);
+        $result = $this->productService->deleteProduct($credentials['product_id'], $credentials['quotation_id']);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),

@@ -30,6 +30,8 @@ class QuotationRepository
                 'quotations.reference_no',
                 'customers.name',
                 'quotations.status',
+                'quotations.issue_date',
+                'quotations.price as amount',
                 'quotations.created_at'
             ])->where(function ($query) use ($searchParams) {
                 if (isset($searchParams['search'])) {
@@ -73,11 +75,9 @@ class QuotationRepository
                 'quotations.description',
                 'customers.id as customer_id',
                 'customers.name'
-            ])->where(function ($query) use ($conditions) {
-                $query->where('quotations.status', $conditions['status'])
-                    ->where('quotations.price','<>',null);
-            });
-        return $sql->get();
+            ])->where('quotations.price','<>', null)
+                ->where('quotations.price', '>', 0);
+        return $sql->orderBy('quotations.created_at', 'desc')->get();
     }
 
     public function countQuotationsNew()
@@ -104,21 +104,26 @@ class QuotationRepository
     public function getQuotationDetail($quotationId)
     {
         return Quotation::with([
-                'customer' => function($query) {
-                    $query->select('id', 'name', 'phone_number', 'email', 'address', 'company_name','postal_code');
-                }
-            ])->select([
-                'id',
-                'reference_no',
-                'quotations.status as payment_status',
-                'created_at',
-                'issue_date',
-                'valid_till',
-                'description',
-                'terms_of_payment_confirmation',
-                'terms_of_payment_balance',
-                'customer_id',
-            ])->where('id', $quotationId)->first();
+            'customer' => function ($query) {
+                $query->select('id', 'name', 'phone_number', 'email', 'address', 'company_name', 'postal_code');
+            }
+        ])->select([
+            'id',
+            'reference_no',
+            'quotations.status as payment_status',
+            'created_at',
+            'issue_date',
+            'valid_till',
+            'description',
+            'terms_of_payment_confirmation',
+            'terms_of_payment_balance',
+            'quotations.price as amount',
+            'discount_amount',
+            'discount_type',
+            'customer_id',
+        ])->withCount(['claims as claim_use'])
+            ->withCount(['invoices as invoice_use'])
+            ->where('id', $quotationId)->first();
     }
 
     public function delete($quotationId)
@@ -149,7 +154,7 @@ class QuotationRepository
     public function estimatedRevenue($start, $end, $status)
     {
         return Quotation::where('status', config("quotation.status.$status"))
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('issue_date', [$start, $end])
             ->sum('price');
     }
 
@@ -202,6 +207,7 @@ class QuotationRepository
         ])->select([
             'id',
             'discount_amount',
+            'discount_type',
         ])->where('id', $quotationId)->first();
     }
 }

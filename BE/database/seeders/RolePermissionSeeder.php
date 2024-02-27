@@ -14,60 +14,69 @@ class RolePermissionSeeder extends Seeder
      */
     public function run()
     {
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 1,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 2,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 3,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 4,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 5,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 6,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 1,
-            'permission_id' => 7,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
-
-        RolePermission::create([
-            'role_id' => 2,
-            'permission_id' => 1,
-            'mode' => 7,
-            'created_at' => now()
-        ]);
+        $rolePermission = [
+            [
+                'role_id' => 1,
+                'permission_id' => 1,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 2,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 3,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 4,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 5,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 6,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 7,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 2,
+                'permission_id' => 1,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+            [
+                'role_id' => 1,
+                'permission_id' => 8,
+                'mode' => 7,
+                'created_at' => now()
+            ],
+        ];
+        foreach ($rolePermission as $rolePermissionData) {
+            $existingPermission = RolePermission::where('role_id', $rolePermissionData['role_id'])
+                ->where('permission_id', $rolePermissionData['permission_id'])
+                ->exists();
+            if (!$existingPermission) {
+                RolePermission::create($rolePermissionData);
+            }
+        }
     }
 }

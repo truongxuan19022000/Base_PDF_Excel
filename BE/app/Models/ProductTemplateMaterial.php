@@ -21,6 +21,7 @@ class ProductTemplateMaterial extends Model
         'material_id',
         'product_template_id',
         'quantity',
+        'type',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -31,9 +32,20 @@ class ProductTemplateMaterial extends Model
         return $this->belongsTo(Material::class, 'material_id', 'id');
     }
 
+    public function product_item_templates()
+    {
+        return $this->hasOne(ProductItemTemplate::class, 'product_template_material_id', 'id');
+    }
+
+    public function all_product_item_templates()
+    {
+        return $this->hasMany(ProductItemTemplate::class, 'product_template_material_id', 'id');
+    }
+
     protected $casts = [
         'id' => 'integer',
         'material_id' => 'integer',
         'product_template_id' => 'integer',
+        'type' => 'integer',
     ];
 }

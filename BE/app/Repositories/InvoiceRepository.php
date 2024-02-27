@@ -29,9 +29,11 @@ class InvoiceRepository
             ->select([
                 'invoices.id',
                 'invoices.invoice_no',
+                'invoices.issue_date',
+                'invoices.total_amount',
                 'quotations.reference_no',
-                'invoices.created_at',
                 'customers.name as customer_name',
+                'invoices.created_at',
             ])->where(function ($query) use ($searchParams) {
                 if (isset($searchParams['search'])) {
                     $query->where('quotations.reference_no', 'LIKE', '%'. $searchParams['search'] .'%')
@@ -67,6 +69,7 @@ class InvoiceRepository
         return Invoice::select([
             'id',
             'invoice_no',
+            'issue_date',
             'created_at',
             'quotation_id'
         ])->with([
@@ -75,34 +78,90 @@ class InvoiceRepository
                     ->select([
                         'quotations.id',
                         'quotations.reference_no',
-                        'quotations.price',
                         'quotations.description',
                         'customers.id as customer_id',
-                        'customers.name'
-                    ])->where(function ($query) use ($conditions) {
-                        $query->where('quotations.status', $conditions['status'])
-                            ->whereNotNull('quotations.price');
-                    });
+                        'customers.name',
+                        'customers.email',
+                        'customers.phone_number',
+                        'customers.address',
+                        'customers.postal_code',
+                        'customers.company_name',
+                    ])->where('quotations.price', '<>', null)
+                    ->where('quotations.price', '>', 0);
             }
-        ])->where('id', $invoiceid)->first();
+        ])->where('invoices.id', $invoiceid)->first();
     }
 
-    public function getInvoiceOverview($invoiceid)
+    public function getBillScheduleByInvoiceId($invoiceid, $conditions = null)
     {
-        return Invoice::select([
-                'id',
+        return Invoice::join('quotations', 'invoices.quotation_id', 'quotations.id')
+            ->select([
+                'invoices.id',
                 'invoice_no',
-                'created_at',
-                'quotation_id'
-            ])
-            ->with([
-                'quotation' => function($query) {
-                    $query->select('id', 'reference_no', 'customer_id');
-                },
-                'quotation.customer' => function($query) {
-                    $query->select('id', 'name', 'phone_number', 'email', 'address', 'company_name');
+                'quotation_id',
+                'quotations.price as grand_total_from_quotation',
+                'invoices.created_at'
+            ])->with([
+                'bill_schedules' => function ($query) use ($conditions) {
+                    $query->select([
+                        'bill_schedules.id',
+                        'invoice_id',
+                        'order_number',
+                        'type_invoice_statement',
+                        'type_percentage',
+                        'amount',
+                    ])->orderBy('order_number', 'desc');
                 }
-            ])->where('id', $invoiceid)->first();
+            ])->where('invoices.id', $invoiceid)->first();
+    }
+
+    public function getInvoiceOverview($invoiceId)
+    {
+        return Invoice::with([
+            'quotation' => function ($query) {
+                $query->select(
+                    'id',
+                    'customer_id',
+                    'reference_no',
+                    'status',
+                    'price',
+                    'description',
+                    'issue_date',
+                    'quotations.price as grand_total_from_quotation',
+                );
+                $query->with([
+                    'customer' => function ($qr) {
+                        $qr->select(
+                            'id',
+                            'name',
+                            'email',
+                            'phone_number',
+                            'address',
+                            'postal_code',
+                            'company_name',
+                        );
+                    }
+                ]);
+            }
+        ])->select([
+            'invoices.id',
+            'invoice_no',
+            'quotation_id',
+            'issue_date',
+            'invoices.total_amount',
+            'invoices.created_at'
+        ])->with([
+            'bill_schedules' => function ($query) {
+                $query->select([
+                    'bill_schedules.id',
+                    'invoice_id',
+                    'order_number',
+                    'type_invoice_statement',
+                    'type_percentage',
+                    'amount',
+                ])->orderBy('order_number', 'desc');
+            }
+        ])->where('invoices.id', $invoiceId)->first();
     }
 
     public function delete($invoiceId)

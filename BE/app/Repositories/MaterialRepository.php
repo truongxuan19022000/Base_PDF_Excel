@@ -41,7 +41,8 @@ class MaterialRepository
                     ->orWhere('code', 'LIKE', '%' . $searchParams['search'] . '%')
                     ->orWhere('price', 'LIKE', '%' . $searchParams['search'] . '%');
             }
-        });
+        })->withCount(['product_item as product_item_use'])
+            ->withCount(['product_template_material as product_template_use']);
 
         if (isset($searchParams['material_id']) && is_array($searchParams['material_id'])) {
             $sql->whereIn('materials.id', $searchParams['material_id']);
@@ -55,7 +56,6 @@ class MaterialRepository
             $sql->whereIn('materials.profile', $searchParams['profile']);
         }
 
-        $sql->where('flag', config('common.material_flag.material_screen'));
         if (!$paginate) {
             return $sql->get();
         }
@@ -69,6 +69,11 @@ class MaterialRepository
             'id',
             'category',
             'item',
+            'code',
+            'inner_side',
+            'outer_side',
+            'min_size',
+            'service_type',
             'price',
             'price_unit',
         ])->where(function ($query) use ($searchParams) {
@@ -83,12 +88,13 @@ class MaterialRepository
         if (isset($searchParams['category']) && is_array($searchParams['category'])) {
             $sql->whereIn('materials.category', $searchParams['category']);
         }
+        $sql->orderBy('created_at', 'desc');
 
         if (!$paginate) {
             return $sql->get();
         }
 
-        return $sql->orderBy('created_at', 'DESC')->paginate($per_page);
+        return $sql->paginate($per_page);
     }
 
     public function countAllMaterials()

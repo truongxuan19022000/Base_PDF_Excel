@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Exports\ExportProductTemplate;
 use App\Http\Controllers\Controller;
+use App\Services\ProductItemService;
 use App\Services\ProductTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -14,10 +15,12 @@ use Maatwebsite\Excel\Facades\Excel;
 class ProductTemplateController extends Controller
 {
     private $productTemplateService;
+    private $productItemService;
 
-    public function __construct(ProductTemplateService $productTemplateService)
+    public function __construct(ProductTemplateService $productTemplateService, ProductItemService $productItemService)
     {
         $this->productTemplateService = $productTemplateService;
+        $this->productItemService = $productItemService;
     }
 
     /**
@@ -269,6 +272,13 @@ class ProductTemplateController extends Controller
                 'message' => $validator->messages()
             ]);
         }
+        $check = $this->productItemService->checkExistProductTemplate($credentials['product_template_id']);
+        if ($check > 0) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'data' => null
+            ]);
+        }
         $result = $this->productTemplateService->updateProductTemplate($credentials);
         if (!$result['status']) {
             return response()->json([
@@ -316,7 +326,13 @@ class ProductTemplateController extends Controller
                 'message' => $validator->messages()
             ]);
         };
-
+        $check = $this->productItemRepository->checkExistProductTemplate($credentials['product_template_id']);
+        if ($check > 0) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'data' => null
+            ]);
+        }
         $result = $this->productTemplateService->delete($credentials['product_template_id']);
         if (!$result) {
             return response()->json([

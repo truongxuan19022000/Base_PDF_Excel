@@ -78,6 +78,15 @@ class OtherFeeService
             }
 
             $result = $this->otherFeeRepository->getOtherFeeForQuotation($credentials['quotation_id']);
+            $total_fees = 0;
+            foreach ($result as $other_fee) {
+                if ($other_fee->type == 2) {
+                    $total_fees += $other_fee->amount;
+                }
+            }
+            $quotation = $this->quotationRepository->getQuotationDetail($credentials['quotation_id']);
+            $grand_total = floatval($quotation->amount) + floatval($total_fees);
+            $this->quotationRepository->update($credentials['quotation_id'], ['price' => $grand_total]);
             DB::commit();
             return [
                 'status' => true,
