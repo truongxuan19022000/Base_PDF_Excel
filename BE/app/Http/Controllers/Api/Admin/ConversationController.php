@@ -43,6 +43,30 @@ class ConversationController extends Controller
 
     /**
      * @OA\Get(
+     *     path="/admin/whatsapp/conversations/unread-message",
+     *     tags={"Messages"},
+     *     summary="Get a list unread  message of conversations",
+     *     description="Get a list unread  message of conversations",
+     *     security={{"bearer":{}}},
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful",
+     *     )
+     * )
+     *
+     */
+    public function getUnreadConversations(Request $request)
+    {
+        $searchParams = $request->all();
+        $results = $this->conversationService->getUnreadConversations($searchParams);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/admin/whatsapp/conversations/search",
      *     tags={"Messages"},
      *     summary="Search conversations",
@@ -66,6 +90,36 @@ class ConversationController extends Controller
     {
         $searchParams = $request->all();
         $results = $this->conversationService->searchConversations($searchParams);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/admin/whatsapp/conversations/latest-unread-message",
+     *     tags={"Messages"},
+     *     summary="Get a list unread  message of conversations",
+     *     description="Get a list unread  message of conversations",
+     *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="search",
+     *          in="query",
+     *          description="status",
+     *          @OA\Schema(type="string"),
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful",
+     *     )
+     * )
+     *
+     */
+    public function getLatestUnreadMessage(Request $request)
+    {
+        $searchParams = $request->all();
+        $results = $this->conversationService->getLatestUnreadMessage($searchParams);
         return response()->json([
             'status' => config('common.response_status.success'),
             'data' => $results,

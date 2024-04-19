@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Activity;
+use App\Repositories\ActivityRepository;
 use App\Repositories\ScrapRepository;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -10,12 +13,18 @@ use Carbon\Carbon;
 class ScrapService
 {
     private $scrapRepository;
+    /**
+     * @var ActivityRepository
+     */
+    private $activityRepository;
 
     public function __construct(
-        ScrapRepository $scrapRepository
+        ScrapRepository $scrapRepository,
+        ActivityRepository $activityRepository
     )
     {
         $this->scrapRepository = $scrapRepository;
+        $this->activityRepository = $activityRepository;
     }
 
     public function getScraps($searchParams)
@@ -26,6 +35,17 @@ class ScrapService
             'scraps' => $scraps
         ];
 
+        return $results;
+    }
+
+    public function getScrapManagements($searchParams)
+    {
+        $paginate = true;
+        if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
+            $paginate = false;
+        }
+
+        $results = $this->scrapRepository->getScrapManagements($searchParams,$paginate);
         return $results;
     }
 
@@ -85,6 +105,15 @@ class ScrapService
                 'updated_at' => null,
             ];
             $result = $this->scrapRepository->create($scrap);
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'scrap_id'     => $result->id,
+                'type'         => Activity::TYPE_SCRAP,
+                'user_id'      => $user->id,
+                'action_type'  => Activity::ACTION_CREATED,
+                'created_at'   => Carbon::now(),
+            ];
+            $this->activityRepository->create($activity_logs);
             DB::commit();
             return [
                 'status' => true,
@@ -108,6 +137,15 @@ class ScrapService
                 'updated_at' => Carbon::now(),
             ];
             $result = $this->scrapRepository->update($credentials['scrap_id'], $scrap);
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'scrap_id'     => $credentials['scrap_id'],
+                'type'         => Activity::TYPE_SCRAP,
+                'user_id'      => $user->id,
+                'action_type'  => Activity::ACTION_UPDATED,
+                'created_at'   => Carbon::now(),
+            ];
+            $this->activityRepository->create($activity_logs);
             DB::commit();
             return [
                 'status' => true,
@@ -141,6 +179,15 @@ class ScrapService
             if (!$result) {
                 return false;
             }
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'scrap_id'     => $credentials['scrap_id'],
+                'type'         => Activity::TYPE_SCRAP,
+                'user_id'      => $user->id,
+                'action_type'  => Activity::ACTION_UPDATED,
+                'created_at'   => Carbon::now(),
+            ];
+            $this->activityRepository->create($activity_logs);
             DB::commit();
             return true;
         } catch (\Exception $e) {
@@ -155,19 +202,29 @@ class ScrapService
     {
         try {
             DB::beginTransaction();
-                $checkExist = $this->scrapRepository->checkExist($scrap['quotation_id'], $scrap['product_item_id'], $scrap['product_template_material_id']);
-                if ($checkExist == 0) {
-                    $scrap['created_at'] = Carbon::now();
-                    $scrap['updated_at'] = null;
-                    $this->scrapRepository->create($scrap);
-                } else {
-                    $updateData = [
-                        'scrap_length' => $scrap['scrap_length'],
-                        'cost_of_scrap' => $scrap['cost_of_scrap'],
-                        'updated_at' => Carbon::now()
-                    ];
-                    $this->scrapRepository->updateByMulticolumn($scrap, $updateData);
-                }
+            $user = Auth::guard('api')->user();
+
+            $checkExist = $this->scrapRepository->checkExist($scrap['quotation_id'], $scrap['product_item_id'], $scrap['product_template_material_id']);
+            if ($checkExist == 0) {
+                $scrap['created_at'] = Carbon::now();
+                $scrap['updated_at'] = null;
+                $result = $this->scrapRepository->create($scrap);
+                $activity_logs = [
+                    'scrap_id' => $result->id,
+                    'type' => Activity::TYPE_SCRAP,
+                    'user_id' => $user->id,
+                    'action_type' => Activity::ACTION_CREATED,
+                    'created_at' => Carbon::now(),
+                ];
+                $this->activityRepository->create($activity_logs);
+            } else {
+                $updateData = [
+                    'scrap_length' => $scrap['scrap_length'],
+                    'cost_of_scrap' => $scrap['cost_of_scrap'],
+                    'updated_at' => Carbon::now()
+                ];
+                $this->scrapRepository->updateByMulticolumn($scrap, $updateData);
+            }
             DB::commit();
             return [
                 'status' => true
@@ -179,5 +236,40 @@ class ScrapService
         return [
             'status' => false,
         ];
+    }
+
+    public function multiDeleteScraps($scrapIds)
+    {
+        try {
+            $result = $this->scrapRepository->multiDeleteScraps($scrapIds);
+            if (!$result) {
+                return false;
+            }
+            foreach ($scrapIds as $id) {
+                $user = Auth::guard('api')->user();
+                $activity_logs = [
+                    'scrap_id'     => $id,
+                    'type'         => Activity::TYPE_SCRAP,
+                    'user_id'      => $user->id,
+                    'action_type'  => Activity::ACTION_DELETED,
+                    'created_at'   => Carbon::now(),
+                ];
+                $this->activityRepository->create($activity_logs);
+            }
+            return true;
+        } catch (\Exception $e) {
+            Log::error('CLASS "ScrapService" FUNCTION "multiDeletesScrap" ERROR: ' . $e->getMessage());
+        }
+        return false;
+    }
+
+    public function getScrapDetail($scrapId) {
+        $scraps = $this->scrapRepository->getScrapDetail($scrapId);
+        $activities = $this->activityRepository->getActivities(['scrap_id' => $scrapId]);
+        $results = [
+            'scraps' => $scraps,
+            'activities' => $activities
+        ];
+        return $results;
     }
 }

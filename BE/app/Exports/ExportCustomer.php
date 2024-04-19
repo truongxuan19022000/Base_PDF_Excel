@@ -12,17 +12,17 @@ use PhpOffice\PhpSpreadsheet\Cell\StringValueBinder;
 class ExportCustomer extends StringValueBinder implements FromCollection, WithMapping, WithHeadings, WithCustomValueBinder
 {
     private $customerRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->customerRepository = app(CustomerRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->customerRepository->getCustomers($searchParams, false);;
     }
 

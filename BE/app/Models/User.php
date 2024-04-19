@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use PhpParser\Node\NullableType;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
@@ -32,6 +33,11 @@ class User extends Authenticatable implements JWTSubject
         'deleted_at',
     ];
 
+    protected $casts = [
+        'id' => 'integer',
+        'role_id' => 'integer',
+    ];
+
     protected $hidden = [
         'password',
         'reset_password_token',
@@ -43,7 +49,7 @@ class User extends Authenticatable implements JWTSubject
 
     public function getProfilePictureAttribute($value)
     {
-        return asset($value);
+        return $value ? asset($value) : null;
     }
 
     public function getJWTIdentifier()

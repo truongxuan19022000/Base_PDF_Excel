@@ -18,10 +18,18 @@ class Activity extends Model
     const TYPE_MATERIALS = 7;
     const TYPE_OTHER_FEES = 8;
     const TYPE_CLAIM = 9;
+    const TYPE_SCRAP = 10;
+    const TYPE_VENDOR = 11;
+    const TYPE_PURCHASE = 12;
     const ACTION_CREATED  = 1;
     const ACTION_UPDATED  = 2;
     const ACTION_UPLOADED = 3;
     const ACTION_DELETED  = 4;
+    const ACTION_DOWNLOADED  = 5;
+    const ACTION_SEND_APPROVAL  = 6;
+    const ACTION_APPROVE_QUOTE  = 7;
+    const ACTION_REJECT_QUOTE  = 8;
+    const ACTION_CANCEL_QUOTE  = 9;
 
     protected $table = 'activities';
 
@@ -39,6 +47,10 @@ class Activity extends Model
         'document_id',
         'material_id',
         'other_fee_id',
+        'claim_id',
+        'scrap_id',
+        'vendor_id',
+        'purchase_order_id',
         'type',
         'user_id',
         'action_type',
@@ -58,6 +70,10 @@ class Activity extends Model
 
     public function invoice() {
         return $this->belongsTo(Invoice::class, 'invoice_id', 'id')->withTrashed();
+    }
+
+    public function claim() {
+        return $this->belongsTo(Claim::class, 'claim_id', 'id')->withTrashed();
     }
 
     public function document() {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,6 +19,7 @@ class Document extends Model
     protected $fillable = [
         'id',
         'document_name',
+        'quotation_id',
         'customer_id',
         'file',
         'file_type',
@@ -31,5 +33,10 @@ class Document extends Model
     public function getFileAttribute($value)
     {
         return asset($value);
+    }
+
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
     }
 }

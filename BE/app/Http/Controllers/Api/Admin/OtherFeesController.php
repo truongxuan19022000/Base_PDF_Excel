@@ -58,6 +58,7 @@ class OtherFeesController extends Controller
      *     @OA\RequestBody(
      *          @OA\JsonContent(
      *              @OA\Property(property="quotation_id", type="number", example=1),
+     *              @OA\Property(property="grand_total", type="number", example=12000),
      *              @OA\Property(property="create", type="array",
      *                  @OA\Items(
      *                      @OA\Property(property="description", type="string", example="create new"),
@@ -95,6 +96,7 @@ class OtherFeesController extends Controller
                 'numeric',
                 Rule::exists('quotations', 'id')
             ],
+            'grand_total' => 'required|numeric',
             'create' => 'array',
             'create.*.description' => [
                 Rule::requiredIf(function () use ($credentials) {

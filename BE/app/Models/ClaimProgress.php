@@ -20,6 +20,7 @@ class ClaimProgress extends Model
         'id',
         'quotation_section_id',
         'product_id',
+        'quotation_id',
         'other_fee_id',
         'claim_number',
         'claim_percent',
@@ -29,5 +30,14 @@ class ClaimProgress extends Model
         'created_at',
         'updated_at',
         'deleted_at',
+    ];
+
+    protected $casts = [
+        'id' => 'integer',
+        'quotation_section_id' => 'integer',
+        'product_id' => 'integer',
+        'quotation_id' => 'integer',
+        'other_fee_id' => 'integer',
+        'claim_percent' => 'integer',
     ];
 }

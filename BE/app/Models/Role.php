@@ -24,6 +24,11 @@ class Role extends Model
         'deleted_at',
     ];
 
+    protected $casts = [
+        'id' => 'integer',
+        'number_user' => 'integer',
+    ];
+
     protected $hidden = [];
 
     public function rolePermissions()

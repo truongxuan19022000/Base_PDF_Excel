@@ -329,7 +329,7 @@ class InventoryController extends Controller
      */
     public function exportInventories(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportInventory($searchs), 'inventories.csv', ExcelExcel::CSV);
+        $searches = $request->all();
+        return Excel::download(new ExportInventory($searches), 'inventories.csv', ExcelExcel::CSV);
     }
 }

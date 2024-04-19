@@ -122,7 +122,7 @@ class ProductItemService
             if (isset($credentials['product_template_id'])) {
                 $data['product_template_id'] = $credentials['product_template_id'];
             }
-            $result = $this->productItemRepository->update($credentials['product_item_id'], $credentials);
+            $result = $this->productItemRepository->update($credentials['product_item_id'], $data);
 
             $productItemDetail = $this->getProductItemDetail($credentials['product_item_id']);
             $this->calculateQuotationAmount($productItemDetail, $credentials, config('common.product_item_screen.product_item'));
@@ -264,7 +264,11 @@ class ProductItemService
             if (!empty($credentials['scrap_id']) && $credentials['scrap_id'] != 0) {
                 $credentials['status'] = 1;
                 $this->scrapService->updateScrap($credentials);
+            } else {
+                $credentials['product_template_material_id'] = !empty($credentials['product_template_material_id']) ? $credentials['product_template_material_id'] : $result->id;
+                $this->scrapService->createScrap($credentials);
             }
+
             $productItem = $this->getProductItemDetail($credentials['product_item_id']);
             $credentials['type'] = config('common.material_type.product');
             $this->calculateQuotationAmount($productItem, $credentials, config('common.product_item_screen.material_item'));

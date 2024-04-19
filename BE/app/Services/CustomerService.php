@@ -53,6 +53,14 @@ class CustomerService
         return $results;
     }
 
+    public function getTotalNewCustomers($time = 'this_month')
+    {
+        list($start, $end) = getFirstAndLastDay($time);
+        $result = $this->customerRepository->countCustomersNew($start, $end);
+
+        return $result;
+    }
+
     public function getCustomersForQuotations()
     {
         $customers = $this->customerRepository->getCustomersForQuotations();
@@ -112,13 +120,18 @@ class CustomerService
         ];
     }
 
-    public function getCustomerDetail($customerId)
+    public function getCustomerDetail($customerId, $searchParams, $per_page)
     {
+        $paginate = true;
+        if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
+            $paginate = false;
+        }
+
         $customer = $this->customerRepository->getCustomerDetail($customerId);
         $quotations = $this->quotationRepository->getQuotationsByCustomerId($customerId);
         $invoices = $this->invoiceRepository->getInvoicesByCustomerId($customerId);
         $documents = $this->documentRepository->getDocumentsByCustomerId($customerId);
-        $activities = $this->activityRepository->getActivitiesByCustomerId($customerId);
+        $activities = $this->activityRepository->getActivitiesByCustomerId($customerId, $per_page, $paginate);
         $claims = $this->claimRepository->getClaimByCustomerId($customerId);
         $results = [
             'customer' => $customer,
@@ -259,12 +272,7 @@ class CustomerService
         if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
             $paginate = false;
         }
-        $invoices = $this->claimRepository->getClaimByCustomer($searchParams, $paginate, $customerId);
-
-        $results = [
-            'invoices' => $invoices,
-        ];
-
+        $results = $this->claimRepository->getClaimByCustomer($searchParams, $paginate, $customerId);
         return $results;
     }
 }

@@ -133,7 +133,10 @@ class MaterialRepository
             'coating_price_status',
             'coating_price',
             'coating_price_unit',
-        ])->where('id', $materialId)->first();
+        ])->where('id', $materialId)
+            ->withCount(['product_item as product_item_use'])
+            ->withCount(['product_template_material as product_template_use'])
+            ->first();
     }
 
     public function update($materialId, $updateData)

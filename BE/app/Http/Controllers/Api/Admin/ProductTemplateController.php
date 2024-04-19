@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportProductTemplate;
 use App\Http\Controllers\Controller;
+use App\Models\ProductTemplate;
 use App\Services\ProductItemService;
 use App\Services\ProductTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class ProductTemplateController extends Controller
 {
@@ -166,6 +164,9 @@ class ProductTemplateController extends Controller
      */
     public function createProductTemplate(Request $request)
     {
+        $code = 'inventory_product_templates';
+        $mode = config('role.role_mode.create');
+        $this->authorize('create', [ProductTemplate::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'item' => 'required|string|max:255',
@@ -237,6 +238,9 @@ class ProductTemplateController extends Controller
      */
     public function updateProductTemplate(Request $request)
     {
+        $code = 'inventory_product_templates';
+        $mode = config('role.role_mode.update');
+        $this->authorize('update', [ProductTemplate::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'product_template_id' => [
@@ -314,6 +318,9 @@ class ProductTemplateController extends Controller
      */
     public function delete(Request $request)
     {
+        $code = 'inventory_product_templates';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [ProductTemplate::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'product_template_id' => 'required',
@@ -371,6 +378,9 @@ class ProductTemplateController extends Controller
      */
     public function multiDeleteProductTemplate(Request $request)
     {
+        $code = 'inventory_product_templates';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [ProductTemplate::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'product_template_ids' => 'required|array',
@@ -402,32 +412,17 @@ class ProductTemplateController extends Controller
      * @OA\Get(
      *     path="/admin/product-templates/export",
      *     tags={"Product-Templates"},
-     *     summary="Export csv product-templates",
-     *     description="Export csv product-templates.",
+     *     summary="Exports csv product-templates",
+     *     description="Exports csv product-templates.",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
-     *          in="query",
-     *          description="Search with item, profile",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="product_template_id",
+     *          name="product_template_ids",
      *          in="query",
      *          @OA\Schema(
-     *               @OA\Property(property="product_template_id[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="product_template_id[1]", type="array", @OA\Items(type="number"), example="2"),
-     *               @OA\Property(property="product_template_id[2]", type="array", @OA\Items(type="number"), example="3"),
-     *               @OA\Property(property="product_template_id[3]", type="array", @OA\Items(type="number"), example="4"),
-     *          )
-     *     ),
-     *     @OA\Parameter(
-     *          name="profile",
-     *          in="query",
-     *          description="Euro: 1, Local: 2",
-     *          @OA\Schema(
-     *               @OA\Property(property="profile[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="profile[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="product_template_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="product_template_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="product_template_ids[2]", type="array", @OA\Items(type="number"), example="3"),
+     *               @OA\Property(property="product_template_ids[3]", type="array", @OA\Items(type="number"), example="4"),
      *          )
      *     ),
      *     @OA\Response(
@@ -439,7 +434,11 @@ class ProductTemplateController extends Controller
      */
     public function exportProductTemplates(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportProductTemplate($searchs), 'product_templates.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        $productTemplateIdsString = isset($credentials['product_template_ids']) ? implode(',', $credentials['product_template_ids']) : 'all';
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/product-template/' . $productTemplateIdsString,
+        ]);
     }
 }

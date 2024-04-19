@@ -17,8 +17,10 @@ class Product extends Model
     public $incrementing = true;
 
     protected $fillable = [
+        'id',
         'quotation_section_id',
         'order_number',
+        'claim_order_number',
         'product_code',
         'profile',
         'glass_type',
@@ -47,12 +49,18 @@ class Product extends Model
         return $this->hasMany(ProductItem::class, 'product_id', 'productId');
     }
 
-    public function claim_progress()
-    {
-        return $this->hasMany(ClaimProgress::class, 'product_id', 'id');
-    }
-
     protected $casts = [
-        'quotation_section_id' => 'integer'
+        'quotation_section_id' => 'integer',
+        'id' => 'integer',
+        'product_id' => 'integer',
+        'order_number' => 'integer',
+        'claim_order_number' => 'integer',
+        'profile' => 'integer',
+        'width' => 'integer',
+        'width_unit' => 'integer',
+        'height' => 'integer',
+        'height_unit' => 'integer',
+        'quantity' => 'integer'
     ];
+
 }

@@ -2,23 +2,28 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportInvoice;
 use App\Http\Controllers\Controller;
+use App\Models\Activity;
+use App\Models\Invoice;
+use App\Repositories\ActivityRepository;
 use App\Services\InvoiceService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class InvoiceController extends Controller
 {
     private $invoiceService;
+    private $activityRepository;
 
     public function __construct(
-        InvoiceService $invoiceService
+        InvoiceService $invoiceService,
+        ActivityRepository $activityRepository
     ) {
         $this->invoiceService = $invoiceService;
+        $this->activityRepository = $activityRepository;
     }
 
     /**
@@ -369,6 +374,9 @@ class InvoiceController extends Controller
      */
     public function createInvoice(Request $request)
     {
+        $code = 'invoice';
+        $mode = config('role.role_mode.create');
+        $this->authorize('create', [Invoice::class, $code, $mode]);
         $credentials = $request->only([
             'invoice_no',
             'quotation_id'
@@ -379,7 +387,7 @@ class InvoiceController extends Controller
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('invoices','invoice_no')
+                Rule::unique('invoices', 'invoice_no')->whereNull('deleted_at')
             ],
             'quotation_id' => 'required|numeric',
         ];
@@ -422,6 +430,7 @@ class InvoiceController extends Controller
      *                 @OA\Property(property="invoice_id", type="number"),
      *                 @OA\Property(property="invoice_no", type="string"),
      *                 @OA\Property(property="quotation_id", type="number"),
+     *                 @OA\Property(property="payment_received_date", type="date"),
      *             )
      *         )
      *     ),
@@ -434,6 +443,9 @@ class InvoiceController extends Controller
      */
     public function updateInvoice(Request $request)
     {
+        $code = 'invoice';
+        $mode = config('role.role_mode.update');
+        $this->authorize('update', [Invoice::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'invoice_id' => 'required|numeric',
@@ -441,9 +453,10 @@ class InvoiceController extends Controller
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('invoices','invoice_no')->ignore($credentials['invoice_id'])
+                Rule::unique('invoices', 'invoice_no')->ignore($credentials['invoice_id'])->whereNull('deleted_at')
             ],
             'quotation_id' => 'required|numeric',
+            'payment_received_date' => 'date',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -455,6 +468,58 @@ class InvoiceController extends Controller
         }
 
         $result = $this->invoiceService->updateInvoice($credentials);
+        if (!$result) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.cannot_update')
+            ]);
+        }
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.update_success')
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/invoices/update-tax",
+     *     tags={"Invoices"},
+     *     summary="Update tax of invoices",
+     *     description="Update tax of invoices",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="invoice_id", type="number"),
+     *                 @OA\Property(property="gst_rates", type="number"),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful.",
+     *     )
+     * )
+     *
+     */
+    public function updateTax(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'invoice_id' => 'required|numeric',
+            'gst_rates' => 'required|numeric',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $result = $this->invoiceService->updateTax($credentials);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),
@@ -488,6 +553,9 @@ class InvoiceController extends Controller
      */
     public function delete(Request $request)
     {
+        $code = 'invoice';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Invoice::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'invoice_id' => 'required',
@@ -539,6 +607,9 @@ class InvoiceController extends Controller
      */
     public function multiDeleteInvoice(Request $request)
     {
+        $code = 'invoice';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Invoice::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'invoice_id' => 'required|array',
@@ -570,32 +641,24 @@ class InvoiceController extends Controller
      * @OA\Get(
      *     path="/admin/invoices/export",
      *     tags={"Invoices"},
-     *     summary="Export list of Invoices",
-     *     description="Export list of Invoices",
+     *     summary="Exports list of Invoices",
+     *     description="Exports list of Invoices",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
+     *          name="invoice_ids",
      *          in="query",
-     *          description="Search with reference_no, customer_name",
-     *          @OA\Schema(type="string")
+     *          description="multi download csv",
+     *          @OA\Schema(
+     *               @OA\Property(property="invoice_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="invoice_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="invoice_ids[2]", type="array", @OA\Items(type="number"), example="3"),
+     *          )
      *     ),
      *     @OA\Parameter(
-     *          name="customer_id",
+     *          name="send_mail",
      *          in="query",
-     *          description="number",
+     *          description="Check the authentication of sending mail.",
      *          @OA\Schema(type="number"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="start_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="end_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
      *     ),
      *     @OA\Response(
      *         response="200",
@@ -606,7 +669,70 @@ class InvoiceController extends Controller
      */
     public function exportInvoices(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportInvoice($searchs), 'invoices.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        if (isset($credentials['send_mail'])) {
+            $code = 'invoice';
+            $mode = config('role.role_mode.send');
+            $this->authorize('send', [Invoice::class, $code, $mode]);
+        }
+        $rule = [
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['required', 'numeric'],
+        ];
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $invoiceIdsString = implode(',', $credentials['invoice_ids']);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/invoice/' . $invoiceIdsString,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/admin/invoices/export-pdf",
+     *     tags={"Invoices"},
+     *     summary="Invoices export PDF",
+     *     description="Invoices export PDF",
+     *     security={{"bearer":{}}},
+     * @OA\RequestBody(
+     *     @OA\JsonContent(
+     *         @OA\Property(property="invoice_id", example=13),
+     *     )
+     * ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation",
+     *     )
+     * )
+     *
+     */
+    public function exportPDF(Request $request)
+    {
+        if (isset($credentials['send_mail'])) {
+            $code = 'invoice';
+            $mode = config('role.role_mode.send');
+            $this->authorize('send', [Invoice::class, $code, $mode]);
+        }
+        $invoiceId = $request->invoice_id;
+        $user = Auth::guard('api')->user();
+        $activity_logs = [
+            'invoice_id'  => $invoiceId,
+            'type'        => Activity::TYPE_INVOICE,
+            'user_id'     => $user->id,
+            'action_type' => Activity::ACTION_DOWNLOADED,
+            'created_at'  => Carbon::now(),
+        ];
+        $this->activityRepository->create($activity_logs);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-pdf/invoice/' . $invoiceId,
+        ]);
     }
 }

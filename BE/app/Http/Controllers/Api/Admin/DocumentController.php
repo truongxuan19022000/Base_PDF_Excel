@@ -2,13 +2,10 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportDocument;
 use App\Http\Controllers\Controller;
 use App\Services\DocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class DocumentController extends Controller
 {
@@ -85,6 +82,7 @@ class DocumentController extends Controller
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
      *                 @OA\Property(property="customer_id", type="number"),
+     *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="document", type="file", format="file"),
      *             )
      *         )
@@ -100,6 +98,7 @@ class DocumentController extends Controller
     {
         $credentials = $request->all();
         $rule = [
+            'quotation_id' => 'required|numeric',
             'customer_id' => 'required|numeric',
             'document' => 'required|file|max:20480',
         ];
@@ -273,43 +272,23 @@ class DocumentController extends Controller
      * @OA\Get(
      *     path="/admin/documents/export",
      *     tags={"Documents"},
-     *     summary="Export list of documents",
-     *     description="Export list of documents",
+     *     summary="Exports list of documents",
+     *     description="Exports list of documents",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
+     *          name="document_ids",
      *          in="query",
-     *          description="Search with document_name, customer_name",
-     *          @OA\Schema(type="string")
-     *     ),
-     *     @OA\Parameter(
-     *          name="type",
-     *          in="query",
-     *          description="file type: pdf, cad, jpeg, png",
      *          @OA\Schema(
-     *               @OA\Property(property="type[0]", type="array", @OA\Items(type="string"), example="pdf"),
-     *               @OA\Property(property="type[1]", type="array", @OA\Items(type="string"), example="cad"),
-     *               @OA\Property(property="type[2]", type="array", @OA\Items(type="string"), example="jpeg"),
-     *               @OA\Property(property="type[3]", type="array", @OA\Items(type="string"), example="png"),
+     *               @OA\Property(property="document_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="document_ids[1]", type="array", @OA\Items(type="number"), example="2"),
      *          )
      *     ),
      *     @OA\Parameter(
      *          name="customer_id",
      *          in="query",
-     *          description="number",
-     *          @OA\Schema(type="number"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="start_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="end_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
+     *          @OA\Schema(
+     *            @OA\Property(property="customer_id", type="array", @OA\Items(type="number"), example="1"),
+     *          )
      *     ),
      *     @OA\Response(
      *         response="200",
@@ -320,7 +299,63 @@ class DocumentController extends Controller
      */
     public function exportDocuments(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportDocument($searchs), 'documents.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        $validator = Validator::make($credentials, [
+            'customer_id' => 'required|numeric',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+        $documentIdsString = isset($credentials['document_ids']) ? implode(',', $credentials['document_ids']) : 'all';
+
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/document/' . $credentials['customer_id']. '/' . $documentIdsString,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/admin/documents/download",
+     *     tags={"Documents"},
+     *     summary="Downloads list of documents",
+     *     description="Downloads list of documents",
+     *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="document_ids",
+     *          in="query",
+     *          @OA\Schema(
+     *               @OA\Property(property="document_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="document_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *          )
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation",
+     *     )
+     * )
+     *
+     */
+    public function downloadDocuments(Request $request)
+    {
+        $credentials = $request->all();
+        $validator = Validator::make($credentials, [
+            'document_ids' => 'array|required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+        $documentIdsString = isset($credentials['document_ids']) ? implode(',', $credentials['document_ids']) : 'all';
+
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' =>  route('download.documents', ['documentIds' => $documentIdsString]),
+        ]);
     }
 }

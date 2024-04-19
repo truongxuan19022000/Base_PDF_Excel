@@ -34,7 +34,7 @@ class ProductService
                 'glass_type' => $credentials['glass_type'],
                 'quantity' => $credentials['quantity'],
                 'storey' => isset($credentials['storey']) ? $credentials['storey'] : 0,
-                'storey_text' => isset($credentials['storey_text']) ? $credentials['storey'] : null,
+                'storey_text' => isset($credentials['storey_text']) ? $credentials['storey_text'] : null,
                 'area' => isset($credentials['area']) ? $credentials['area'] : 0,
                 'area_text' => isset($credentials['area_text']) ? $credentials['area_text'] : null,
                 'width' => $credentials['width'],

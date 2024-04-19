@@ -119,4 +119,9 @@ class CustomerRepository
     {
         return Customer::whereIn('id', $customerId)->delete();
     }
+
+    public function countCustomersNew($start, $end)
+    {
+        return Customer::whereBetween('created_at', [$start, $end])->count();
+    }
 }

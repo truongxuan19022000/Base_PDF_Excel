@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportRole;
 use App\Http\Controllers\Controller;
 use App\Services\RoleService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class RoleController extends Controller
 {
@@ -365,6 +362,9 @@ class RoleController extends Controller
      */
     public function multiDeleteRole(Request $request)
     {
+        $code = 'role_setting';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Role::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'role_id' => 'required|array',
@@ -396,14 +396,16 @@ class RoleController extends Controller
      * @OA\Get(
      *     path="/admin/roles/export",
      *     tags={"Roles"},
-     *     summary="Export list of Roles",
-     *     description="Export list of Roles.",
+     *     summary="Exports list of Roles",
+     *     description="Exports list of Roles.",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
+     *          name="role_ids",
      *          in="query",
-     *          description="Search with role name",
-     *          @OA\Schema(type="string"),
+     *          @OA\Schema(
+     *               @OA\Property(property="role_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="role_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *          )
      *     ),
      *     @OA\Response(
      *         response="200",
@@ -414,7 +416,11 @@ class RoleController extends Controller
      */
     public function exportRoles(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportRole($searchs), 'roles.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        $roleIdsString = isset($credentials['role_ids']) ? implode(',', $credentials['role_ids']) : 'all';
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/role/' . $roleIdsString,
+        ]);
     }
 }

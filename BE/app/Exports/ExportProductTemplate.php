@@ -11,17 +11,17 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ExportProductTemplate implements FromCollection, WithMapping, WithHeadings
 {
     private $productTemplateRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->productTemplateRepository = app(ProductTemplateRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->productTemplateRepository->getProductTemplates($searchParams, false);
     }
 

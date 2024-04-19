@@ -29,7 +29,7 @@ return [
         2 => 'Local',
     ],
     'material_price_unit' => [
-        1 => 'pc',
+        1 => 'pcs',
         2 => 'm2',
         3 => 'm',
         4 => 'panel',
@@ -105,5 +105,9 @@ return [
     'product_item_screen' => [
         'product_item' => 1,
         'material_item' => 2
+    ],
+    'notification_status' => [
+        'unread' => 0,
+        'read' => 1
     ]
 ];

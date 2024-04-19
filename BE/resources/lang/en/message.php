@@ -30,6 +30,7 @@ return [
     'create_role_failed' => 'Failed To Created Role.',
     'clean_success' => 'Clean successfully',
     'upload_document_success' => 'Upload document successfully',
+    'upload_material_success' => 'Upload materials successfully',
     'upload_document_failed' => 'Can\'t upload document.',
     'one_wa_business' => 'Only allowed to enable one WhatsApp Business account.',
     'create_invoice_success' => 'Invoice Successfully Created.',

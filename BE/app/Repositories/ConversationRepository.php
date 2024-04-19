@@ -53,6 +53,76 @@ class ConversationRepository
         return $sql->paginate($per_page);
     }
 
+    public function getLatestUnreadMessage($searchParams) {
+        $sql = Conversation::select([
+                    'conversations.id',
+                    'conversations.user_id',
+                    'conversations.customer_id',
+                    'conversations.whatsapp_business_id',
+                    'conversations.is_pinned',
+                    'conversations.created_at'
+                ])
+                ->whereHas('customer')
+                ->whereHas('latest_unread_message')
+                ->with([
+                    'customer' => function($query) {
+                        $query->select('id', 'name', 'phone_number');
+                    },
+                    'latest_unread_message' => function($query) {
+                        $query->select('id', 'conversation_id', 'content', 'status', 'created_at');
+                    }
+                ])
+                ->withMax('latest_unread_message', 'created_at')
+                ->join('whatsapp_business', 'whatsapp_business.id', 'conversations.whatsapp_business_id')
+                ->where('whatsapp_business.status', WhatsappBusiness::STATUS_ON);
+
+        $sql->orderBy('latest_unread_message_max_created_at', 'DESC')
+            ->orderBy('conversations.id', 'DESC');
+
+        $per_page = config('common.paginate');
+        if (isset($searchParams['per_page']) && is_numeric($searchParams['per_page'])) {
+            $per_page = $searchParams['per_page'];
+        }
+
+        return $sql->paginate($per_page);
+    }
+
+    public function getUnreadConversations($searchParams, $paginate = true) {
+        $sql = Conversation::select([
+                    'conversations.id',
+                    'conversations.user_id',
+                    'conversations.customer_id',
+                    'conversations.whatsapp_business_id',
+                    'conversations.created_at'
+                ])
+                ->whereHas('customer')
+                ->with([
+                    'customer' => function($query) {
+                        $query->select('id', 'name', 'phone_number');
+                    },
+                    'latest_message' => function($query) {
+                        $query->select('id', 'conversation_id', 'content', 'status', 'created_at');
+                    }
+                ])
+                ->withMax('latest_message', 'created_at')
+                ->join('whatsapp_business', 'whatsapp_business.id', 'conversations.whatsapp_business_id')
+                ->where('whatsapp_business.status', WhatsappBusiness::STATUS_ON);
+
+        $sql->orderBy('latest_message_max_created_at', 'DESC')
+            ->orderBy('conversations.id', 'DESC');
+
+        $per_page = config('common.paginate');
+        if (isset($searchParams['per_page']) && is_numeric($searchParams['per_page'])) {
+            $per_page = $searchParams['per_page'];
+        }
+
+        if (!$paginate) {
+            return $sql->get();
+        }
+
+        return $sql->paginate($per_page);
+    }
+
     public function searchConversations($searchParams)
     {
         $sql = Customer::select(['id','name','phone_number'])

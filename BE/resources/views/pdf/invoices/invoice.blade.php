@@ -2,17 +2,28 @@
     <head>
         <style>
             @page {
-                margin: 140px 48px 100px 48px;
+                margin: 20px 48px 40px 48px;
             }
 
             header {
                 position: fixed;
-                top: -100px;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 5px;
+                text-align: center;
+                line-height: 5px;
+            }
+
+            .image-title {
                 left: 0px;
                 right: 0px;
                 height: 60px;
-				min-height: 60px;
-				bottom: 24px
+                min-height: 60px;
+            }
+
+            .page-num:before {
+                content: counter(page);
             }
 
             img {
@@ -20,6 +31,7 @@
             }
 
 			.content-header {
+                margin-top: 60px;
 				width: 100%;
 				font-size: 13px;
 			}
@@ -172,14 +184,21 @@
 			.w-50 {
 				width: 50%;
 			}
+            .pt-20 {
+                padding-top: 20px;
+            }
         </style>
+        <title>{{ $invoice->invoice_no }}</title>
     </head>
     <body>
-		<header>
-			<img src="{{ public_path('image/header.png') }}" title="header">
-		</header>
+        <header>
+            <span class="page-num font-13"></span>
+        </header>
+        <div class="image-title">
+            <img src="{{ public_path('image/header.jpg') }}" height="100px" title="header">
+        </div>
 
-		<div class="content">
+		<div class="content pt-20">
 			@if ($quotation)
 			<div class="content-header" style="position: relative;">
 				<div class="header-content-left" style="position: absolute; top: 0; left: 0">
@@ -188,9 +207,8 @@
 					<div>{{ $quotation->customer->address['address_2'] }}</div>
 					<div class="mb-20">{{ $quotation->customer->postal_code }}</div>
 					<div class="font-weight-bold text-underline mb-20">Attention: {{ $quotation->customer->name }}</div>
-					<div>HP: 9817 8135</div>
-					<div>email: elainetangt@singnet.com.sg</div>
-					<div>email: xuwenyan72@gmail.com</div>
+					<div>HP: {{ $quotation->customer->phone_number }}</div>
+					<div>email: {{ $quotation->customer->email }}</div>
 				</div>
                 @if($invoice)
 				<div class="header-content-right" style="position: absolute; top: 0; right: 0;">
@@ -217,9 +235,12 @@
                 <tbody>
                 <tr>
                     <td class="text-center border-right-solid  border-left-solid">A</td>
-                    <td colspan="4" class="text-underline border-right-solid  font-weight-bold mt-12 font-13">RE. OUR
-                        QUOTATION NO. {{$quotation->reference_no}}</td>
-                    <td class="text-center hr-padding font-weight-bold border-right-solid  border-dash-bottom">$ {{ number_format($quotation->grand_total_from_quotation, '2' , '.', ',') }}
+                    <td colspan="4" class="text-underline border-right-solid  font-weight-bold mt-12 font-13">
+                        RE. OUR QUOTATION NO. {{$quotation->reference_no}}
+                        <br/>
+                        DATED {{ \Carbon\Carbon::parse($quotation->issue_date)->format('d/m/y') }}
+                    </td>
+                    <td style="padding-top: 20px;" class="text-center hr-padding font-weight-bold border-right-solid  border-dash-bottom">$ {{ number_format($quotation->grand_total_from_quotation ?? 0, '2' , '.', ',') }}
                         <hr style="margin: 0; padding: 0; border: none; height: 1px; background: #000000;">
                     </td>
                 </tr>
@@ -232,28 +253,28 @@
                     <tr class={{ $key + 1 == count($bill_schedules) ? "border-bottom-solid" : ""}}>
                         <td class="text-center border-right-solid  border-left-solid">B.{{ $key + 1 }}</td>
                         <td colspan="4" class="border-right-solid  ">{{ $value->type_invoice_statement }}</td>
-                        <td class="text-center border-right-solid ">$ {{ number_format($value->amount, '2' , '.', ',') }}</td>
+                        <td class="text-center border-right-solid ">$ {{ number_format($value->amount ?? 0, '2' , '.', ',') }}</td>
                     </tr>
                 @endforeach
                 @php
-                $sub_total= floatval($invoice->total_amount);
-                $gst = floatval($invoice->total_amount) * 9 / 100;
+                $sub_total= floatval($invoice->total_amount ?? 0);
+                $gst = floatval($invoice->total_amount ?? 0) * ($invoice->tax) / 100;
                 $total_payable  = floatval($sub_total) + floatval($gst);
                 @endphp
                 <tr>
                     <td class="text-center border-left-solid border-dash-bottom"></td>
                     <td colspan="4" class="text-right border-right-solid border-dash-bottom mt-12 font-11">Sub Total (Before GST) :</td>
-                    <td class="text-center border-right-solid border-dash-bottom">$ {{ number_format($sub_total, '2' , '.', ',') }}</td>
+                    <td class="text-center border-right-solid border-dash-bottom">$ {{ number_format($sub_total ?? 0, '2' , '.', ',') }}</td>
                 </tr>
                 <tr>
                     <td class="text-center border-left-solid border-dash-bottom"></td>
-                    <td colspan="4" class="text-right border-right-solid border-dash-bottom mt-12 font-11">Add 9% GST :</td>
+                    <td colspan="4" class="text-right border-right-solid border-dash-bottom mt-12 font-11">Add {{$invoice->tax}}% GST :</td>
                     <td class="text-center border-right-solid border-bottom-solid">$ {{ number_format($gst, '2' , '.', ',') }}</td>
                 </tr>
                 <tr>
                     <td class="text-center border-left-solid border-bottom-solid"></td>
                     <td colspan="4" class="text-right border-right-solid border-bottom-solid font-weight-bold mt-12 font-11">Total Payable :</td>
-                    <td class="text-center border-right-solid border-bottom-solid font-weight-bold">$ {{ number_format($total_payable, '2' , '.', ',') }}</td>
+                    <td class="text-center border-right-solid border-bottom-solid font-weight-bold">$ {{ number_format($total_payable ?? 0, '2' , '.', ',') }}</td>
                 </tr>
                 </tbody>
 			</table>

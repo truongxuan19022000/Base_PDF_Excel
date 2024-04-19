@@ -10,17 +10,17 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ExportUser implements FromCollection, WithMapping, WithHeadings
 {
     private $userRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->userRepository = app(UserRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->userRepository->getUsers($searchParams, false);
     }
 

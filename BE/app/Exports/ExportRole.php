@@ -10,17 +10,17 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ExportRole implements FromCollection, WithMapping, WithHeadings
 {
     private $roleRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->roleRepository = app(RoleRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->roleRepository->getRoles($searchParams, false);
     }
 

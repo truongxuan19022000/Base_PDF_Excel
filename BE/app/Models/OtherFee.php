@@ -19,6 +19,7 @@ class OtherFee extends Model
     protected $fillable = [
         'id',
         'order_number',
+        'claim_order_number',
         'quotation_id',
         'description',
         'amount',
@@ -27,11 +28,16 @@ class OtherFee extends Model
         'updated_at',
     ];
 
+    protected $casts = [
+        'id' => 'integer',
+        'order_number' => 'integer',
+        'claim_order_number' => 'integer',
+        'quotation_id' => 'integer',
+        'type' => 'integer',
+    ];
+
     public function quotation() {
         return $this->belongsTo(Quotation::class,'quotation_id', 'id');
     }
 
-    public function claim_progress() {
-        return $this->hasMany(ClaimProgress::class, 'other_fee_id', 'id');
-    }
 }

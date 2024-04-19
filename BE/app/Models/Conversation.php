@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,11 @@ class Conversation extends Model
     protected $appends = [
         'messages_unread_count',
     ];
+
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
     public function customer()
     {
@@ -51,5 +57,14 @@ class Conversation extends Model
                     ->where('sender', Message::CUSTOMER)
                     ->where('delete_status', Message::STATUS_FALSE)
                     ->count();
+    }
+
+    public function latest_unread_message()
+    {
+        return $this->hasOne(Message::class, 'conversation_id', 'id')
+            ->whereIn('status', [Message::STATUS_SENT, Message::STATUS_DELIVERED])
+            ->where('sender', Message::CUSTOMER)
+            ->where('delete_status', Message::STATUS_FALSE)
+            ->latest();
     }
 }

@@ -10,17 +10,17 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ExportInventory implements FromCollection, WithMapping, WithHeadings
 {
     private $inventoryRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->inventoryRepository = app(InventoryRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->inventoryRepository->getInventories($searchParams, false);
     }
 

@@ -23,4 +23,14 @@ class ClaimLogs extends Model
         'created_at',
         'updated_at',
     ];
+
+    public function claim()
+    {
+        return $this->belongsTo(Claim::class, 'claim_id');
+    }
+
+    public function claimProgress()
+    {
+        return $this->belongsTo(ClaimProgress::class, 'claim_progress_id');
+    }
 }

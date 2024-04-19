@@ -24,11 +24,13 @@ class DocumentRepository
     public function getDocuments($searchParams, $paginate = true)
     {
         $sql = Document::join('customers', 'customers.id', 'documents.customer_id')
+            ->join('quotations', 'quotations.id', 'documents.quotation_id')
             ->select([
                 'documents.id',
                 'documents.document_name',
                 'documents.file',
                 'customers.name as customer_name',
+                'quotations.reference_no',
                 'documents.file_type',
                 'documents.created_at'
             ])->where(function ($query) use ($searchParams) {
@@ -66,11 +68,13 @@ class DocumentRepository
     public function getDocumentDetail($documentId)
     {
         return Document::join('customers', 'customers.id', 'documents.customer_id')
+            ->join('quotations', 'quotations.id', 'documents.quotation_id')
             ->select([
                 'documents.id',
                 'documents.document_name',
                 'documents.file',
                 'customers.name as customer_name',
+                'quotations.reference_no',
                 'documents.file_type',
                 'documents.created_at'
             ])->where('documents.id', $documentId)->first();
@@ -104,11 +108,13 @@ class DocumentRepository
     public function getDocumentsByCustomer($searchParams, $paginate = true, $customerId)
     {
         $sql = Document::join('customers', 'customers.id', 'documents.customer_id')
+            ->join('quotations', 'quotations.id', 'documents.quotation_id')
             ->select([
                 'documents.id',
                 'documents.document_name',
                 'documents.file',
                 'customers.name as customer_name',
+                'quotations.reference_no',
                 'documents.file_type',
                 'documents.created_at'
             ])->where('documents.customer_id', $customerId)
@@ -141,5 +147,9 @@ class DocumentRepository
         }
 
         return $sql->paginate(config('common.paginate'));
+    }
+
+    public function getDocumentsForDownload($credentials) {
+        return Document::whereIn('id', $credentials['document_ids'])->get();
     }
 }

@@ -27,6 +27,28 @@ class ConversationService
         return $results;
     }
 
+    public function getUnreadConversations($searchParams)
+    {
+        $paginate = true;
+        if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
+            $paginate = false;
+        }
+
+        $conversations = $this->conversationRepository->getUnreadConversations($searchParams, $paginate);
+        $unread_message_count = 0;
+        foreach ($conversations as $conversation) {
+            if ($conversation->messages_unread_count > 0) {
+                $unread_message_count++;
+            }
+        }
+        $results = [
+            'conversations' => $conversations,
+            'unread_message_count' => $unread_message_count,
+        ];
+
+        return $results;
+    }
+
     public function searchConversations($searchParams)
     {
         $conversations = $this->conversationRepository->searchConversations($searchParams);
@@ -84,6 +106,28 @@ class ConversationService
             Log::error('CLASS "ConversationService" FUNCTION "delete" ERROR: ' . $e->getMessage());
         }
         return false;
+    }
+
+    public function getLatestUnreadMessage($searchParams)
+    {
+        $paginate = true;
+        if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
+            $paginate = false;
+        }
+
+        $conversations = $this->conversationRepository->getLatestUnreadMessage($searchParams, $paginate);
+        $unread_message_count = 0;
+        foreach ($conversations as $conversation) {
+            if ($conversation->messages_unread_count > 0) {
+                $unread_message_count++;
+            }
+        }
+        $results = [
+            'conversations' => $conversations,
+            'unread_message_count' => $unread_message_count,
+        ];
+
+        return $results;
     }
 }
 

@@ -20,6 +20,7 @@ class QuotationSection extends Model
         'id',
         'quotation_id',
         'order_number',
+        'claim_order_number',
         'section_name',
         'created_at',
         'updated_at',

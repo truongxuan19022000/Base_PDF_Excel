@@ -104,7 +104,7 @@ class MaterialService
     public function getMaterialDetail($materialId)
     {
         $material = $this->materialRepository->getMaterialDetail($materialId);
-        $activity = $this->activityRepository->getActivitiesByMaterial($materialId);
+        $activity = $this->activityRepository->getActivities(['material_id' => $materialId]);
 
         $results = [
             'materials' => $material ?? null,

@@ -84,9 +84,7 @@ class OtherFeeService
                     $total_fees += $other_fee->amount;
                 }
             }
-            $quotation = $this->quotationRepository->getQuotationDetail($credentials['quotation_id']);
-            $grand_total = floatval($quotation->amount) + floatval($total_fees);
-            $this->quotationRepository->update($credentials['quotation_id'], ['price' => $grand_total]);
+            $this->quotationRepository->update($credentials['quotation_id'], ['price' => $credentials['grand_total']]);
             DB::commit();
             return [
                 'status' => true,

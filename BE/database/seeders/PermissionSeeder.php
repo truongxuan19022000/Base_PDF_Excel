@@ -63,6 +63,25 @@ class PermissionSeeder extends Seeder
                 'category_name' => 'sale',
                 'created_at' => now()
             ],
+            [
+                'code' => 'inventory_materials',
+                'permission_name' => 'Inventory Materials',
+                'category_name' => 'procurement',
+                'created_at' => now()
+            ],
+            [
+                'code' => 'inventory_product_templates',
+                'permission_name' => 'Inventory - Product Templates',
+                'category_name' => 'procurement',
+                'created_at' => now()
+            ],
+            [
+                'code' => 'inventory_vendors',
+                'permission_name' => 'Inventory - Vendors',
+                'category_name' => 'procurement',
+                'created_at' => now()
+            ],
+
         ];
         foreach ($permissions as $permissionData) {
             $existingPermission = Permission::where('code', $permissionData['code'])->exists();

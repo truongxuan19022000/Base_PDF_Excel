@@ -31,10 +31,15 @@ class InvoiceRepository
                 'invoices.invoice_no',
                 'invoices.issue_date',
                 'invoices.total_amount',
+                'invoices.tax',
+                'invoices.status',
+                'invoices.payment_received_date',
                 'quotations.reference_no',
                 'customers.name as customer_name',
                 'invoices.created_at',
-            ])->where(function ($query) use ($searchParams) {
+            ])
+            ->selectRaw('ROUND((invoices.total_amount + (invoices.total_amount * invoices.tax / 100)), 2) as amount')
+            ->where(function ($query) use ($searchParams) {
                 if (isset($searchParams['search'])) {
                     $query->where('quotations.reference_no', 'LIKE', '%'. $searchParams['search'] .'%')
                         ->orWhere('customers.name', 'LIKE', '%' . $searchParams['search'] . '%')
@@ -44,6 +49,10 @@ class InvoiceRepository
 
         if (isset($searchParams['invoice_id']) && is_array($searchParams['invoice_id'])) {
             $sql->whereIn('invoices.id', $searchParams['invoice_id']);
+        }
+
+        if (isset($searchParams['status']) && is_array($searchParams['status'])) {
+            $sql->whereIn('invoices.status', $searchParams['status']);
         }
 
         if (isset($searchParams['customer_id'])) {
@@ -70,6 +79,9 @@ class InvoiceRepository
             'id',
             'invoice_no',
             'issue_date',
+            'tax',
+            'invoices.status',
+            'invoices.payment_received_date',
             'created_at',
             'quotation_id'
         ])->with([
@@ -99,6 +111,8 @@ class InvoiceRepository
                 'invoices.id',
                 'invoice_no',
                 'quotation_id',
+                'invoices.tax',
+                'invoices.total_amount',
                 'quotations.price as grand_total_from_quotation',
                 'invoices.created_at'
             ])->with([
@@ -110,7 +124,7 @@ class InvoiceRepository
                         'type_invoice_statement',
                         'type_percentage',
                         'amount',
-                    ])->orderBy('order_number', 'desc');
+                    ])->orderBy('order_number', 'asc');
                 }
             ])->where('invoices.id', $invoiceid)->first();
     }
@@ -148,7 +162,10 @@ class InvoiceRepository
             'invoice_no',
             'quotation_id',
             'issue_date',
+            'invoices.tax',
             'invoices.total_amount',
+            'invoices.status',
+            'invoices.payment_received_date',
             'invoices.created_at'
         ])->with([
             'bill_schedules' => function ($query) {
@@ -209,6 +226,8 @@ class InvoiceRepository
                 'invoices.id',
                 'invoices.invoice_no',
                 'quotations.reference_no',
+                'invoices.status',
+                'invoices.payment_received_date',
                 'invoices.created_at',
                 'customers.name as customer_name',
             ])->where('quotations.customer_id', $customerId)

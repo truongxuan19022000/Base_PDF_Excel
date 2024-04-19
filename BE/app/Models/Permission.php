@@ -25,5 +25,9 @@ class Permission extends Model
         'deleted_at',
     ];
 
+    protected $casts = [
+        'id' => 'integer',
+    ];
+
     protected $hidden = [];
 }

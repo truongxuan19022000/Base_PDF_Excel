@@ -37,5 +37,6 @@ class ProductTemplate extends Model
 
     protected $casts = [
         'id' => 'integer',
+        'product_item_use' => 'integer',
     ];
 }

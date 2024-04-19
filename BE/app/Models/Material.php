@@ -10,6 +10,15 @@ class Material extends Model
 {
     use HasFactory, SoftDeletes;
     protected $table = 'materials';
+    const INNER_SIDE = [
+        'CHECKED' => 1,
+        'UNCHECKED' => 2,
+    ];
+
+    const OUTER_SIDE = [
+        'CHECKED' => 1,
+        'UNCHECKED' => 2,
+    ];
 
     protected $primaryKey = 'id';
 
@@ -43,6 +52,8 @@ class Material extends Model
 
     protected $casts = [
         'id' => 'integer',
+        'product_template_use' => 'integer',
+        'product_item_use' => 'integer',
     ];
 
     public function product_item() {

@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportCustomer;
 use App\Http\Controllers\Controller;
 use App\Services\CustomerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerController extends Controller
 {
@@ -44,6 +41,49 @@ class CustomerController extends Controller
     {
         $searchParams = $request->all();
         $results = $this->customerService->getCustomers($searchParams);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/admin/customers/new/count",
+     *     tags={"Customers"},
+     *     summary="Get new Customers",
+     *     description="Get new Customers.",
+     *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="time",
+     *          in="query",
+     *          description="this_month, last_month, this_year, last_year",
+     *          example="this_month",
+     *          @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation",
+     *     )
+     * )
+     *
+     */
+    public function getTotalNewCustomers(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'time' => 'required|in:this_month,last_month,this_year,last_year',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        };
+
+        $results = $this->customerService->getTotalNewCustomers($credentials['time']);
         return response()->json([
             'status' => config('common.response_status.success'),
             'data' => $results,
@@ -186,6 +226,12 @@ class CustomerController extends Controller
      *     description="ID of the customer show detail",
      *     @OA\Schema(type="integer")
      *     ),
+     *     @OA\Parameter(
+     *          name="per_page",
+     *          in="query",
+     *          description="edit quantity of list activities",
+     *          @OA\Schema(type="number"),
+     *     ),
      *     @OA\Response(
      *         response="200",
      *         description="Successful.",
@@ -193,9 +239,11 @@ class CustomerController extends Controller
      * )
      *
      */
-    public function getCustomerDetail($customerId)
+    public function getCustomerDetail(Request $request, $customerId)
     {
-        $results = $this->customerService->getCustomerDetail($customerId);
+        $searchParams = $request->all();
+        $per_page = $searchParams['per_page'] ?? config('common.paginate');
+        $results = $this->customerService->getCustomerDetail($customerId, $searchParams, $per_page);
 
         return response()->json([
             'status' => config('common.response_status.success'),
@@ -395,6 +443,9 @@ class CustomerController extends Controller
      */
     public function multiDeleteCustomer(Request $request)
     {
+        $code = 'customer';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Customer::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'customer_id' => 'required|array',
@@ -426,34 +477,16 @@ class CustomerController extends Controller
      * @OA\Get(
      *     path="/admin/customers/export",
      *     tags={"Customers"},
-     *     summary="Export list of Customers",
-     *     description="Export list of Customers.",
+     *     summary="Exports list of Customers",
+     *     description="Exports list of Customers.",
      *     security={{"bearer":{}}},
-     *     @OA\Parameter(
-     *          name="search",
+     *    @OA\Parameter(
+     *          name="customer_ids",
      *          in="query",
-     *          description="Search with name, phone_number, email",
-     *          @OA\Schema(type="string"),
-     *          example=""
-     *     ),
-     *     @OA\Parameter(
-     *          name="sort_name",
-     *          in="query",
-     *          description="asc, desc, latest",
-     *          @OA\Schema(type="string"),
-     *          example="latest"
-     *     ),
-     *     @OA\Parameter(
-     *          name="start_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="end_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
+     *          @OA\Schema(
+     *               @OA\Property(property="customer_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="customer_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *          )
      *     ),
      *     @OA\Response(
      *         response="200",
@@ -464,8 +497,12 @@ class CustomerController extends Controller
      */
     public function exportCustomers(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportCustomer($searchs), 'customers.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        $customerIdsString = isset($credentials['customer_ids']) ? implode(',', $credentials['customer_ids']) : 'all';
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/customer/' . $customerIdsString,
+        ]);
     }
     /**
      * @OA\Get(
@@ -489,7 +526,7 @@ class CustomerController extends Controller
      *     @OA\Parameter(
      *          name="status",
      *          in="query",
-     *          description="Unpaid: 1, Partial Payment: 2, Paid: 3",
+     *          description="1: Draft, 2: Pending Approval, 3: Approved, 4: Rejected, 5: Cancelled",
      *          @OA\Schema(
      *               @OA\Property(property="status[0]", type="array", @OA\Items(type="number"), example="1"),
      *               @OA\Property(property="status[1]", type="array", @OA\Items(type="number"), example="2"),
@@ -650,6 +687,16 @@ class CustomerController extends Controller
      *          in="query",
      *          description="Search with reference_no, claim_no",
      *          @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *          name="status",
+     *          in="query",
+     *          description="",
+     *          @OA\Schema(
+     *               @OA\Property(property="status[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="status[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="status[2]", type="array", @OA\Items(type="number"), example="3"),
+     *          )
      *     ),
      *     @OA\Parameter(
      *          name="start_date",

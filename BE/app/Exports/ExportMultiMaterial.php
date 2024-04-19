@@ -6,21 +6,21 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class ExportMultiMaterial implements WithMultipleSheets
 {
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function sheets(): array
     {
         $sheets = [
-            'Aluminium EURO' => new ExportAluminiumEuroMaterial($this->searchs),
-            'Aluminium LOCAL (CONVENTIONAL)' => new ExportAluminiumLocalMaterial($this->searchs),
-            'Glass' => new ExportGlassMaterial($this->searchs),
-            'Hardware' => new ExportHardwareMaterial($this->searchs),
-            'Service' => new ExportServiceMaterial($this->searchs),
+            'Aluminium EURO' => new ExportAluminiumEuroMaterial($this->searches),
+            'Aluminium LOCAL (CONVENTIONAL)' => new ExportAluminiumLocalMaterial($this->searches),
+            'Glass' => new ExportGlassMaterial($this->searches),
+            'Hardware' => new ExportHardwareMaterial($this->searches),
+            'Service' => new ExportServiceMaterial($this->searches),
             // Add more sheets as needed
         ];
         return $sheets;

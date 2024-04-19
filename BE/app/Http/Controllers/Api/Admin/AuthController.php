@@ -107,7 +107,7 @@ class AuthController extends Controller
             'name' => $auth->name,
             'email' => $auth->email,
             'phone_number' => $auth->phone_number,
-            'profile_picture' => $auth->profile_picture,
+            'profile_picture' => $auth->profile_picture ?? null,
             'permission' => $roleTemp
         ];
 

@@ -8,6 +8,8 @@ use App\Repositories\DocumentRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 class DocumentService
 {
@@ -76,11 +78,11 @@ class DocumentService
                 return false;
             }
             $user = Auth::guard('api')->user();
-            $quotations = $this->documentRepository->findDocumentMultiDeleted($documentId);
-            foreach ($quotations as $quotation) {
+            $documents = $this->documentRepository->findDocumentMultiDeleted($documentId);
+            foreach ($documents as $document) {
                 $activity_logs = [
-                    'customer_id'  => $quotation->customer_id,
-                    'quotation_id' => $quotation->id,
+                    'customer_id'  => $document->customer_id,
+                    'document_id' => $document->id,
                     'type'         => Activity::TYPE_DOCUMENT,
                     'user_id'      => $user->id,
                     'action_type'  => Activity::ACTION_DELETED,
@@ -102,6 +104,7 @@ class DocumentService
             $document = [
                 'document_name' => $credentials['document_name'],
                 'customer_id'   => $credentials['customer_id'],
+                'quotation_id'   => $credentials['quotation_id'],
                 'file'          => $credentials['file'],
                 'file_type'     => $credentials['file_type'],
                 'created_at'    => Carbon::now(),
@@ -111,6 +114,7 @@ class DocumentService
             $user = Auth::guard('api')->user();
             $activity_logs = [
                 'customer_id'  => $document['customer_id'],
+                'quotation_id'  => $document['quotation_id'],
                 'document_id'  => $result->id,
                 'type'         => Activity::TYPE_DOCUMENT,
                 'user_id'      => $user->id,
@@ -164,6 +168,29 @@ class DocumentService
         }
 
         return false;
+    }
+
+    public function handleMultiDownload($credentials)
+    {
+        try {
+            $documents = $this->documentRepository->getDocumentsForDownload($credentials);
+            //make file rar
+            $zip = new ZipArchive();
+            $zipFileName = storage_path('app/documents.zip');
+            if ($zip->open($zipFileName, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+                foreach ($documents as $document) {
+                    $documentFile = "public/documents/" . basename($document->file);
+                    $contents = Storage::path(($documentFile));
+                    $zip->addFile($contents, basename($contents));
+                }
+                $zip->close();
+            }
+
+            return $zipFileName;
+        } catch (\Exception $e) {
+            Log::error('CLASS "DocumentService" FUNCTION "handleMultiDownload" ERROR: ' . $e->getMessage());
+            return false;
+        }
     }
 }
 

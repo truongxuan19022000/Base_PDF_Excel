@@ -78,3 +78,48 @@ if (!function_exists('getFirstAndLastDay')) {
         return [$firstDay, $lastDay];
     }
 }
+
+if (!function_exists('getFirstAndLastDayPerMonth')) {
+    function getFirstAndLastDayPerMonth($year = 'this_year')
+    {
+        $dates = [];
+        $startYear = $year === 'last_year' ? Carbon::now()->subYear()->startOfYear() : Carbon::now()->startOfYear();
+        $endYear = $startYear->copy()->endOfYear();
+
+        for ($month = 1; $month <= 12; $month++) {
+            $start = $startYear->copy()->month($month)->startOfMonth();
+            $end = $startYear->copy()->month($month)->endOfMonth();
+            if ($start->greaterThanOrEqualTo($startYear) && $end->lessThanOrEqualTo($endYear)) {
+                $dates[$month] = [
+                    'start' => $start->toDateString(),
+                    'end' => $end->toDateString(),
+                ];
+            }
+        }
+
+        return $dates;
+    }
+}
+
+if (!function_exists('replace_special_characters')) {
+    function replace_special_characters($string)
+    {
+        return preg_replace('/[\\\\\/:*<>|"]/i', '_', $string);
+    }
+}
+
+if (!function_exists('getPreviousClaims')) {
+    function getPreviousClaims($claim)
+    {
+        $previousClaims = [];
+
+        while ($claim->claim_copied) {
+            $claim = $claim->claim_copied;
+            $previousClaims[] = $claim;
+        }
+
+        return $previousClaims;
+    }
+}
+
+

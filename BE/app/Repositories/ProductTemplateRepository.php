@@ -93,7 +93,8 @@ class ProductTemplateRepository
                 'coating_price'
             ])->where('product_template_materials.type', config('common.screen_type.product_template_screen'))
                 ->orderBy('product_template_materials.created_at', 'desc');
-        }])->where('product_templates.id', $productTemplateId)->first();
+        }])->withCount(['product_item as product_item_use'])
+            ->where('product_templates.id', $productTemplateId)->first();
     }
 
     public function getProductTemplateForQuotation($productTemplateId, $productItemId) {
@@ -103,11 +104,10 @@ class ProductTemplateRepository
             'profile',
             'product_templates.created_at',
         ])->with(['productTemplateMaterial' => function ($qr)  use ($productItemId) {
-            $qr->where(function ($sq) use ($productItemId) {
+            $qr->where(function ($sq) {
                 $sq->whereDoesntHave('all_product_item_templates')
-                    ->orwhereHas('all_product_item_templates', function ($q) use ($productItemId) {
+                    ->orwhereHas('all_product_item_templates', function ($q) {
                         $q->where('delete_status', 0);
-                        $q->where('product_item_id', $productItemId);
                     });
             });
             $qr->join('materials', 'materials.id', 'product_template_materials.material_id');
@@ -141,7 +141,7 @@ class ProductTemplateRepository
                     $qr->where('product_item_id', $productItemId);
                 }
             ]);
-        }])->where('product_templates.id', $productTemplateId)->where('create_type', 1)->first();
+        }])->where('product_templates.id', $productTemplateId)->first();
     }
 
     public function update($productTemplateId, $updateData)

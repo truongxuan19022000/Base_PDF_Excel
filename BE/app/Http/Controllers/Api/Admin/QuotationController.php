@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportQuotation;
 use App\Http\Controllers\Controller;
+use App\Models\Activity;
+use App\Models\Quotation;
+use App\Models\User;
+use App\Repositories\ActivityRepository;
 use App\Services\QuotationService;
 use App\Services\QuotationSectionService;
 use App\Services\QuotationNoteService;
 use App\Services\OtherFeeService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class QuotationController extends Controller
 {
@@ -24,17 +26,23 @@ class QuotationController extends Controller
     private $quotationNoteService;
 
     private $otherFeeService;
+    /**
+     * @var ActivityRepository
+     */
+    private $activityRepository;
 
     public function __construct(
         QuotationService $quotationService,
         QuotationSectionService $quotationSectionService,
         QuotationNoteService $quotationNoteService,
-        OtherFeeService $otherFeeService
+        OtherFeeService $otherFeeService,
+        ActivityRepository $activityRepository
     ) {
         $this->quotationService = $quotationService;
         $this->quotationSectionService = $quotationSectionService;
         $this->quotationNoteService = $quotationNoteService;
         $this->otherFeeService = $otherFeeService;
+        $this->activityRepository = $activityRepository;
     }
 
     /**
@@ -53,7 +61,7 @@ class QuotationController extends Controller
      *     @OA\Parameter(
      *          name="status",
      *          in="query",
-     *          description="Unpaid: 1, Partial Payment: 2, Paid: 3",
+     *          description="1: Draft, 2: Pending Approval, 3: Approved, 4: Rejected, 5: Cancelled",
      *          @OA\Schema(
      *               @OA\Property(property="status[0]", type="array", @OA\Items(type="number"), example="1"),
      *               @OA\Property(property="status[1]", type="array", @OA\Items(type="number"), example="2"),
@@ -96,6 +104,16 @@ class QuotationController extends Controller
      *     summary="Get list quotation",
      *     description="Get list quotation.",
      *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="status",
+     *          in="query",
+     *          description="1: Draft, 2: Pending Approval, 3: Approved, 4: Rejected, 5: Cancelled",
+     *          @OA\Schema(
+     *               @OA\Property(property="status[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="status[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="status[2]", type="array", @OA\Items(type="number"), example="3"),
+     *          )
+     *     ),
      *     @OA\Response(
      *         response="200",
      *         description="Successful operation",
@@ -103,10 +121,10 @@ class QuotationController extends Controller
      * )
      *
      */
-    public function getAllQuotationsForInvoices()
+    public function getAllQuotationsForInvoices(Request $request)
     {
-        $conditions['status'] = config('quotation.status.unpaid');
-        $results = $this->quotationService->getAllQuotationsForInvoices($conditions);
+        $searchParams = $request->all();
+        $results = $this->quotationService->getAllQuotationsForInvoices($searchParams);
         return response()->json([
             'status' => config('common.response_status.success'),
             'data' => $results,
@@ -137,7 +155,8 @@ class QuotationController extends Controller
      *                 @OA\Property(property="address_2", type="string"),
      *                 @OA\Property(property="postal_code", type="string"),
      *                 @OA\Property(property="company_name", type="string"),
-     *                 @OA\Property(property="description", type="string")
+     *                 @OA\Property(property="description", type="string"),
+     *                 @OA\Property(property="quotation_description", type="string")
      *             )
      *         )
      *     ),
@@ -150,12 +169,15 @@ class QuotationController extends Controller
      */
     public function createQuotation(Request $request)
     {
+        $code = 'quotation';
+        $mode = config('role.role_mode.create');
+        $this->authorize('create', [Quotation::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'reference_no' => [
                 'required',
                 'string',
-                Rule::unique('quotations', 'reference_no')
+                Rule::unique('quotations', 'reference_no')->whereNull('deleted_at')
             ],
             'customer_id' => [
                 'nullable',
@@ -167,6 +189,7 @@ class QuotationController extends Controller
             'terms_of_payment_confirmation' => 'required|numeric',
             'terms_of_payment_balance' => 'required|numeric',
             'description' => 'nullable|string',
+            'quotation_description' => 'nullable|string',
         ];
 
         if (!isset($credentials['customer_id'])) {
@@ -217,14 +240,14 @@ class QuotationController extends Controller
                 Rule::requiredIf(function () use ($credentials) {
                     return empty($credentials['customer_id']);
                 }),
-                Rule::unique('customers', 'phone_number')->where(function ($query) use ($credentials){
+                Rule::unique('customers', 'phone_number')->where(function ($query) use ($credentials) {
                     return $query->whereNull('deleted_at');
                 }),
                 'nullable',
                 'numeric',
             ];
         }
-        
+
         $validator = Validator::make($credentials, $rule);
         if ($validator->fails()) {
             return response()->json([
@@ -289,13 +312,14 @@ class QuotationController extends Controller
      *             @OA\Schema(
      *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="reference_no", type="string"),
-     *                 @OA\Property(property="payment_status", type="number", description="1: unpaid, 2: partial_payment, 3: paid, 4: rejected, 5: cancelled"),
+     *                 @OA\Property(property="status", type="number", description="1: draft, 2: pending_approval, 3: approved, 4: rejected, 5: cancelled"),
      *                 @OA\Property(property="customer_id", type="number"),
      *                 @OA\Property(property="issue_date", type="string", example="2023/09/20", description="Y/m/d"),
      *                 @OA\Property(property="valid_till", type="string", example="2023/12/12", description="Y/m/d"),
      *                 @OA\Property(property="terms_of_payment_confirmation", type="number", example="30"),
      *                 @OA\Property(property="terms_of_payment_balance", type="number", example="70"),
-     *                 @OA\Property(property="description", type="string")
+     *                 @OA\Property(property="description", type="string"),
+     *                 @OA\Property(property="quotation_description", type="string")
      *             )
      *         )
      *     ),
@@ -308,15 +332,18 @@ class QuotationController extends Controller
      */
     public function updateQuotation(Request $request)
     {
+        $code = 'quotation';
+        $mode = config('role.role_mode.update');
+        $this->authorize('update', [Quotation::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'quotation_id' => 'required|numeric',
             'reference_no' => [
                 'required',
                 'string',
-                Rule::unique('quotations', 'reference_no')->ignore($credentials['quotation_id'])
+                Rule::unique('quotations', 'reference_no')->ignore($credentials['quotation_id'])->whereNull('deleted_at')
             ],
-            'payment_status' => 'required|numeric|in:1,2,3,4,5',
+            'status' => 'required|numeric|in:1,2,3,4,5',
             'customer_id' => [
                 'required',
                 'numeric',
@@ -327,6 +354,7 @@ class QuotationController extends Controller
             'terms_of_payment_confirmation' => 'required|numeric',
             'terms_of_payment_balance' => 'required|numeric',
             'description' => 'nullable|string',
+            'quotation_description' => 'nullable|string',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -338,6 +366,113 @@ class QuotationController extends Controller
         }
 
         $result = $this->quotationService->updateQuotation($credentials);
+        if (!$result) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.cannot_update')
+            ]);
+        }
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.update_success')
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/quotations/approve",
+     *     tags={"Quotations"},
+     *     summary="Update approve quotation",
+     *     description="Update approve quotation",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="quotation_id", type="number"),
+     *                 @OA\Property(property="status", type="number", description="3: approved, 4: rejected, 5: cancel"),
+     *                 @OA\Property(property="reject_reason", type="string"),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful.",
+     *     )
+     * )
+     *
+     */
+    public function approveQuotation(Request $request)
+    {
+        $code = 'user_management';
+        $mode = config('role.role_mode.update');
+        $this->authorize('update', [User::class, $code, $mode]);
+        $credentials = $request->all();
+        $rule = [
+            'quotation_id' => 'required|numeric',
+            'status' => 'required|numeric|in:3,4,5',
+            'reject_reason' => 'string',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $result = $this->quotationService->updateApproveQuotation($credentials);
+        if (!$result) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => trans('message.cannot_update')
+            ]);
+        }
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'message' => trans('message.update_success')
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/admin/quotations/send-approve",
+     *     tags={"Quotations"},
+     *     summary="Update approve quotation",
+     *     description="Update approve quotation",
+     *     security={{"bearer":{}}},
+     *     @OA\RequestBody(
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="quotation_id", type="number"),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful.",
+     *     )
+     * )
+     *
+     */
+    public function sendApproveQuotation(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'quotation_id' => 'required|numeric',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $result = $this->quotationService->updateStatusQuotation($credentials);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),
@@ -404,6 +539,9 @@ class QuotationController extends Controller
      */
     public function delete(Request $request)
     {
+        $code = 'quotation';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Quotation::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'quotation_id' => 'required',
@@ -455,6 +593,9 @@ class QuotationController extends Controller
      */
     public function multiDeleteQuotation(Request $request)
     {
+        $code = 'quotation';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Quotation::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'quotation_id' => 'required|array',
@@ -486,42 +627,24 @@ class QuotationController extends Controller
      * @OA\Get(
      *     path="/admin/quotations/export",
      *     tags={"Quotations"},
-     *     summary="Export list of Quotations",
-     *     description="Export list of Quotations.",
+     *     summary="Exports list of Quotations",
+     *     description="Exports list of Quotations.",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
+     *          name="quotation_ids",
      *          in="query",
-     *          description="Search with reference_no, customer_name",
-     *          @OA\Schema(type="string")
-     *     ),
-     *     @OA\Parameter(
-     *          name="status",
-     *          in="query",
-     *          description="Unpaid: 1, Partial Payment: 2, Paid: 3",
+     *          description="multi download csv",
      *          @OA\Schema(
-     *               @OA\Property(property="status[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="status[1]", type="array", @OA\Items(type="number"), example="2"),
-     *               @OA\Property(property="status[2]", type="array", @OA\Items(type="number"), example="3"),
+     *               @OA\Property(property="quotation_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="quotation_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="quotation_ids[2]", type="array", @OA\Items(type="number"), example="3"),
      *          )
      *     ),
-     *      @OA\Parameter(
-     *          name="customer_id",
+     *     @OA\Parameter(
+     *          name="send_mail",
      *          in="query",
-     *          description="number",
+     *          description="Check the authentication of sending mail.",
      *          @OA\Schema(type="number"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="start_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="end_date",
-     *          in="query",
-     *          description="Y-m-d",
-     *          @OA\Schema(type="string"),
      *     ),
      *     @OA\Response(
      *         response="200",
@@ -532,8 +655,30 @@ class QuotationController extends Controller
      */
     public function exportQuotations(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportQuotation($searchs), 'quotations.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        if (isset($credentials['send_mail'])) {
+            $code = 'quotation';
+            $mode = config('role.role_mode.send');
+            $this->authorize('send', [Quotation::class, $code, $mode]);
+        }
+        $rule = [
+            'quotation_ids' => ['required', 'array'],
+            'quotation_ids.*' => ['required', 'numeric'],
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $quotationIdsString = implode(',', $credentials['quotation_ids']);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/quotation/' . $quotationIdsString,
+        ]);
     }
 
     /**
@@ -580,6 +725,49 @@ class QuotationController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/quotations/total-amount",
+     *     tags={"Quotations"},
+     *     summary="Filter total amount Quotations",
+     *     description="Filter total amount Quotations.",
+     *     security={{"bearer":{}}},
+     *     @OA\Parameter(
+     *          name="time",
+     *          in="query",
+     *          description="this_month, last_month, this_year, last_year",
+     *          example="this_month",
+     *          @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response="200",
+     *         description="Successful operation",
+     *     )
+     * )
+     *
+     */
+    public function getTotalQuotationAmount(Request $request)
+    {
+        $credentials = $request->all();
+        $rule = [
+            'time' => 'required|in:this_month,last_month,this_year,last_year',
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        };
+
+        $results = $this->quotationService->getTotalQuotationAmount($credentials['time']);
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'data' => $results,
+        ]);
+    }
+
+    /**
      * @OA\Post(
      *     path="/admin/quotations/update-discount",
      *     tags={"Quotations"},
@@ -592,6 +780,7 @@ class QuotationController extends Controller
      *             @OA\Schema(
      *                 @OA\Property(property="quotation_id", type="number"),
      *                 @OA\Property(property="discount_amount", type="number", example="123000"),
+     *                 @OA\Property(property="grand_total", type="number", example="123000"),
      *                 @OA\Property(property="discount_type", type="number", example="1", description="1: Percentage, 2:Amount"),
      *             )
      *         )
@@ -608,7 +797,8 @@ class QuotationController extends Controller
         $credentials = $request->all();
         $rule = [
             'quotation_id' => 'required|numeric',
-            'discount_amount' => 'nullable|numeric',
+            'discount_amount' => 'required|numeric',
+            'grand_total' => 'required|numeric',
         ];
 
         $validator = Validator::make($credentials, $rule);
@@ -619,7 +809,7 @@ class QuotationController extends Controller
             ]);
         };
 
-        $result = $this->quotationService->update($credentials);
+        $result = $this->quotationService->updateDiscount($credentials);
         if (!$result) {
             return response()->json([
                 'status' => config('common.response_status.failed'),
@@ -633,17 +823,22 @@ class QuotationController extends Controller
     }
 
     /**
-     * @OA\Post(
+     * @OA\Get(
      *     path="/admin/quotations/export-pdf",
      *     tags={"Quotations"},
-     *     summary="Quotations export PDF",
-     *     description="Quotations export PDF",
+     *     summary="Exports list of Quotations",
+     *     description="Exports list of Quotations.",
      *     security={{"bearer":{}}},
-     * @OA\RequestBody(
-     *     @OA\JsonContent(
-     *         @OA\Property(property="quotation_id", example=13),
-     *     )
-     * ),
+     *     @OA\Parameter(
+     *          name="quotation_ids",
+     *          in="query",
+     *          description="multi download csv",
+     *          @OA\Schema(
+     *               @OA\Property(property="quotation_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="quotation_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="quotation_ids[2]", type="array", @OA\Items(type="number"), example="3"),
+     *          )
+     *     ),
      *     @OA\Response(
      *         response="200",
      *         description="Successful operation",
@@ -653,10 +848,41 @@ class QuotationController extends Controller
      */
     public function exportPDF(Request $request)
     {
-        $quotationId = $request->quotation_id;
+        if (isset($credentials['send_mail'])) {
+            $code = 'quotation';
+            $mode = config('role.role_mode.send');
+            $this->authorize('send', [Quotation::class, $code, $mode]);
+        }
+        $credentials = $request->all();
+        $rule = [
+            'quotation_ids' => ['required', 'array'],
+            'quotation_ids.*' => ['required', 'numeric'],
+        ];
+
+        $validator = Validator::make($credentials, $rule);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => config('common.response_status.failed'),
+                'message' => $validator->messages()
+            ]);
+        }
+
+        $user = Auth::guard('api')->user();
+        foreach ($credentials['quotation_ids'] as $quotation_id) {
+            $activity_logs = [
+                'quotation_id' => $quotation_id,
+                'type'         => Activity::TYPE_QUOTATION,
+                'user_id'      => $user->id,
+                'action_type'  => Activity::ACTION_DOWNLOADED,
+                'created_at'   => Carbon::now(),
+            ];
+        }
+
+        $this->activityRepository->create($activity_logs);
+        $quotationIdsString = implode(',', $credentials['quotation_ids']);
         return response()->json([
             'status' => config('common.response_status.success'),
-            'url' => env('APP_URL') . '/quotation/export-pdf/' . $quotationId,
+            'url' => env('APP_URL') . '/export-pdf/quotation/' . $quotationIdsString,
         ]);
     }
 }

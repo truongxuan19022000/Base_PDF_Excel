@@ -10,23 +10,23 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ExportDocument implements FromCollection, WithMapping, WithHeadings
 {
     private $documentRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->documentRepository = app(DocumentRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         return $this->documentRepository->getDocuments($searchParams, false);
     }
 
     public function map($row): array
     {
-        if (isset($this->searchs['customer_id'])) {;
+        if (isset($this->searches['customer_id'])) {;
             return [
                 $row->document_name,
                 $row->file_type,
@@ -44,7 +44,7 @@ class ExportDocument implements FromCollection, WithMapping, WithHeadings
 
     public function headings(): array
     {
-        if (isset($this->searchs['customer_id'])) {;
+        if (isset($this->searches['customer_id'])) {;
             return [
                 'FILE NAME',
                 'TYPE',

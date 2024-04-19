@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportMultiMaterial;
 use App\Http\Controllers\Controller;
 use App\Imports\ImportMultiMaterial;
+use App\Models\Material;
 use App\Services\MaterialService;
 use App\Services\ProductItemService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
 use Maatwebsite\Excel\Facades\Excel;
 
 class MaterialController extends Controller
@@ -172,7 +169,7 @@ class MaterialController extends Controller
      *              @OA\Property(property="raw_girth", type="number", example="5.80"),
      *              @OA\Property(property="min_size", type="number", example="10"),
      *              @OA\Property(property="price", type="number", example="31000"),
-     *              @OA\Property(property="price_unit", type="number", example="1", description="1: pc, 2: m2, 3: m, 4: panel"),
+     *              @OA\Property(property="price_unit", type="number", example="1", description="1: pcs, 2: m2, 3: m, 4: panel"),
      *              @OA\Property(property="coating_price_status", type="number", description="1: Checked, 2: unChecked", example="2"),
      *              @OA\Property(property="coating_price", type="number", example="10"),
      *              @OA\Property(property="coating_price_unit", type="number", description="1: m2")
@@ -188,6 +185,9 @@ class MaterialController extends Controller
      */
     public function createMaterial(Request $request)
     {
+        $code = 'inventory_materials';
+        $mode = config('role.role_mode.create');
+        $this->authorize('create', [Material::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'item' => [
@@ -196,11 +196,11 @@ class MaterialController extends Controller
                 'max:255',
                 Rule::unique('materials')->where(function ($query) use ($credentials) {
                     if (!empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium')) {
-                        return $query->where('category', $credentials['category'])->where('door_window_type', $credentials['door_window_type']);
+                        return $query->where('category', $credentials['category'])->where('door_window_type', $credentials['door_window_type'])->whereNull('deleted_at');
                     } elseif ($credentials['category'] === config('common.material_category.services')) {
-                        return $query->where('service_type', $credentials['service_type']);
+                        return $query->where('service_type', $credentials['service_type'])->whereNull('deleted_at');
                     } else {
-                        return $query->where('category', $credentials['category']);
+                        return $query->where('category', $credentials['category'])->whereNull('deleted_at');
                     }
                 }),
             ],
@@ -210,9 +210,9 @@ class MaterialController extends Controller
                 'max:100',
                 Rule::unique('materials')->where(function ($query) use ($credentials) {
                     if (!empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium')) {
-                        return $query->where('category', $credentials['category'])->where('door_window_type', $credentials['door_window_type']);
+                        return $query->where('category', $credentials['category'])->where('door_window_type', $credentials['door_window_type'])->whereNull('deleted_at');
                     } else {
-                        return $query->where('category', $credentials['category']);
+                        return $query->where('category', $credentials['category'])->whereNull('deleted_at');
                     }
                 }),
             ],
@@ -389,7 +389,7 @@ class MaterialController extends Controller
      *              @OA\Property(property="raw_girth", type="number", example="5.80"),
      *              @OA\Property(property="min_size", type="number", example="10"),
      *              @OA\Property(property="price", type="number", example="31000"),
-     *              @OA\Property(property="price_unit", type="number", example="1", description="1: pc, 2: m2, 3: m, 4: panel"),
+     *              @OA\Property(property="price_unit", type="number", example="1", description="1: pcs, 2: m2, 3: m, 4: panel"),
      *              @OA\Property(property="coating_price_status", type="number", description="1: Checked, 2: unChecked", example="2"),
      *              @OA\Property(property="coating_price", type="number", example="10"),
      *              @OA\Property(property="coating_price_unit", type="number", description="1: m2")
@@ -405,6 +405,9 @@ class MaterialController extends Controller
      */
     public function updateMaterial(Request $request)
     {
+        $code = 'inventory_materials';
+        $mode = config('role.role_mode.update');
+        $this->authorize('update', [Material::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'material_id' => ['required', 'numeric', Rule::exists('materials', 'id')],
@@ -414,11 +417,11 @@ class MaterialController extends Controller
                 'max:255',
                 Rule::unique('materials')->where(function ($query) use ($credentials) {
                     if (!empty($credentials['category']) && $credentials['category'] === config('common.material_category.aluminium')) {
-                        return $query->where('door_window_type', $credentials['door_window_type']);
+                        return $query->where('door_window_type', $credentials['door_window_type'])->whereNull('deleted_at');
                     } elseif ($credentials['category'] === config('common.material_category.services')) {
-                        return $query->where('service_type', $credentials['service_type']);
+                        return $query->where('service_type', $credentials['service_type'])->whereNull('deleted_at');
                     } else {
-                        return $query->where('category', $credentials['category']);
+                        return $query->where('category', $credentials['category'])->whereNull('deleted_at');
                     }
                 })->ignore($credentials['material_id'])
             ],
@@ -432,7 +435,7 @@ class MaterialController extends Controller
                     } else {
                         return $query->where('category', $credentials['category']);
                     }
-                })->ignore($credentials['material_id'])
+                })->ignore($credentials['material_id'])->whereNull('deleted_at')
             ],
             'category' => [
                 'required',
@@ -562,6 +565,9 @@ class MaterialController extends Controller
      */
     public function delete(Request $request)
     {
+        $code = 'inventory_materials';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Material::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'material_id' => 'required',
@@ -613,6 +619,9 @@ class MaterialController extends Controller
      */
     public function multiDeleteMaterial(Request $request)
     {
+        $code = 'inventory_materials';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [Material::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'material_ids' => 'required|array',
@@ -644,43 +653,17 @@ class MaterialController extends Controller
      * @OA\Get(
      *     path="/admin/materials/export",
      *     tags={"Materials"},
-     *     summary="Export a list of materials",
-     *     description="Export a list of materials.",
+     *     summary="Exports a list of materials",
+     *     description="Exports a list of materials.",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
-     *          in="path",
-     *          description="Search with item, code, price",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="material_id",
+     *          name="material_ids",
      *          in="query",
      *          @OA\Schema(
-     *               @OA\Property(property="material_id[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="material_id[1]", type="array", @OA\Items(type="number"), example="2"),
-     *               @OA\Property(property="material_id[2]", type="array", @OA\Items(type="number"), example="3"),
-     *               @OA\Property(property="material_id[3]", type="array", @OA\Items(type="number"), example="4"),
-     *          )
-     *     ),
-     *     @OA\Parameter(
-     *          name="category",
-     *          in="query",
-     *          description="Aluminium, Glass, Hardware, Services",
-     *          @OA\Schema(
-     *               @OA\Property(property="category[0]", type="array", @OA\Items(type="string"), example="Aluminium"),
-     *               @OA\Property(property="category[1]", type="array", @OA\Items(type="string"), example="Glass"),
-     *               @OA\Property(property="category[2]", type="array", @OA\Items(type="string"), example="Hardware"),
-     *               @OA\Property(property="category[3]", type="array", @OA\Items(type="string"), example="Services"),
-     *          )
-     *     ),
-     *     @OA\Parameter(
-     *          name="profile",
-     *          in="query",
-     *          description="Euro: 1, Local: 2",
-     *          @OA\Schema(
-     *               @OA\Property(property="profile[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="profile[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="material_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="material_ids[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="material_ids[2]", type="array", @OA\Items(type="number"), example="3"),
+     *               @OA\Property(property="material_ids[3]", type="array", @OA\Items(type="number"), example="4"),
      *          )
      *     ),
      *     @OA\Response(
@@ -692,9 +675,12 @@ class MaterialController extends Controller
      */
     public function exportMaterials(Request $request)
     {
-        $searchs = $request->all();
-        $fileName = "materials_" . Carbon::now()->format('Y_m_d') . ".xlsx";
-        return Excel::download(new ExportMultiMaterial($searchs), $fileName, ExcelExcel::XLSX);
+        $credentials = $request->all();
+        $materialIdsString = isset($credentials['material_ids']) ? implode(',', $credentials['material_ids']) : 'all';
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/material/' . $materialIdsString,
+        ]);
     }
 
     /**
@@ -722,11 +708,22 @@ class MaterialController extends Controller
     public function importMaterials(Request $request)
     {
         try {
-            $check = $request->all();
-            Excel::import(new ImportMultiMaterial(), $check['file']);
+            $credentials = $request->all();
+            $rule = [
+                'file' => 'required|file|max:20480|mimes:xlsx',
+            ];
+
+            $validator = Validator::make($credentials, $rule);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => config('common.response_status.failed'),
+                    'message' => $validator->messages()
+                ]);
+            }
+            Excel::import(new ImportMultiMaterial(), $credentials['file']);
             return response()->json([
                 'status' => config('common.response_status.success'),
-                'message' => trans('message.upload_document_success')
+                'message' => trans('message.upload_material_success')
             ]);
         } catch (\Exception $e) {
             return response()->json([

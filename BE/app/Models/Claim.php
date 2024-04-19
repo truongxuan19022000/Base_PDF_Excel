@@ -23,15 +23,26 @@ class Claim extends Model
         'issue_date',
         'payment_received_date',
         'deposit_amount',
-        'total_from_claim',
+        'tax',
         'is_copied',
-        'previous_claim_no',
+        'copied_claim_id',
+        'status',
+        'accumulative_from_claim',
+        'subtotal_from_claim',
+        'actual_paid_amount',
         'created_at',
         'updated_at',
         'deleted_at',
     ];
 
     protected $casts = [
+        'id' => 'integer',
+        'claim_id' => 'integer',
+        'is_copied' => 'integer',
+        'quotation_id' => 'integer',
+        'copied_claim_id' => 'integer',
+        'tax' => 'integer',
+        'status' => 'integer',
         'issue_date' => 'date:d/m/Y',
         'payment_received_date'   => 'date:d/m/Y',
     ];
@@ -39,5 +50,15 @@ class Claim extends Model
     public function quotation()
     {
         return $this->hasOne(Quotation::class, 'id', 'quotation_id');
+    }
+
+    public function claim_copied()
+    {
+        return $this->belongsTo(Claim::class, 'copied_claim_id');
+    }
+
+    public function claim_progress()
+    {
+        return $this->hasManyThrough(ClaimProgress::class, ClaimLogs::class, 'claim_id', 'id', 'id', 'claim_progress_id');
     }
 }

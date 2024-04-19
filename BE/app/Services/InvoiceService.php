@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Exports\ExportInvoice;
 use App\Models\Activity;
+use App\Models\Invoice;
 use App\Repositories\ActivityRepository;
 use App\Repositories\BillScheduleRepository;
 use App\Repositories\InvoiceRepository;
@@ -11,6 +13,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use ZipArchive;
 
 class InvoiceService
 {
@@ -24,7 +29,7 @@ class InvoiceService
         ActivityRepository $activityRepository,
         BillScheduleRepository $billScheduleRepository,
         QuotationRepository $quotationRepository
-    ){
+    ) {
         $this->invoiceRepository = $invoiceRepository;
         $this->activityRepository = $activityRepository;
         $this->billScheduleRepository = $billScheduleRepository;
@@ -37,20 +42,18 @@ class InvoiceService
         if (isset($searchParams['paginate']) && $searchParams['paginate'] == 0) {
             $paginate = false;
         }
-        $invoices = $this->invoiceRepository->getInvoices($searchParams,$paginate);
+        $invoices = $this->invoiceRepository->getInvoices($searchParams, $paginate);
         $results = [
             'invoices' => $invoices
         ];
 
         return $results;
-
     }
 
     public function getInvoiceDetail($invoiceId)
     {
-        $conditions['status'] = config('quotation.status.unpaid');
-        $invoice = $this->invoiceRepository->getInvoiceDetail($invoiceId, $conditions);
-        $activities = $this->activityRepository->getActivitiesByInvoiceId($invoiceId);
+        $invoice = $this->invoiceRepository->getInvoiceDetail($invoiceId);
+        $activities = $this->activityRepository->getActivities(['invoice_id' => $invoiceId]);
         $results = [
             'invoice' => $invoice,
             'activities' => $activities
@@ -61,8 +64,7 @@ class InvoiceService
 
     public function getBillScheduleByInvoiceId($invoiceId)
     {
-        $conditions['status'] = config('quotation.status.unpaid');
-        $results = $this->invoiceRepository->getBillScheduleByInvoiceId($invoiceId, $conditions);
+        $results = $this->invoiceRepository->getBillScheduleByInvoiceId($invoiceId);
 
         return $results;
     }
@@ -71,7 +73,7 @@ class InvoiceService
     {
         try {
             DB::beginTransaction();
-            $total_amount = round(floatval($credentials['total_amount']), 2) + (round(floatval($credentials['total_amount']), 2) * 9 / 100);
+            $total_amount = round(floatval($credentials['total_amount']), 2);
             $this->invoiceRepository->update($credentials['invoice_id'], ['total_amount' => $total_amount]);
             //delete
             if (!empty($credentials['delete'])) {
@@ -194,12 +196,11 @@ class InvoiceService
         try {
             $quotation = $this->quotationRepository->getQuotationDetail($credentials['quotation_id']);
             $amount = floatval($quotation->amount) * intval($quotation->terms_of_payment_confirmation) / 100;
-            $total_amount = floatval($amount) + (round(floatval($amount), 2) * 9 / 100);
             $invoice = [
                 'invoice_no'   => $credentials['invoice_no'],
                 'quotation_id' => $credentials['quotation_id'],
                 'issue_date' => !empty($credentials['issue_date']) ? $credentials['issue_date'] : Carbon::now(),
-                'total_amount' => $total_amount,
+                'total_amount' => floatval($amount),
                 'created_at'   => Carbon::now(),
             ];
             $result = $this->invoiceRepository->create($invoice);
@@ -214,6 +215,7 @@ class InvoiceService
             $this->billScheduleRepository->create($bill_schedule_data);
             $user = Auth::guard('api')->user();
             $activity_logs = [
+                'customer_id'  => $quotation->customer_id,
                 'invoice_id'  => $result->id,
                 'type'        => Activity::TYPE_INVOICE,
                 'user_id'     => $user->id,
@@ -243,6 +245,10 @@ class InvoiceService
                 'issue_date' => !empty($credentials['issue_date']) ? $credentials['issue_date'] : Carbon::now(),
                 'updated_at'   => Carbon::now(),
             ];
+            if (!empty($credentials['payment_received_date'])) {
+                $updateData['payment_received_date'] = $credentials['payment_received_date'];
+                $updateData['status'] = Invoice::PAID_STATUS;
+            }
 
             $result = $this->invoiceRepository->update($credentials['invoice_id'], $updateData);
             if (!$result) {
@@ -266,6 +272,67 @@ class InvoiceService
 
         return false;
     }
+
+    public function updateTax($credentials)
+    {
+        try {
+            $updateData = [
+                'tax'   => $credentials['gst_rates'],
+                'updated_at'   => Carbon::now(),
+            ];
+
+            $result = $this->invoiceRepository->update($credentials['invoice_id'], $updateData);
+            if (!$result) {
+                return false;
+            }
+
+            $user = Auth::guard('api')->user();
+            $activity_logs = [
+                'invoice_id'  => $credentials['invoice_id'],
+                'type'        => Activity::TYPE_INVOICE,
+                'user_id'     => $user->id,
+                'action_type' => Activity::ACTION_UPDATED,
+                'created_at'  => $updateData['updated_at'],
+            ];
+            $this->activityRepository->create($activity_logs);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('CLASS "InvoiceService" FUNCTION "updateInvoice" ERROR: ' . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    public function handleMultiCsvDownload($credentials)
+    {
+        try {
+            // make file csv from invoice
+            foreach ($credentials['invoice_ids'] as $invoice_id) {
+                $result = $this->getInvoiceOverview($invoice_id);
+                $invoice_no = replace_special_characters($result->invoice_no);
+                $export = new ExportInvoice($result, $result->quotation, $result->quotation->customer, $result->bill_schedules);
+                $csvFilePath = "csv" . '/' . $invoice_no . '.csv';
+                Excel::store($export, $csvFilePath, 'local');
+            }
+
+            //make file rar
+            $zip = new ZipArchive();
+            $zipFileName = storage_path('app/invoice-csv.zip');
+            if ($zip->open($zipFileName, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+                $files = Storage::files('csv');
+                foreach ($files as $file) {
+                    $contents = Storage::path($file);
+                    $zip->addFile($contents, basename($contents));
+                }
+                $zip->close();
+                Storage::deleteDirectory('csv');
+            }
+
+            return $zipFileName;
+        } catch (\Exception $e) {
+            Log::error('CLASS "InvoiceService" FUNCTION "handleMultiCsvDownload" ERROR: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
-
-

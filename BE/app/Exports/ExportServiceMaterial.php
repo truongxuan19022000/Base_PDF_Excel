@@ -6,21 +6,22 @@ use App\Repositories\MaterialRepository;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ExportServiceMaterial implements FromCollection, WithMapping, WithHeadings
+class ExportServiceMaterial implements FromCollection, WithMapping, WithHeadings, WithTitle
 {
     private $materialRepository;
-    private $searchs;
+    private $searches;
 
-    public function __construct($searchs)
+    public function __construct($searches)
     {
         $this->materialRepository = app(MaterialRepository::class);
-        $this->searchs = $searchs;
+        $this->searches = $searches;
     }
 
     public function collection()
     {
-        $searchParams = $this->searchs;
+        $searchParams = $this->searches;
         $searchParams['category'] = [config("common.material_category.services")];
         return $this->materialRepository->getMaterials($searchParams, false);
     }
@@ -44,5 +45,10 @@ class ExportServiceMaterial implements FromCollection, WithMapping, WithHeadings
             'MIN SIZE (m2)',
             'PRICE',
         ];
+    }
+
+    public function title(): string
+    {
+        return 'Service';
     }
 }

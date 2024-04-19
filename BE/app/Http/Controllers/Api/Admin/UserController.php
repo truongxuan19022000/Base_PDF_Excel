@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Exports\ExportUser;
 use App\Http\Controllers\Controller;
 use App\Services\MailService;
 use App\Services\UserService;
 use App\Services\RolePermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Excel as ExcelExcel;
-use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
@@ -213,9 +211,11 @@ class UserController extends Controller
      */
     public function updateUser(Request $request)
     {
-        $code = 'user_management';
-        $mode = config('role.role_mode.update');
-        $this->authorize('update', [User::class, $code, $mode]);
+        if (isset($credentials['user_id']) && $credentials['user_id'] !== Auth::id()) {
+            $code = 'user_management';
+            $mode = config('role.role_mode.update');
+            $this->authorize('update', [User::class, $code, $mode]);
+        }
         $credentials = $request->all();
 
         $rule = [
@@ -353,6 +353,9 @@ class UserController extends Controller
      */
     public function multiDeleteUser(Request $request)
     {
+        $code = 'user_management';
+        $mode = config('role.role_mode.delete');
+        $this->authorize('delete', [User::class, $code, $mode]);
         $credentials = $request->all();
         $rule = [
             'user_id' => 'required|array',
@@ -413,7 +416,7 @@ class UserController extends Controller
             'name' => $auth->name,
             'email' => $auth->email,
             'phone_number' => $auth->phone_number,
-            'profile_picture' => $auth->profile_picture,
+            'profile_picture' => $auth->profile_picture ?? null,
             'permission' => $roleTemp
         ];
 
@@ -427,28 +430,15 @@ class UserController extends Controller
      * @OA\Get(
      *     path="/admin/users/export",
      *     tags={"Users"},
-     *     summary="Export list of Users",
-     *     description="Export list of Users.",
+     *     summary="Exports list of Users",
+     *     description="Exports list of Users.",
      *     security={{"bearer":{}}},
      *     @OA\Parameter(
-     *          name="search",
-     *          in="query",
-     *          description="Search with name, username, email",
-     *          @OA\Schema(type="string"),
-     *     ),
-     *     @OA\Parameter(
-     *          name="sort_name",
-     *          in="query",
-     *          description="asc, desc, latest",
-     *          @OA\Schema(type="string"),
-     *          example="latest"
-     *     ),
-     *     @OA\Parameter(
-     *          name="role_id",
+     *          name="user_ids",
      *          in="query",
      *          @OA\Schema(
-     *               @OA\Property(property="role_id[0]", type="array", @OA\Items(type="number"), example="1"),
-     *               @OA\Property(property="role_id[1]", type="array", @OA\Items(type="number"), example="2"),
+     *               @OA\Property(property="user_ids[0]", type="array", @OA\Items(type="number"), example="1"),
+     *               @OA\Property(property="user_ids[1]", type="array", @OA\Items(type="number"), example="2"),
      *          )
      *     ),
      *     @OA\Response(
@@ -460,7 +450,11 @@ class UserController extends Controller
      */
     public function exportUsers(Request $request)
     {
-        $searchs = $request->all();
-        return Excel::download(new ExportUser($searchs), 'users.csv', ExcelExcel::CSV);
+        $credentials = $request->all();
+        $userIdsString = isset($credentials['user_ids']) ? implode(',', $credentials['user_ids']) : 'all';
+        return response()->json([
+            'status' => config('common.response_status.success'),
+            'url' => env('APP_URL') . '/export-csv/user/' . $userIdsString,
+        ]);
     }
 }

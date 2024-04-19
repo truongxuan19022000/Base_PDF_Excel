@@ -60,7 +60,7 @@ class ProductItemController extends Controller
      *                 @OA\Property(property="quantity", type="number"),
      *                 @OA\Property(property="title", type="string"),
      *                 @OA\Property(property="service_type", type="number"),
-     *                 @OA\Property(property="unit_price", type="number", description="1: pc, 2: m2, 3: m, 4: panel"),
+     *                 @OA\Property(property="unit_price", type="number", description="1: pcs, 2: m2, 3: m, 4: panel"),
      *                 @OA\Property(property="height", type="number"),
      *                 @OA\Property(property="width", type="number"),
      *             )
@@ -92,6 +92,8 @@ class ProductItemController extends Controller
             ],
             'no_of_panels' => 'numeric',
             'order_number' => 'required|numeric',
+            'width' => 'required|numeric',
+            'height' => 'required|numeric',
             'type' => 'required|numeric',
             'quantity' => [
                 'numeric',
@@ -164,8 +166,10 @@ class ProductItemController extends Controller
      *                 @OA\Property(property="quantity", type="number"),
      *                 @OA\Property(property="title", type="string"),
      *                 @OA\Property(property="service_type", type="number"),
-     *                 @OA\Property(property="unit_price", type="number", description="1: pc, 2: m2, 3: m, 4: panel"),
+     *                 @OA\Property(property="unit_price", type="number", description="1: pcs, 2: m2, 3: m, 4: panel"),
      *                 @OA\Property(property="quotation_id", type="number"),
+     *                 @OA\Property(property="height", type="number"),
+     *                 @OA\Property(property="width", type="number"),
      *             )
      *         )
      *     ),
@@ -200,6 +204,8 @@ class ProductItemController extends Controller
             ],
             'no_of_panels' => 'numeric',
             'order_number' => 'required|numeric',
+            'width' => 'required|numeric',
+            'height' => 'required|numeric',
             'type' => 'required|numeric',
             'quantity' => [
                 'numeric',

@@ -302,12 +302,12 @@ class QuotationSectionService
                     $sumItems = 0;
                     $sumItemAlumiums = 0;
                     $otherItemSubTotal = 0;
-                    $aluminiumItemSubTotal = 0;
                     $sub_total = 0;
                     $scrap_product = 0;
                     foreach ($products->product_items as $product_items) {
                         $sumAluminium = 0;
                         $otherSum = 0;
+                        $aluminiumItemSubTotal = 0;
                         $materials = [];
                         $productTemplate = [];
                         $scraps = [];
@@ -392,8 +392,10 @@ class QuotationSectionService
                         'product_code' => $products['product_code'],
                         'profile' => $products['profile'],
                         'glass_type' => $products['glass_type'],
-                        'storey' => $products['storey'],
-                        'area' => $products['area'],
+                        'storey' => $products['storey'] ?? 0,
+                        'storey_text' => !empty($products['storey_text']) ? $products['storey_text'] : null,
+                        'area' => $products['area'] ?? 0,
+                        'area_text' => !empty($products['area_text']) ? $products['area_text'] : null,
                         'width' => $products['width'],
                         'width_unit' => intval($products['width_unit']),
                         'height' => $products['height'],
@@ -463,11 +465,11 @@ class QuotationSectionService
                     $sumItems = 0;
                     $sumItemAlumiums = 0;
                     $otherItemSubTotal = 0;
-                    $aluminiumItemSubTotal = 0;
                     $sub_total = 0;
                     $scrap_product = 0;
                     foreach ($products->product_items as $product_items) {
                         $sumAluminium = 0;
+                        $aluminiumItemSubTotal = 0;
                         $otherSum = 0;
                         $materials = [];
                         $productTemplate = [];
@@ -742,7 +744,7 @@ class QuotationSectionService
 
         $informationCommon['product_item_template_id'] = isset($product_item_template_id) ? intval($product_item_template_id) : 0;
 
-        if ($product->price_unit == config('quotation.material_price_unit.pc') || $product->price_unit == config('quotation.material_price_unit.panel')) {
+        if ($product->price_unit == config('quotation.material_price_unit.pcs') || $product->price_unit == config('quotation.material_price_unit.panel')) {
             $informationCommon["total_cost_of_item"] =  $informationCommon['quantity'] *  $informationCommon['cost_of_item'];
             $totalCostOfItems =  $informationCommon['quantity'] *  $informationCommon['cost_of_item'];
         } elseif ($product->price_unit == config('quotation.material_price_unit.m2')) {
