@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { useHistory, useParams } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import dayjs from 'dayjs'
 
+import { alertActions } from 'src/slices/alert'
 import { useInvoiceSlice } from 'src/slices/invoice'
 import { useCustomerSlice } from 'src/slices/customer'
-import { validateFilterRequest } from 'src/helper/validation'
-import { downloadCSVFromCSVString, formatCustomerName, isEmptyObject, normalizeString } from 'src/helper/helper'
-import { ACTIONS, FILTER, MESSAGE, PAGINATION } from 'src/constants/config'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
+import { formatPriceWithTwoDecimals, isEmptyObject, normalizeString } from 'src/helper/helper'
+import { ACTIONS, ALERT, FILTER, INVOICE, MESSAGE, PAGINATION, PERMISSION, STATUS } from 'src/constants/config'
 
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
@@ -16,19 +17,20 @@ import TableButtons from 'src/components/TableButtons'
 import CustomerTableAction from '../CustomerTableAction'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
 
-const CustomerInvoice = ({ customerName = '', setMessage }) => {
+const CustomerInvoice = ({
+  id,
+}) => {
   const { actions } = useCustomerSlice()
   const { actions: invoiceActions } = useInvoiceSlice()
 
-  const { id } = useParams()
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const csvData = useSelector(state => state.customer.csvData)
+  const { fetchedInvoice } = useSelector(state => state.customer)
+  const permissionData = useSelector(state => state.user.permissionData)
   const customerInvoiceData = useSelector(state => state.customer.customerInvoice)
 
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [messageError, setMessageError] = useState('')
@@ -43,6 +45,7 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
   const [isShowFilterModal, setIsShowFilterModal] = useState(false)
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([])
 
   const onSuccess = () => {
     setMessageError('')
@@ -50,25 +53,49 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
     setIsDisableSubmit(false)
     setIsShowFilterModal(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = customerInvoiceData.current_page === customerInvoiceData.last_page
+    const hasNoItem = customerInvoiceData.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
     }
+
+    if (id) {
+      const params = {
+        customer_id: +id,
+        page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+        search: normalizeString(searchText),
+        start_date: startDateFilter && dayjs(startDateFilter).format('YYYY/MM/DD'),
+        end_date: endDateFilter && dayjs(endDateFilter).format('YYYY/MM/DD'),
+        onError,
+      }
+      dispatch(actions.getCustomerQuotationList(params))
+    }
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
-    if (id) {
-      dispatch(actions.getCustomerInvoiceList({ page: PAGINATION.START_PAGE, customer_id: +id }))
+    if (id && !fetchedInvoice) {
+      dispatch(actions.getCustomerInvoiceList({ customer_id: +id }))
     }
-  }, [id])
+  }, [id, fetchedInvoice])
 
   useEffect(() => {
-    if (customerInvoiceData && Object.keys(customerInvoiceData)?.length > 0) {
+    if (customerInvoiceData && Object.keys(customerInvoiceData).length > 0) {
       setCurrentPageNumber(customerInvoiceData.current_page)
       setTotalDataNumber(customerInvoiceData?.total || 0)
     }
@@ -83,13 +110,25 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
   }, [selectedIds, customerInvoiceData?.data])
 
   useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      const filename = formatCustomerName(customerName) + '_invoice'
-      downloadCSVFromCSVString(csvData, filename)
-      setSubmitting(false)
-      dispatch(actions.clearCSVDataCustomer())
-    }
-  }, [submitting, csvData])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+        setIsShowFilterModal(false)
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -107,50 +146,47 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
     }
   }
 
-  const handleFilterSearchApply = (searchText) => {
+  const handleFilterSearchApply = () => {
     if (isDisableSubmit) return;
     const data = {
       customer_id: +id,
-      search: searchText || '',
+      search: normalizeString(searchText),
       page: PAGINATION.START_PAGE,
-      start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-      end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
     };
     const errors = validateFilterRequest(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
       if (isShowFilterModal) {
         setIsFiltering(true);
       }
-      dispatch(actions.getCustomerInvoiceList({ ...data, onSuccess, onError, }));
+      dispatch(actions.getCustomerInvoiceList({ ...data, onError, onSuccess }));
       setSelectedIds([]);
       setSubmitting(true);
-      setMessageError('');
       setIsDisableSubmit(true);
+      setMessageError('');
+      setIsShowFilterModal(false)
     }
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const handleClickDeleteItem = (data) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.INVOICE, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      if (+data.status === INVOICE.STATUS_VALUE.PENDING) {
+        setSelectedDeleteIds([data.id]);
+        setIsShowConfirmDeleteModal(true);
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: INVOICE.MESSAGE_ERROR.PAID,
+        }))
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatchAlertWithPermissionDenied()
     }
-    setIsShowConfirmDeleteModal(true);
   }
 
   const handleInputDateFilter = (date, field) => {
@@ -168,61 +204,59 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
     setSelectedIds([])
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    const isLastItem = (customerInvoiceData.data?.length === 1)
-    const isSelectAllItemOfLastPage = (isSelectedAll && customerInvoiceData.current_page === customerInvoiceData.last_page)
-    const isOutOfItemInPage = isLastItem || isSelectAllItemOfLastPage
-
-    let tempoPageNumber = null;
-    if ((customerInvoiceData.last_page > PAGINATION.START_PAGE) && isOutOfItemInPage) {
-      tempoPageNumber = customerInvoiceData.current_page - 1
-    } else {
-      tempoPageNumber = PAGINATION.START_PAGE
-    }
-
-    const data = {
-      invoice_id: deleteInfo?.deleteIds || [],
-      page: +tempoPageNumber,
-      search: normalizeString(searchText),
-      start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-      end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-    };
-
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      dispatch(actions.deleteCustomerInvoice({ ...data, onSuccess, onError }));
-      setMessageError({})
-      setSubmitting(true)
-      setSelectedIds([])
-      setIsDisableSubmit(true)
-      setIsShowConfirmDeleteModal(false)
-    } else if (deleteInfo?.actionType === ACTIONS.NAME.DELETE && deleteInfo?.deleteIds) {
-      dispatch(actions.deleteCustomerInvoice({ ...data, onSuccess, onError }));
-      setSubmitting(true)
-      setMessageError({})
-      setIsDisableSubmit(true)
-      setIsShowConfirmDeleteModal(false)
-      if (deleteInfo?.deleteIds) {
-        setSelectedIds(selectedIds?.filter(id => !deleteInfo?.deleteIds?.includes(id)))
-      }
-    }
+  const handleDelete = () => {
+    if (isDisableSubmit || selectedDeleteIds.length === 0) return;
+    dispatch(actions.deleteCustomerInvoice({
+      invoice_id: selectedDeleteIds,
+      onDeleteSuccess,
+      onError
+    }));
+    setMessageError({})
+    setIsDisableSubmit(true)
+    setIsShowConfirmDeleteModal(false)
+    setSelectedIds(selectedIds?.filter(id => !selectedDeleteIds.includes(id)))
   }
+
+  const handleCheckInvoiceDeletable = (id, data) => {
+    const invoice = data.find(item => item.id === id);
+    const isDeletable = +invoice.status === INVOICE.STATUS_VALUE.PENDING
+    return isDeletable;
+  };
 
   const handleClickApply = (actionType) => {
     if (submitting) return;
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportCustomerInvoiceCSV({
-        search: normalizeString(searchText),
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        invoice_id: selectedIds || [],
-        customer_id: +id,
-        onError
-      }))
-      setSubmitting(true)
-      setSelectedItem(null)
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.INVOICE, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          const isDeletable = selectedIds.every(id => handleCheckInvoiceDeletable(id, customerInvoiceData.data))
+          if (isDeletable) {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(true)
+          } else {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                INVOICE.MESSAGE_ERROR.INCLUDED_PAID : INVOICE.MESSAGE_ERROR.PAID,
+            }))
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(invoiceActions.getExportInvoiceCSV({ invoice_ids: selectedIds }))
+        setSelectedItem(null)
+      } else if (actionType === ACTIONS.NAME.DOWNLOAD) {
+        dispatch(invoiceActions.downloadInvoicePDF({ invoice_ids: selectedIds }))
+        setSelectedItem(null)
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }));
     }
   }
 
@@ -231,16 +265,16 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
     const params = {
       customer_id: +id,
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     };
     if (searchText?.length > 0) {
       params.search = normalizeString(searchText);
     }
     if (startDateFilter) {
-      params.start_date = dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.start_date = dayjs(startDateFilter).format('YYYY-MM-DD');
     }
     if (endDateFilter) {
-      params.end_date = dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.end_date = dayjs(endDateFilter).format('YYYY-MM-DD');
     }
     dispatch(actions.getCustomerInvoiceList(params));
     setSelectedIds([])
@@ -260,11 +294,16 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
     }))
   }
 
-  const handleClickDownload = (data) => { }
+  const handleClickDownload = (invoiceId) => {
+    if (invoiceId) {
+      dispatch(invoiceActions.downloadInvoicePDF({ invoice_id: invoiceId }))
+    }
+  }
 
   const renderInvoiceList = () => {
     return customerInvoiceData?.data?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const status = STATUS.INVOICE[data.status];
+      const isChecked = !!selectedIds?.includes(data.id);
       const formattedDate = data.created_at ? dayjs(data.created_at).format('DD MMM YYYY') : 'NA';
       return (
         <tr key={index} className={isChecked ? 'csInvoiceTable__selected' : ''}>
@@ -286,6 +325,16 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
           </td>
           <td className="csInvoiceTable__td">
             <div className="csInvoiceTable__td--textBox">
+              $ {formatPriceWithTwoDecimals(data.amount)}
+            </div>
+          </td>
+          <td className="csInvoiceTable__td">
+            <div className={`csInvoiceTable__status csInvoiceTable__td--textBox${status ? ` csInvoiceTable__status--${status.class}` : ''}`}>
+              {status?.label}
+            </div>
+          </td>
+          <td className="csInvoiceTable__td">
+            <div className="csInvoiceTable__td--textBox">
               {formattedDate}
             </div>
           </td>
@@ -297,8 +346,8 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
                 isShowDelete={true}
                 isShowDownLoad={true}
                 clickEdit={() => goToDetailPage(data)}
-                clickDelete={handleSelectDeleteInfo}
-                clickDownLoad={() => handleClickDownload(data)}
+                clickDelete={() => handleClickDeleteItem(data)}
+                clickDownLoad={() => handleClickDownload(+data.id)}
               />
             </div>
           </td>
@@ -315,7 +364,12 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
   }
 
   const goToCreateNewInvoicePage = () => {
-    history.push('/invoice/create-invoice')
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.INVOICE, PERMISSION.ACTION.CREATE)
+    if (isAllowed) {
+      history.push('/invoice/create-invoice')
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
   }
 
   return (
@@ -325,7 +379,7 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
           isDetail={!!id}
           isShowFilter={true}
           searchText={searchText}
-          buttonTitle="New Quotation"
+          buttonTitle="New Invoice"
           actionList={ACTIONS.EXTEND}
           isFiltering={isFiltering}
           selectedAction={selectedItem}
@@ -339,6 +393,7 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
         />
       </div>
       <div className="csInvoice__table">
+        <div className="csInvoice__divider"></div>
         <table className="csInvoiceTable">
           <thead>
             <tr>
@@ -350,6 +405,8 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
               </th>
               <th className="csInvoiceTable__th csInvoiceTable__th--invoice">INVOICE NO.</th>
               <th className="csInvoiceTable__th csInvoiceTable__th--reference">REFERENCE NO.</th>
+              <th className="invoiceTable__th invoiceTable__th--amount">AMOUNT</th>
+              <th className="invoiceTable__th invoiceTable__th--status">STATUS</th>
               <th className="csInvoiceTable__th csInvoiceTable__th--create">ISSUED ON</th>
               <th className="csInvoiceTable__th">ACTIONS</th>
             </tr>
@@ -372,13 +429,14 @@ const CustomerInvoice = ({ customerName = '', setMessage }) => {
           deleteTitle="invoice"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleDelete}
         />
       )}
       {isShowFilterModal && (
         <FilterModal
           isDetail={!!id}
-          viewTab='invoice'
+          className="csInvoice"
+          isHiddenSortOption={true}
           submitting={submitting || false}
           searchText={searchText || ''}
           messageError={messageError || ''}

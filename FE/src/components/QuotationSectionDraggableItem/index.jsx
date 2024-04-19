@@ -1,14 +1,16 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useDrag, useDrop } from 'react-dnd'
 import { CCollapse } from '@coreui/react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 
 import ProductContainer from '../ProductContainer'
 import MoveAndToggleIcon from '../MoveAndToggleIcon'
 
-import { MESSAGE } from 'src/constants/config'
 import { isSimilarObject } from 'src/helper/helper'
+import { ALERT, INVENTORY, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config'
 import { useQuotationSectionSlice } from 'src/slices/quotationSection'
+import { validatePermission } from 'src/helper/validation'
+import { alertActions } from 'src/slices/alert'
 
 export const QuotationSectionDraggableItem = memo(
   function QuotationSectionDraggableItem({
@@ -16,16 +18,26 @@ export const QuotationSectionDraggableItem = memo(
     sectionInfo = {},
     showSectionIds = [],
     moveSection,
-    setMessage,
+    isEditable = false,
     setShowSectionIds,
     showCreateProductModal,
     handleDragAndDropSection,
-    setSelectedDeleteSectionId,
     showCreateProductItemModal,
+    setIsShowAddSectionModal,
+    setIsShowAddProductModal,
+    setIsShowEditProductModal,
+    setIsShowCreateProductModal,
+    setIsShowCreateProductItemModal,
   }) {
     const { actions } = useQuotationSectionSlice()
-
     const dispatch = useDispatch()
+
+    const permissionData = useSelector(state => state.user.permissionData)
+
+    const isEditAllowed = useMemo(() => {
+      const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+      return isAllowed
+    }, [permissionData])
 
     const [productList, setProductList] = useState([])
     const [isShowMoveIcon, setIsShowMoveIcon] = useState(false)
@@ -33,31 +45,27 @@ export const QuotationSectionDraggableItem = memo(
     const [originalProductOrders, setOriginalProductOrders] = useState([])
 
     const onSuccess = () => {
-      setMessage({ success: MESSAGE.SUCCESS.ACTION })
     }
 
     const onError = () => {
-      setMessage({ failed: MESSAGE.ERROR.DEFAULT })
     }
 
     useEffect(() => {
-      if (sectionInfo.products?.length > 0) {
-        setProductList(sectionInfo.products)
-        const originalList = [...sectionInfo.products].map((product, index) => ({
-          product_id: product.productId,
-          order_number: index + 1,
-        }));
-        setOriginalProductOrders(originalList)
-      }
+      setProductList(sectionInfo.products)
+      const originalList = [...sectionInfo.products].map((product, index) => ({
+        product_id: +product.productId,
+        order_number: index + 1,
+      }));
+      setOriginalProductOrders(originalList)
     }, [sectionInfo.products])
 
     const isShowSectionProduct = useMemo(() => {
-      return !!showSectionIds?.includes(sectionInfo.id)
+      return !!showSectionIds?.includes(+sectionInfo.id)
     }, [showSectionIds, sectionInfo])
 
     const [{ isDragging }, drag] = useDrag({
       type: isHoveringMoveIcon ? 'SECTION' : '',
-      item: { id: sectionInfo.id, index },
+      item: { id: +sectionInfo.id, index },
     });
 
     const [, drop] = useDrop({
@@ -81,22 +89,52 @@ export const QuotationSectionDraggableItem = memo(
       setIsHoveringMoveIcon(false)
     }
 
+    const dispatchAlertWithPermissionDenied = () => {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }));
+    };
+
     const toggleShowSectionProduct = (sectionId, e) => {
       e.stopPropagation()
       if (showSectionIds?.includes(sectionId)) {
-        setShowSectionIds(showSectionIds.filter(id => id !== sectionId))
+        setShowSectionIds(showSectionIds.filter(id => +id !== sectionId))
       } else {
         setShowSectionIds([...showSectionIds, sectionId])
       }
     }
 
-    const handleClickDeleteSection = (sectionId) => {
-      if (sectionId) {
-        setSelectedDeleteSectionId(sectionId)
+    const handleClickDeleteSection = (e, section) => {
+      e.stopPropagation()
+      if (isEditAllowed) {
+        if (!isEditable) return;
+        if (section) {
+          const hasScrapUsed = section?.products?.some(product => product.product_items
+            ?.some(item => item.type === QUOTATION.MATERIAL_VALUE.ALUMINIUM && item.product_template
+              ?.some(product => product.type === QUOTATION.MATERIAL_VALUE.ALUMINIUM &&
+                product.scrap?.status === INVENTORY.MATERIAL_USED)));
+          if (hasScrapUsed) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: QUOTATION.MESSAGE_ERROR.DELETE_SECTION_HAS_SCRAP_USED,
+            }))
+          } else {
+            dispatch(actions.handleSelectDeleteInfo({
+              quotation_section_id: section?.id,
+              type: QUOTATION.LABEL.SECTION
+            }))
+          }
+        }
+      } else {
+        dispatchAlertWithPermissionDenied()
       }
     }
 
     const moveProduct = (fromIndex, toIndex) => {
+      if (!isEditable) return;
       const updatedProductData = [...productList];
       const [movingProduct] = updatedProductData.splice(fromIndex, 1);
       updatedProductData.splice(toIndex, 0, movingProduct);
@@ -104,28 +142,70 @@ export const QuotationSectionDraggableItem = memo(
     };
 
     const handleDragAndDropProduct = () => {
-      const updatedProductListOrder = [...productList].map((product, index) => ({
-        product_id: product.productId,
-        order_number: index + 1
-      }));
-      if (sectionInfo.id && !isSimilarObject(originalProductOrders, updatedProductListOrder)) {
-        dispatch(actions.handleChangeProductOrder({
-          quotation_section_id: +sectionInfo.id,
-          products: updatedProductListOrder,
-          onSuccess,
-          onError
+      if (isEditAllowed) {
+        if (!isEditable) return;
+        const updatedProductListOrder = [...productList].map((product, index) => ({
+          product_id: product.productId,
+          order_number: index + 1
         }));
+        if (+sectionInfo.id && !isSimilarObject(originalProductOrders, updatedProductListOrder)) {
+          dispatch(actions.handleChangeProductOrder({
+            quotation_section_id: +sectionInfo.id,
+            products: updatedProductListOrder,
+            onSuccess,
+            onError
+          }));
+        }
+      } else {
+        dispatchAlertWithPermissionDenied()
       }
     }
 
-    const handleRemoveProduct = (e, id) => {
+    const handleRemoveProduct = (e, product) => {
       e.stopPropagation()
-      if (id) {
-        setProductList(productList.filter(p => p.productId !== +id))
+      if (isEditAllowed) {
+        if (!isEditable) return;
+        if (product) {
+          const hasScrapUsed = product?.product_items
+            ?.some(item => item.type === QUOTATION.MATERIAL_VALUE.ALUMINIUM && item.product_template
+              ?.some(product =>
+                product.type === QUOTATION.MATERIAL_VALUE.ALUMINIUM &&
+                product.scrap?.status === INVENTORY.MATERIAL_USED));
+          if (hasScrapUsed) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: QUOTATION.MESSAGE_ERROR.DELETE_SCRAP_USED,
+            }))
+          } else {
+            dispatch(actions.handleSelectDeleteInfo({
+              product_id: +product.productId,
+              section_id: +sectionInfo?.id,
+              type: QUOTATION.LABEL.PRODUCT
+            }))
+          }
+        } else {
+          dispatch(alertActions.openAlert({
+            type: ALERT.FAILED_VALUE,
+            title: 'Deletion Failed',
+            description: QUOTATION.MESSAGE_ERROR.NO_FOUND_PRODUCT,
+          }))
+        }
       } else {
-        setMessage({
-          failed: 'No found the product Id.'
-        })
+        dispatchAlertWithPermissionDenied()
+      }
+    }
+
+    const handleClickEditSection = (e, section) => {
+      e.stopPropagation()
+      if (isEditAllowed) {
+        if (!isEditable) return;
+        if (section) {
+          dispatch(actions.handleSetSelectedSection(section))
+          setIsShowAddSectionModal(true)
+        }
+      } else {
+        dispatchAlertWithPermissionDenied()
       }
     }
 
@@ -142,28 +222,32 @@ export const QuotationSectionDraggableItem = memo(
         >
           <div
             className="quotationSectionDraggableItem__header--left"
-            onClick={(e) => toggleShowSectionProduct(sectionInfo.id, e)}
+            onClick={(e) => toggleShowSectionProduct(+sectionInfo.id, e)}
           >
             <MoveAndToggleIcon
               isOpen={isShowSectionProduct}
-              isShowMoveIcon={isShowMoveIcon}
+              isShowMoveIcon={isShowMoveIcon && isEditAllowed && isEditable}
               handleMouseEnterIcon={handleMouseEnter}
               handleMouseLeaveIcon={handleMouseLeave}
             />
             <div className="quotationSectionDraggableItem__header--sectionName">{sectionInfo.section_name || ''}</div>
           </div>
           <div className="quotationSectionDraggableItem__header--right">
-            <div className="quotationSectionDraggableItem__header--rightIcon">
+            <div
+              className="quotationSectionDraggableItem__header--rightIcon"
+              onClick={(e) => handleClickEditSection(e, sectionInfo)}
+            >
               <img src="/icons/edit.svg" alt="edit" />
             </div>
-            <div className="quotationSectionDraggableItem__header--rightIcon"
-              onClick={() => handleClickDeleteSection(sectionInfo.id)}
+            <div
+              className="quotationSectionDraggableItem__header--rightIcon"
+              onClick={(e) => handleClickDeleteSection(e, sectionInfo)}
             >
               <img src="/icons/delete.svg" alt="trash icon" />
             </div>
             <div
               className="quotationSectionDraggableItem__header--rightIcon"
-              onClick={() => showCreateProductModal(sectionInfo.id)}
+              onClick={() => showCreateProductModal(+sectionInfo.id)}
             >
               <img src="/icons/plus.svg" alt="plus icon" />
             </div>
@@ -176,12 +260,16 @@ export const QuotationSectionDraggableItem = memo(
                 key={index}
                 index={index}
                 product={product}
-                sectionId={sectionInfo.id}
+                sectionId={+sectionInfo.id}
                 moveProduct={moveProduct}
-                setMessage={setMessage}
+                isEditable={isEditable}
                 handleRemoveProduct={handleRemoveProduct}
                 handleDragAndDropProduct={handleDragAndDropProduct}
                 showCreateProductItemModal={showCreateProductItemModal}
+                setIsShowAddProductModal={setIsShowAddProductModal}
+                setIsShowEditProductModal={setIsShowEditProductModal}
+                setIsShowCreateProductModal={setIsShowCreateProductModal}
+                setIsShowCreateProductItemModal={setIsShowCreateProductItemModal}
               />
             )}
           </div>

@@ -36,7 +36,7 @@ const SelectForm = ({
       {isShowItemList &&
         <ClickOutSideWrapper onClickOutside={() => setIsShowItemList(false)}>
           <div className="selectForm__list">
-            {data?.map((item, index) => (
+            {data.map((item, index) => (
               item.value !==0 &&
               <div
                 key={index}

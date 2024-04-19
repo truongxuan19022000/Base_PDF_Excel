@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+
+import { INVENTORY, MATERIAL } from 'src/constants/config'
 import { isEmptyObject } from 'src/helper/helper'
 
 import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper'
@@ -22,12 +24,13 @@ const SelectInventoryAction = ({
       <div className="selectInventoryAction__label" onClick={() => setIsShowItemList(!isShowItemList)}>
         {!isEmptyObject(selectedInventoryAction) ? (
           <div className="selectInventoryAction__action">
-            {selectedInventoryAction.value === 5 ? (
+            {selectedInventoryAction.value === MATERIAL.UPLOAD_FILE_VALUE ? (
               <img src="/icons/white-upload.svg" alt="upload" />
             ) : (
               <div className="selectInventoryAction__action--icon">+</div>
             )}
-            {selectedInventoryAction?.label}</div>
+            {selectedInventoryAction.label}
+          </div>
         ) : (
           <div className="selectInventoryAction__action">
             <div className="selectInventoryAction__action--icon">+</div>
@@ -47,9 +50,9 @@ const SelectInventoryAction = ({
               <div
                 key={index}
                 onClick={() => handleSelectItem(item)}
-                className={`selectInventoryAction__option${item?.value === selectedInventoryAction?.value ? ' selectInventoryAction__option--selected' : ''}`}
+                className={`selectInventoryAction__option${item.value === selectedInventoryAction?.value ? ' selectInventoryAction__option--selected' : ''}`}
               >
-                {item.value === 5 ? (
+                {item.value === INVENTORY.UPLOAD_CSV_VALUE ? (
                   <div className="selectInventoryAction__option--icon">
                     <img src="/icons/upload.svg" alt="upload" />
                   </div>

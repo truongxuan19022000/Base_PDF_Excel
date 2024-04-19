@@ -1,0 +1,109 @@
+.claimBottom {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  color: #343a40;
+  padding: 21px 60px 30px 53px;
+  flex: 1 1;
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 22px 50px;
+  }
+
+  &__box {
+    display: flex;
+    gap: 20px 50px;
+
+    &--grid {
+      display: grid;
+      grid-template-columns: auto auto auto;
+      align-items: center;
+    }
+  }
+
+  .claimBottomBox {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    position: relative;
+
+    &--total {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding-bottom: 4px;
+    }
+
+    &__title {
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+
+      &--pointer {
+        cursor: pointer;
+      }
+    }
+
+    &__value {
+      color: #000000;
+      font-size: 18px;
+
+      &--total {
+        font-size: 22px;
+        font-weight: 700;
+        margin-left: 18px;
+      }
+    }
+
+    &__icon {
+      padding-left: 12px;
+      cursor: pointer;
+    }
+
+    .claimTooltip {
+      padding: 6px;
+      position: absolute;
+      top: -55px;
+      right: -35px;
+      width: max-content;
+      z-index: 1;
+
+      &__innerBox {
+        font-size: 12px;
+        border-radius: 6px;
+        padding: 8px 12px;
+        background-color: white;
+        border: 0.5px solid #7f7462;
+        font-weight: 400;
+      }
+
+      &__link {
+        width: fit-content;
+        text-decoration: underline;
+        font-weight: 500;
+        color: #7f7462;
+        cursor: pointer;
+      }
+
+      &__shape {
+        width: 12px;
+        height: 12px;
+        rotate: 45deg;
+        position: absolute;
+        right: 38px;
+        top: 46px;
+        background-color: white;
+        border: 0.5px solid #7f7462;
+        border-left: none;
+        border-top: none;
+      }
+    }
+  }
+}

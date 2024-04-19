@@ -1,4 +1,3 @@
-
 .sendEmail {
   margin-top: -4px;
   display: flex;
@@ -20,27 +19,26 @@
     font-weight: 400;
   }
 
-  &__timer{
+  &__timer {
     font-size: 16px;
     font-weight: 400;
   }
 
-  &__count{
+  &__count {
     font-weight: 500;
   }
 
   &__url {
     font-size: 16px;
-    margin-left: 5px;
+    margin-left: 15px;
     font-weight: 600;
     color: $color_brown1;
     text-decoration: underline;
     cursor: pointer;
 
-    &--disabled{
-      margin-left: 50px;
+    &--disabled {
       color: $color_grey1;
-      cursor: pointer;
+      cursor: unset;
     }
   }
 }

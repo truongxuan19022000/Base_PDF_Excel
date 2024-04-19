@@ -16,6 +16,17 @@
     img {
       margin-right: 5px;
     }
+
+    &--small {
+      display: flex;
+      align-items: center;
+
+      img {
+        width: 14px !important;
+        height: 14px !important;
+        margin-right: 2px !important;
+      }
+    }
   }
 
   &__dropdownItem {

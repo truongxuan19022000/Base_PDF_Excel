@@ -71,6 +71,9 @@ const slice = createSlice({
 
         state.list.data = updatedRoleList;
         state.createRole = {};
+        if (updatedData.isCurrentRoleChange) {
+          state.roleStatusChange = true;
+        }
       }
     },
     setCurrentRoleSetting(state, action) {
@@ -99,6 +102,9 @@ const slice = createSlice({
     getAllRoles(state, action) { },
     getAllRolesSuccess(state, action) {
       state.roles = action?.payload?.roles || [];
+    },
+    resetRoleStatusChange(state) {
+      state.roleStatusChange = false;
     },
   },
 })

@@ -1,0 +1,189 @@
+.scrap {
+  padding: 35px 32px;
+  padding-bottom: 50px;
+  position: relative;
+
+  &__message {
+    position: absolute;
+    width: calc(100% - 64px);
+    top: 46px;
+    left: 33px;
+  }
+
+  &__table {
+    width: 100%;
+    position: relative;
+    margin-top: 12px;
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
+
+    .scrapTable {
+      width: 100%;
+      border-collapse: collapse;
+
+      thead {
+        height: 60px;
+        z-index: 1;
+
+        th {
+          position: sticky;
+          top: 0;
+          background-color: $color_white2;
+          border-bottom: 2px solid $color_black3;
+          z-index: 1;
+        }
+      }
+
+      tbody {
+        tr {
+          transition: 0.3s all ease-in;
+          border-top: 1px solid $color_black3;
+        }
+      }
+
+      &__selected {
+        background-color: $color_milk2;
+      }
+
+      &__th {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+
+        &--checkbox {
+          width: 4%;
+        }
+
+        &--item {
+          width: 17.6%;
+        }
+
+        &--code {
+          width: 10.5%;
+        }
+
+        &--reference {
+          width: 18.4%;
+        }
+
+        &--product {
+          width: 8.9%;
+        }
+
+        &--length {
+          width: 9.3%;
+        }
+
+        &--status {
+          width: 9.1%;
+        }
+
+        &--date {
+          width: 10.9%;
+        }
+
+        &--actions {
+          width: 10.6%;
+        }
+      }
+
+      &__td {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+
+        &--textBox {
+          overflow: hidden;
+          display: -webkit-box;
+          white-space: nowrap;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        &--buttons {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          overflow: unset;
+          gap: 21px;
+          padding-right: 10px;
+        }
+      }
+
+      td,
+      th {
+        position: relative;
+        height: 60px;
+        padding-left: 16px;
+      }
+
+      th {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 1px;
+      }
+
+      &__status {
+        width: fit-content;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 16px;
+        padding: 4px 12px;
+        text-transform: capitalize;
+        color: rgba(0, 0, 0, 0.6);
+        border: none;
+
+        &--unused {
+          color: $color_red2;
+          background-color: #fef3f2;
+        }
+
+        &--used {
+          color: #027a48;
+          background-color: #ecfdf3;
+        }
+
+        &--scrapped {
+          color: #1877de;
+          background-color: #e7f2fe;
+        }
+      }
+    }
+  }
+
+  &__paginate {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 825px;
+    left: 0;
+  }
+
+  &__searchMessage {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  &__loading {
+    width: 100%;
+    height: calc(100vh - 63px);
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    overflow: auto;
+    color: #343a40;
+    background-color: #ffffff59;
+    transition:
+      width 0.4s,
+      min-width 0.4s;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

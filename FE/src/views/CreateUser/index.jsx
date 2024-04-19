@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 
@@ -8,7 +8,9 @@ import useRandomPasswordGenerator from 'src/hook/PasswordGenerator'
 
 import { useUserSlice } from 'src/slices/user'
 import { useRoleSlice } from 'src/slices/role'
-import { validateCreateUserInfo } from 'src/helper/validation'
+import { alertActions } from 'src/slices/alert'
+import { ALERT, MESSAGE, PERMISSION } from 'src/constants/config'
+import { validateCreateUserInfo, validatePermission } from 'src/helper/validation'
 
 const CreateUser = () => {
   const { actions } = useUserSlice()
@@ -20,6 +22,12 @@ const CreateUser = () => {
   const roleList = useSelector(state => state.role.roles)
   const fetched = useSelector(state => state.role.fetched)
   const isRoleStatusChange = useSelector(state => state.role.roleStatusChange)
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isCreatedAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.USER, PERMISSION.ACTION.CREATE)
+    return isAllowed
+  }, [permissionData])
 
   const [name, setName] = useState('')
   const [role, setRole] = useState({})
@@ -28,9 +36,9 @@ const CreateUser = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [messageError, setMessageError] = useState('')
-  const [isInputChanged, setIsInputChanged] = useState(false)
+  const [messageError, setMessageError] = useState({})
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
+  const [confirmedPassword, setConfirmedPassword] = useState('')
 
   const generatePassword = useRandomPasswordGenerator();
 
@@ -43,13 +51,14 @@ const CreateUser = () => {
     setThumb(null)
     setUsername('')
     setPassword('')
-    setMessageError('')
+    setMessageError({})
+    setConfirmedPassword('')
     history.push('/user-management')
   }
 
   const onError = (data) => {
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
     setSubmitting(false)
   }
 
@@ -65,61 +74,70 @@ const CreateUser = () => {
     }
   }, [isRoleStatusChange])
 
-  useEffect(() => {
-    setMessageError(null)
-    setIsDisableSubmit(false)
-  }, [isInputChanged])
-
   const handleInputChange = (field, value) => {
     const fieldSetters = {
       name: setName,
       email: setEmail,
       username: setUsername,
       password: setPassword,
+      confirm_new_password: setConfirmedPassword,
     };
 
     const setter = fieldSetters[field];
     if (setter) {
       setter(value);
-      setIsInputChanged(!isInputChanged)
+      setMessageError({})
     }
   }
 
   const handleRemoveThumb = () => {
-    if (submitting) {
-      return
-    }
+    if (submitting) return
     setThumb(null)
   }
 
   const handlePreviewThumb = (e) => {
-    if (submitting) {
-      return
-    }
+    if (submitting) return
     const file = e.target.files[0]
     if (file) {
       file.preview = URL.createObjectURL(file)
       setThumb(file)
-      setIsInputChanged(!isInputChanged)
+      setMessageError({})
     } else {
       setThumb(null)
     }
   }
 
-  const handleGeneratePassword = () => {
-    if (submitting) {
-      return
+  const handleChangeRole = (value) => {
+    if (isCreatedAllowed) {
+      setRole(value)
+      setMessageError({})
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }));
     }
+  }
+
+  const handleGeneratePassword = () => {
+    if (submitting) return
     const newPassword = generatePassword();
     setPassword(newPassword);
-    setIsInputChanged(!isInputChanged)
+    setMessageError({})
   }
 
   const handleCreate = () => {
-    const isErrorExist = !!(messageError?.length > 0)
-    if (isErrorExist || isDisableSubmit) {
-      return
+    if (!isCreatedAllowed) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }));
+      return;
     }
+
+    if (isDisableSubmit) return
 
     const data = {
       name,
@@ -129,15 +147,15 @@ const CreateUser = () => {
       role_name: role?.role_name,
       role_id: Number(role?.id),
       profile_picture: thumb || null,
+      confirm_new_password: confirmedPassword,
     }
 
     const errors = validateCreateUserInfo(data)
     if (Object.keys(errors).length > 0) {
       setMessageError(errors)
-      setIsDisableSubmit(true)
     } else {
       dispatch(actions.createUser({ data: data, onSuccess, onError }))
-      setMessageError('')
+      setMessageError({})
       setIsDisableSubmit(true)
       setSubmitting(true)
     }
@@ -152,21 +170,23 @@ const CreateUser = () => {
         isDisableSubmit={isDisableSubmit}
       />
       <UserForm
-        role={role || {}}
-        name={name || ''}
-        email={email || ''}
-        thumb={thumb || null}
-        roleList={roleList || []}
-        username={username || ''}
-        password={password || ''}
+        role={role}
+        name={name}
+        email={email}
+        thumb={thumb}
+        roleList={roleList}
+        username={username}
+        password={password}
         submitting={submitting}
         messageError={messageError}
-        setRole={setRole}
+        setRole={handleChangeRole}
         handleRemoveThumb={handleRemoveThumb}
         handleInputChange={handleInputChange}
         handlePreviewThumb={handlePreviewThumb}
         handleGeneratePassword={handleGeneratePassword}
         setIsDisableSubmit={setIsDisableSubmit}
+        isEditAllowed={isCreatedAllowed}
+        confirmedPassword={confirmedPassword}
       />
     </div>
   )

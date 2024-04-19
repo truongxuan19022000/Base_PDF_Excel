@@ -14,6 +14,11 @@
       width: 429px;
       margin-right: 74px;
 
+      &--detail {
+        max-width: 370px;
+        margin-right: 39px;
+      }
+
       &:last-child {
         margin-right: 0;
       }
@@ -46,6 +51,10 @@
       margin-bottom: 6px;
       border: 0.5px solid $color_black2;
 
+      &--detail {
+        max-width: 370px;
+      }
+
       &::placeholder {
         color: rgba(0, 0, 0, 0.25);
       }
@@ -58,16 +67,25 @@
         width: 932px;
       }
 
+      &--detailAddress {
+        max-width: 780px;
+      }
+
       &:disabled {
         background-color: #f4f4f4;
         color: black;
       }
     }
 
+    &__phoneCode {
+      height: 100%;
+      width: 88px;
+      padding-right: 15px;
+    }
+
     &__phone {
       width: 429px;
       height: 40px;
-      padding-left: 10px;
       font-size: 16px;
       font-weight: 400;
       border-radius: 6px;
@@ -76,22 +94,8 @@
       align-items: center;
       border: 0.5px solid $color_black2;
 
-      select {
-        height: 100%;
-        width: 55px;
-        cursor: pointer;
-
-        &:disabled {
-          color: black;
-        }
-      }
-
-      .box__divider {
-        width: 1px;
-        height: 25px;
-        margin-left: 15px;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1;
+      &--detail {
+        max-width: 370px;
       }
 
       input {
@@ -111,6 +115,10 @@
         }
       }
 
+      &--showList {
+        border-radius: 6px 6px 6px 0;
+      }
+
       &--error {
         border: 0.5px solid $color_red;
       }
@@ -128,6 +136,13 @@
           background-color: #f4f4f4;
         }
       }
+    }
+
+    &__divider {
+      width: 1px;
+      height: 25px;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1;
     }
 
     &__message {

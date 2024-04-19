@@ -16,8 +16,16 @@
     border-radius: 6px 6px 0 0;
   }
 
+  &--lightBorder {
+    border: 0.5px solid #bfbfbf;
+  }
+
   &--error {
     border: 0.5px solid red;
+  }
+
+  &--disabled {
+    background-color: #f4f4f4;
   }
 
   &__label {
@@ -44,7 +52,6 @@
   &__action {
     font-size: 16px;
     font-weight: 400;
-    text-transform: capitalize;
     color: $color_black99;
     user-select: none;
 
@@ -55,7 +62,6 @@
 
     &--input {
       width: 100%;
-      text-transform: capitalize;
     }
 
     &--spinner {
@@ -98,6 +104,10 @@
       font-size: 14px;
       margin-top: 5px;
     }
+
+    &--lightBorder {
+      border: 0.5px solid #bfbfbf;
+    }
   }
 
   &__listWrapper {
@@ -115,7 +125,6 @@
     align-items: center;
     padding: 5px 0 5px 15px;
     color: #000000;
-    text-transform: capitalize;
     user-select: none;
     cursor: pointer;
 

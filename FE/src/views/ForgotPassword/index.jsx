@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux'
 import { useUserSlice } from 'src/slices/user'
 import { validateEmail } from 'src/helper/validation'
 
+import Loading from 'src/components/Loading'
 import LoginLogo from 'src/components/LoginLogo'
 import SubmitButton from 'src/components/SubmitButton'
 import InputForm from 'src/components/InputForm/InputForm'
@@ -29,7 +30,7 @@ const ForgotPassword = () => {
 
   const onError = (data) => {
     setMessage(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -46,16 +47,15 @@ const ForgotPassword = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const data = { email }
-    const errors = validateEmail(data)
     const isErrorExist = !!(errorEmail?.length > 0 || !!message?.length > 0)
     if (isDisableSubmit || isErrorExist) {
       return
     }
 
+    const data = { email }
+    const errors = validateEmail(data)
     if (Object.keys(errors).length > 0 && errors?.email?.length > 0) {
       setErrorEmail(errors?.email)
-      setIsDisableSubmit(true)
     } else {
       dispatch(actions.forgotPassword({ email, onSuccess, onError }))
       setIsDisableSubmit(true)
@@ -73,14 +73,17 @@ const ForgotPassword = () => {
     <div className="wrapper">
       <div className="forgotPassword">
         <form className="forgotPassword__form" onSubmit={(e) => handleSubmit(e)}>
+          {isDisableSubmit &&
+            <div className="forgotPassword__loading">
+              <Loading />
+            </div>
+          }
           <LoginLogo width={177} height={177} />
           <div className="forgotPassword__headline">Forget your password?</div>
           {isSendMailSuccess ? (
-            <>
-              <SuccessfullyEmailNotification
-                handleResendEmail={(e) => handleResendEmail(e)}
-              />
-            </>
+            <SuccessfullyEmailNotification
+              handleResendEmail={(e) => handleResendEmail(e)}
+            />
           ) : (
             <>
               <div className="forgotPassword__content">

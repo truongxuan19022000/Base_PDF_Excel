@@ -2,18 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 
+import { alertActions } from 'src/slices/alert'
 import { useMaterialSlice } from 'src/slices/material'
-import { validateFilterRequest } from 'src/helper/validation'
-import { ACTIONS, FILTER, INVENTORY, MESSAGE, PAGINATION } from 'src/constants/config'
-import { downloadCSVFromCSVString, extractSecondNameInURL, formatCurrency, isEmptyObject, normalizeString } from 'src/helper/helper'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
+import { ACTIONS, ALERT, FILTER, INVENTORY, MATERIAL, MESSAGE, PAGINATION, PERMISSION } from 'src/constants/config'
+import { formatCurrency, normalizeString } from 'src/helper/helper'
 
+import UploadCSVModal from './UploadCSVModal'
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
 import TableAction from 'src/components/TableAction'
 import FilterModal from 'src/components/FilterModal'
 import TableButtons from 'src/components/TableButtons'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
-import ActionMessageForm from 'src/components/ActionMessageForm'
 
 const Materials = () => {
   const { actions } = useMaterialSlice()
@@ -21,16 +22,10 @@ const Materials = () => {
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const currentURL = history.location.pathname
+  const { list, fetched } = useSelector(state => state.material)
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const list = useSelector(state => state.material.list)
-  const fetched = useSelector(state => state.material.fetched)
-  const csvData = useSelector(state => state.material.csvData)
-
-
-  const [message, setMessage] = useState({})
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [messageError, setMessageError] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -47,21 +42,43 @@ const Materials = () => {
   const [selectedInventoryAction, setSelectedInventoryAction] = useState({});
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([]);
+  const [isShowUploadCSVModal, setIsShowUploadCSVModal] = useState(false);
 
   const onSuccess = () => {
     setMessageError({})
     setSubmitting(false)
     setIsDisableSubmit(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = list.current_page === list.last_page
+    const hasNoItem = list.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
     }
+    const params = {
+      page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+      search: normalizeString(searchText),
+      category: selectedFieldFilter,
+      profile: selectedProfileFilter,
+      onError,
+    }
+    dispatch(actions.getCustomerList(params))
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -71,14 +88,20 @@ const Materials = () => {
   }, [fetched])
 
   useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    return () => {
+      dispatch(actions.resetFetchedList())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list.total || 0)
     }
   }, [list])
 
   useEffect(() => {
-    if (messageError && Object.keys(messageError)?.length > 0) {
+    if (messageError && Object.keys(messageError).length > 0) {
       const timer = setTimeout(() => setMessageError({}), 3000);
       return () => clearTimeout(timer);
     }
@@ -93,19 +116,19 @@ const Materials = () => {
   }, [messageError])
 
   useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [message])
-
-  useEffect(() => {
     if (!isFiltering) {
       setSubmitting(false)
       setMessageError(null)
       setIsDisableSubmit(false)
     }
-  }, [isFiltering, selectedFieldFilter, selectedProfileFilter])
+  }, [isFiltering])
+
+  useEffect(() => {
+    if (!isShowUploadCSVModal) {
+      setMessageError({})
+      setSelectedInventoryAction({})
+    }
+  }, [isShowUploadCSVModal])
 
   useEffect(() => {
     if (selectedIds?.length === list.data?.length && list.data?.length > 0) {
@@ -116,31 +139,24 @@ const Materials = () => {
   }, [selectedIds, list.data])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
     setSubmitting(false)
     setMessageError(null)
     setIsDisableSubmit(false)
   }, [isInputChanged, isShowFilterModal])
 
   useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      downloadCSVFromCSVString(csvData, extractSecondNameInURL(currentURL))
-      setSubmitting(false)
-      dispatch(actions.clearCSVData())
-    }
-  }, [submitting, csvData, currentURL])
-
-  useEffect(() => {
-    if (!isEmptyObject(selectedInventoryAction)) {
-      history.push(`/inventory/materials/create/?category=${selectedInventoryAction.url}`)
-    }
-  }, [selectedInventoryAction])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowFilterModal(false);
+        setIsShowUploadCSVModal(false);
+        setIsShowConfirmDeleteModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -163,7 +179,7 @@ const Materials = () => {
     setSelectedIds([])
     const params = {
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
     if (selectedFieldFilter?.length > 0) {
       params.category = selectedFieldFilter;
@@ -179,7 +195,21 @@ const Materials = () => {
   }
 
   const handleSearch = () => {
-    handleFilterSearchApply(normalizeString(searchText))
+    if (isDisableSubmit) return;
+    const params = {
+      page: PAGINATION.START_PAGE,
+      search: normalizeString(searchText),
+    };
+
+    if (selectedFieldFilter?.length > 0) {
+      params.category = selectedFieldFilter;
+    };
+
+    if (selectedProfileFilter?.length > 0) {
+      params.profile = selectedProfileFilter;
+    };
+
+    dispatch(actions.getMaterialList({ ...params, onError, onSuccess }));
     setSelectedIds([])
   }
 
@@ -224,22 +254,19 @@ const Materials = () => {
     const errors = validateFilterRequest(params);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
-      dispatch(actions.getMaterialList({ ...params, onSuccess, onError, }));
+      dispatch(actions.getMaterialList({ ...params, onError, onSuccess }));
       if (params.category?.length > 0 || params.profile?.length > 0) {
         setIsFiltering(true)
       }
       setSelectedIds([]);
       setSubmitting(true);
       setMessageError('');
-      setIsDisableSubmit(true);
       setIsShowFilterModal(false);
     }
   }
 
   const handleClickResetFilter = () => {
-    setSearchText('')
     setSelectedIds([])
     setIsFiltering(false)
     setSelectedFieldFilter([])
@@ -248,86 +275,140 @@ const Materials = () => {
     setCurrentPageNumber(PAGINATION.START_PAGE)
     dispatch(actions.getMaterialList({
       page: PAGINATION.START_PAGE,
-      onSuccess, onError,
+      search: normalizeString(searchText),
+      onError,
     }));
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const handleClickDelete = (data) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.MATERIAL, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      const isUsed = data.product_item_use !== INVENTORY.UN_USED_VALUE;
+      const isInTemplate = data.product_template_use !== INVENTORY.UN_USED_VALUE;
+
+      if (isUsed) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MATERIAL.MESSAGE_ERROR.QUOTATION_USED,
+        }))
+      } else if (isInTemplate) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MATERIAL.MESSAGE_ERROR.TEMPLATE_USED,
+        }))
+      } else {
+        setSelectedDeleteIds([data.id])
+        setIsShowConfirmDeleteModal(true)
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatchAlertWithPermissionDenied()
     }
-    setIsShowConfirmDeleteModal(true);
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    if (deleteInfo.deleteIds.length === 0) {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-    }
-    const isLastItem = (list.data?.length === 1)
-    const isSelectAllItemOfLastPage = (isSelectedAll && list.current_page === list.last_page)
-    const isOutOfItemInPage = isLastItem || isSelectAllItemOfLastPage
-    let tempoPageNumber = null;
-    if ((list.last_page > PAGINATION.START_PAGE) && isOutOfItemInPage) {
-      tempoPageNumber = list.current_page - 1
+  const handleAcceptedDelete = () => {
+    if (isDisableSubmit) return;
+    if (selectedDeleteIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        isHovered: false,
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }))
     } else {
-      tempoPageNumber = PAGINATION.START_PAGE
-    }
-    const data = {
-      page: +tempoPageNumber,
-      material_ids: deleteInfo?.deleteIds || [],
-    };
-    if (selectedFieldFilter?.length > 0) {
-      data.category = selectedFieldFilter;
-    };
-    if (selectedProfileFilter?.length > 0) {
-      data.profile = selectedProfileFilter;
-    };
-    if (searchText?.length > 0) {
-      data.search = normalizeString(searchText);
-    };
-    setSubmitting(true)
-    setMessageError({})
-    setIsDisableSubmit(true)
-    setIsShowConfirmDeleteModal(false)
-    dispatch(actions.multiDeleteMaterial({ ...data, onSuccess, onError }));
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      setSelectedIds([])
-    }
-    if (deleteInfo?.deleteIds) {
-      setSelectedIds(selectedIds?.filter(id => !data.material_ids?.includes(id)))
+      dispatch(actions.multiDeleteMaterial({
+        material_ids: selectedDeleteIds,
+        onDeleteSuccess,
+        onError
+      }));
+      setIsShowConfirmDeleteModal(false)
+      setIsDisableSubmit(true)
+      setMessageError({})
+      setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
     }
   }
+
+  const handleCheckHasNoUsedMaterial = (id, data) => {
+    const item = data.find(item => item.id === id);
+    return item && +item.is_copied === INVENTORY.UN_USED_VALUE;
+  };
+
+  const handleCheckHasNotSelectedMaterial = (id, data) => {
+    const item = data.find(item => item.id === id);
+    return item && +item.status === INVENTORY.UN_USED_VALUE;
+  };
+
+  const getDescription = (isUsed, isSelected, length) => {
+    if (isUsed) {
+      return length > 1 ?
+        MATERIAL.MESSAGE_ERROR.INCLUDE_USED_ITEM : MATERIAL.MESSAGE_ERROR.QUOTATION_USED;
+    } else if (!isSelected) {
+      return length > 1 ? MATERIAL.MESSAGE_ERROR.TEMPLATE_USED : MATERIAL.MESSAGE_ERROR.QUOTATION_USED;
+    }
+  };
+
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
 
   const handleClickApply = (actionType) => {
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportMaterialCSV({
-        search: normalizeString(searchText),
-        category: selectedFieldFilter || '',
-        profile: selectedProfileFilter || [],
-        material_id: selectedIds || [],
-        onError
+    if (!actionType) return;
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.MATERIAL, PERMISSION.ACTION.DELETE)
+
+        if (isAllowed) {
+          const hasNoUsed = selectedIds.every(id => handleCheckHasNoUsedMaterial(id, list.data));
+          const hasNotSelected = selectedIds.every(id => handleCheckHasNotSelectedMaterial(id, list.data));
+
+          if (hasNoUsed && hasNotSelected) {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(true)
+          } else {
+            const description = getDescription(!hasNoUsed, !hasNotSelected, selectedIds.length);
+
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: description,
+            }));
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportMaterialCSV({
+          material_ids: selectedIds,
+          onError
+        }))
+        setSelectedItem({})
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
       }))
-      setSubmitting(true)
-      setSelectedItem({})
+    }
+  }
+
+  const handleSelectInventoryAction = (data) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.MATERIAL, PERMISSION.ACTION.CREATE)
+    if (isAllowed) {
+      if (data.value === MATERIAL.UPLOAD_FILE_VALUE) {
+        setIsShowUploadCSVModal(true)
+        setSelectedInventoryAction(data)
+      } else {
+        history.push(`/inventory/materials/create/?category=${data.url}`)
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
@@ -348,7 +429,7 @@ const Materials = () => {
 
   const renderTableList = () => {
     return list.data?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       const profileName = INVENTORY.PROFILES[data.profile]?.label
       const priceUnit = INVENTORY.PRICE_UNIT[data.price_unit]?.label
       return (
@@ -392,7 +473,7 @@ const Materials = () => {
                 isShowDelete={true}
                 isInventory={true}
                 clickEdit={goToEditPage}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleClickDelete(data)}
               />
             </div>
           </td>
@@ -403,14 +484,6 @@ const Materials = () => {
 
   return (
     <div className="material">
-      {!isEmptyObject(message) &&
-        <div className="material__message">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <TableAction
         isInventorySite={true}
         searchText={searchText}
@@ -425,8 +498,9 @@ const Materials = () => {
         setSearchText={setSearchText}
         onClickApply={handleClickApply}
         setIsShowFilterModal={setIsShowFilterModal}
-        setSelectedInventoryAction={setSelectedInventoryAction}
+        setSelectedInventoryAction={handleSelectInventoryAction}
         tableUnit="item"
+        permissionKey={PERMISSION.KEY.MATERIAL}
       />
       <div className="material__table">
         <table className="materialTable">
@@ -464,7 +538,7 @@ const Materials = () => {
           deleteTitle="item"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleAcceptedDelete}
         />
       )}
       {isShowFilterModal && (
@@ -485,6 +559,11 @@ const Materials = () => {
           onClickCancel={handleClickCancelFilterModal}
         />
       )}
+      {isShowUploadCSVModal &&
+        <UploadCSVModal
+          closeModal={() => setIsShowUploadCSVModal(false)}
+        />
+      }
     </div>
   )
 }

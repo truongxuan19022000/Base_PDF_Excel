@@ -171,6 +171,18 @@ div {
   }
 }
 
+@keyframes fadeOutRight {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+}
+
 @keyframes fadeInLeft {
   0% {
     opacity: 0;
@@ -242,8 +254,13 @@ select:disabled {
   background-color: #fff;
 }
 
+button:focus {
+  outline: none;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {

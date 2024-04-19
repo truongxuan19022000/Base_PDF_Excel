@@ -1,0 +1,16 @@
+import { sendDelete, sendGet, sendPost } from './index'
+
+export const createClaim = (params) => sendPost('admin/claims/create', params)
+export const createClaimCopy = (params) => sendPost('admin/claims/copy', params)
+export const getClaimsList = (params) => sendGet('admin/claims', params)
+export const deleteClaim = (params) => sendDelete('admin/claims/delete', params)
+export const deleteMultiClaim = (params) => sendPost('admin/claims/multi-delete', params)
+export const getExportClaimsCSV = (params) => sendGet('admin/claims/export', params)
+export const getClaimDetail = (id) => sendGet(`admin/claims/${id}/detail`)
+export const getClaimTabInfo = (id) => sendGet(`admin/claims/${id}/detail/quotations`)
+export const getClaimRevenue = (params) => sendGet('admin/claims/total-revenue', params)
+export const updateClaimProgress = (params) => sendPost('admin/claims/update-claim-progress', params)
+export const downloadClaimPDF = (params) => sendGet('admin/claims/export-pdf', params)
+export const updateClaimDetail = (params) => sendPost('admin/claims/update', params)
+export const updateTax = (param) => sendPost('admin/claims/update-tax', param)
+export const getTotalAmountClaim = (params) => sendGet('admin/claims/total-amount', params)

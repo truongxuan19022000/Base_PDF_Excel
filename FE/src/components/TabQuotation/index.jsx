@@ -1,55 +1,53 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 
-import { isSimilarObject } from 'src/helper/helper'
-import { MESSAGE, QUOTATION } from 'src/constants/config'
-import { validateCreateQuotationSection } from 'src/helper/validation'
-import { useQuotationSectionSlice } from 'src/slices/quotationSection'
+import { alertActions } from 'src/slices/alert'
+import { ALERT, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config'
+import { isEmptyObject, isSimilarObject } from 'src/helper/helper'
+import { validateCreateQuotationSection, validatePermission } from 'src/helper/validation'
+import { quotationSectionActions, useQuotationSectionSlice } from 'src/slices/quotationSection'
 import { QuotationSectionDraggableItem } from '../QuotationSectionDraggableItem'
 
+import AddProductItem from '../AddProductItem'
 import AddSectionModal from '../AddSectionModal'
+import QuotationBottom from '../QuotationBottom'
 import CreateProductModal from '../CreateProductModal'
 import ConfirmDeleteModal from '../ConfirmDeleteModal'
 import CreateProductItemModal from '../CreateProductItemModal'
-import QuotationBottom from '../QuotationBottom'
-
-const bottomBarDataTemp = {
-  quotation: 17288.30,
-  otherFees: 17288.30,
-  total: 17288.30,
-  estimatedCost: 17288.30,
-  discount: 0,
-  discountAmount: null,
-  discountType: null,
-  gst: 0,
-}
+import EditProductItem from '../AddProductItem/EditProductItem'
 
 const TabQuotation = ({
   id,
   sections = [],
   productData = [],
   materialData = [],
-  setMessage,
+  isEditable = false,
 }) => {
   const { actions } = useQuotationSectionSlice()
 
   const dispatch = useDispatch()
+
+  const selectedDeletedInfo = useSelector(state => state.quotationSection.selectedDeletedInfo)
+  const selectedEditProduct = useSelector(state => state.quotationSection.selectedProduct)
+  const selectedEditSection = useSelector(state => state.quotationSection.selectedSection)
+  const selectedEditProductItem = useSelector(state => state.quotationSection.selectedProductItem)
+  const permissionData = useSelector(state => state.user.permissionData)
+  const { fetched } = useSelector(state => state.quotationSection)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
 
   const [sectionList, setSectionList] = useState([])
   const [isShowAddSectionModal, setIsShowAddSectionModal] = useState(false)
   const [isShowCreateProductModal, setIsShowCreateProductModal] = useState(false)
   const [isShowCreateProductItemModal, setIsShowCreateProductItemModal] = useState(false)
 
-  const [discount, setDiscount] = useState(0)
-  const [taxAmount, setTaxAmount] = useState(0)
   const [sectionName, setSectionName] = useState('')
   const [messageError, setMessageError] = useState({})
-  const [subTotalAmount, setSubTotalAmount] = useState(17288)
-  const [grandTotalAmount, setGrandTotalAmount] = useState(0)
   const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
-  const [isShowEditDiscount, setIsShowEditDiscount] = useState(false)
-  const [selectedDeleteSectionId, setSelectedDeleteSectionId] = useState(null)
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
 
   const [materialType, setMaterialType] = useState(null);
@@ -59,31 +57,43 @@ const TabQuotation = ({
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [originalSectionOrders, setOriginalSectionOrders] = useState([]);
-  const [bottomBarData, setBottomBarData] = useState(bottomBarDataTemp);
-  const [searchData, setSearchData] = useState([])
+  const [searchData, setSearchData] = useState([]);
+  const [isShowAddProductModal, setIsShowAddProductModal] = useState(false)
+  const [isShowEditProductModal, setIsShowEditProductModal] = useState(false)
 
   const onSuccess = () => {
     setMessageError({})
-    setIsDisableSubmit(true)
-    setMessage({ success: MESSAGE.SUCCESS.ACTION })
+    setIsDisableSubmit(false)
+  }
+
+  const onCreateSuccess = (newId) => {
+    setMessageError({})
+    setIsDisableSubmit(false)
+    setShowSectionIds([...showSectionIds, newId])
   }
 
   const onError = () => {
-    setMessage({ failed: MESSAGE.ERROR.DEFAULT })
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
-    if (sections?.length > 0) {
-      setSectionList(sections)
+    if (id && !fetched) {
+      dispatch(quotationSectionActions.getQuotationSectionList({ quotation_id: +id }))
+    }
+  }, [id, fetched])
+
+  useEffect(() => {
+    if (sections) {
+      setSectionList(sections);
       const originalList = [...sections].map((section, index) => ({
         id: section.id,
         section_name: section.section_name,
         order_number: index + 1
       }));
-      setOriginalSectionOrders(originalList)
+      setOriginalSectionOrders(originalList);
+      setShowSectionIds([...sections].map(s => s.id))
     }
-  }, [sections])
+  }, [sections]);
 
   useEffect(() => {
     if (materialType === QUOTATION.MATERIAL_VALUE.PRODUCT) {
@@ -99,14 +109,8 @@ const TabQuotation = ({
   }, [isInputChanged, isShowAddSectionModal])
 
   useEffect(() => {
-    setIsShowConfirmDeleteModal(selectedDeleteSectionId)
-  }, [selectedDeleteSectionId])
-
-  useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setSelectedDeleteSectionId(null)
-    }
-  }, [isShowConfirmDeleteModal])
+    setIsShowConfirmDeleteModal(!isEmptyObject(selectedDeletedInfo))
+  }, [selectedDeletedInfo])
 
   useEffect(() => {
     if (!isShowCreateProductModal && !isShowCreateProductItemModal) {
@@ -121,12 +125,26 @@ const TabQuotation = ({
   }, [isShowCreateProductItemModal])
 
   useEffect(() => {
+    if (!isEmptyObject(selectedEditProductItem)) {
+      setMaterialType(selectedEditProductItem.type)
+    }
+  }, [selectedEditProductItem])
+
+  useEffect(() => {
+    if (!isEmptyObject(selectedEditSection)) {
+      setSectionName(selectedEditSection.section_name)
+    }
+  }, [selectedEditSection])
+
+  useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' || event.key === 'Esc') {
         setIsShowAddSectionModal(false);
         setIsShowConfirmDeleteModal(false);
         setIsShowCreateProductModal(false);
         setIsShowCreateProductItemModal(false);
+        setIsShowEditProductModal(false)
+        setIsShowAddProductModal(false)
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -135,19 +153,13 @@ const TabQuotation = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (subTotalAmount !== 0) {
-      setTaxAmount(subTotalAmount * QUOTATION.TAX_GST_PERCENTAGE)
-    }
-  }, [subTotalAmount]);
-
-  useEffect(() => {
-    if (discount > subTotalAmount) {
-      setDiscount(subTotalAmount);
-    }
-    const totalAmount = subTotalAmount - discount + taxAmount
-    setGrandTotalAmount(totalAmount);
-  }, [discount, taxAmount, subTotalAmount]);
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
 
   const moveSection = (fromIndex, toIndex) => {
     const updatedSectionData = [...sectionList];
@@ -157,26 +169,32 @@ const TabQuotation = ({
   };
 
   const handleDragAndDropSection = () => {
-    const updatedSectionListOrder = [...sectionList].map((section, index) => ({
-      id: section.id,
-      section_name: section.section_name,
-      order_number: index + 1
-    }));
-    if (id && !isSimilarObject(originalSectionOrders, updatedSectionListOrder)) {
-      dispatch(actions.handleDragAndDropSection({
-        quotation_id: +id,
-        update: updatedSectionListOrder,
-        create: [],
-        delete: [],
-        onSuccess,
-        onError,
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      const updatedSectionListOrder = [...sectionList].map((section, index) => ({
+        id: section.id,
+        section_name: section.section_name,
+        order_number: index + 1
       }));
+      if (id && !isSimilarObject(originalSectionOrders, updatedSectionListOrder)) {
+        dispatch(actions.handleDragAndDropSection({
+          quotation_id: +id,
+          update: updatedSectionListOrder,
+          create: [],
+          delete: [],
+          sections: sectionList,
+          onSuccess,
+          onError,
+        }));
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleInputChange = (field, value) => {
+    if (!isEditable) return;
     const fieldSetters = {
-      discount: setDiscount,
       section_name: setSectionName,
     };
     const setter = fieldSetters[field];
@@ -187,58 +205,179 @@ const TabQuotation = ({
   }
 
   const handleAddNewSection = () => {
-    if (isDisableSubmit && !id) return;
-    const data = {
-      quotation_id: +id,
-      section_name: sectionName,
-      order_number: sectionList.length + 1,
-    }
-    const errors = validateCreateQuotationSection(data);
-    if (Object.keys(errors).length > 0) {
-      setMessageError(errors);
+    if (isEditAllowed) {
+      if ((isDisableSubmit && !id) || !isEditable) return;
+      const data = {
+        quotation_id: +id,
+        section_name: sectionName,
+        order_number: sectionList.length + 1,
+      }
+      const errors = validateCreateQuotationSection(data);
+      if (Object.keys(errors).length > 0) {
+        setMessageError(errors);
+      } else {
+        dispatch(actions.createQuotationSection({ ...data, onCreateSuccess, onError }));
+        setSectionName('')
+        setIsDisableSubmit(true);
+        setIsShowAddSectionModal(false);
+      }
     } else {
-      dispatch(actions.createQuotationSection({ ...data, onSuccess, onError }));
-      setSectionName('')
-      setIsDisableSubmit(true);
-      setIsShowAddSectionModal(false);
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleEditSection = () => {
+    if (isEditAllowed) {
+      if (!isEditable || (isDisableSubmit && !id && isEmptyObject(selectedEditSection))) return;
+      const data = {
+        quotation_section_id: selectedEditSection?.id,
+        quotation_id: +id,
+        section_name: sectionName,
+        order_number: +selectedEditSection.order_number,
+      }
+      const errors = validateCreateQuotationSection(data);
+      if (Object.keys(errors).length > 0) {
+        setMessageError(errors);
+      } else {
+        dispatch(actions.editQuotationSection({ ...data, onSuccess, onError }));
+        setIsDisableSubmit(true);
+        setIsShowAddSectionModal(false);
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleClickApply = (isEditMode) => {
+    if (!isEditable) return;
+    isEditMode ? handleEditSection() : handleAddNewSection()
+  }
+
+  const handleCloseSectionModal = () => {
+    if (!isEditable) return;
+    setIsShowAddSectionModal(false)
+    dispatch(actions.clearSelectedSection())
+  }
+
+  const handleClickDelete = (deleteType) => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      switch (deleteType) {
+        case QUOTATION.LABEL.SECTION:
+          handleDeleteQuotationSection()
+          break;
+        case QUOTATION.LABEL.PRODUCT:
+          handleDeleteSectionProduct()
+          break;
+        case QUOTATION.LABEL.PRODUCT_ITEM:
+          handleDeleteProductItem()
+          break;
+        case QUOTATION.LABEL.ITEM:
+          handleDeleteItemMaterial()
+          break;
+        default:
+          break;
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleDeleteQuotationSection = () => {
-    if (selectedDeleteSectionId && id) {
-      dispatch(actions.deleteQuotationSection({
-        quotation_id: +id,
-        create: [],
-        update: [],
-        delete: [+selectedDeleteSectionId],
-        onSuccess, onError
-      }));
-      setIsShowConfirmDeleteModal(false)
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (!isEmptyObject(selectedDeletedInfo) && id) {
+        dispatch(actions.deleteQuotationSection({
+          data: { ...selectedDeletedInfo, quotation_id: +id }, onSuccess, onError
+        }));
+        dispatch(actions.clearSelectedDeleteInfo())
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleDeleteSectionProduct = () => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (!isEmptyObject(selectedDeletedInfo) && id) {
+        dispatch(actions.deleteSectionProduct({
+          data: { ...selectedDeletedInfo, quotation_id: +id }, onSuccess, onError
+        }));
+        dispatch(actions.clearSelectedDeleteInfo())
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleDeleteProductItem = () => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (!isEmptyObject(selectedDeletedInfo) && id) {
+        dispatch(actions.deleteProductItem({
+          data: { ...selectedDeletedInfo, quotation_id: +id }, onSuccess, onError
+        }));
+        dispatch(actions.clearSelectedDeleteInfo())
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleDeleteItemMaterial = () => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (!isEmptyObject(selectedDeletedInfo) && id) {
+        const { type, ...restOfInfo } = selectedDeletedInfo;
+        dispatch(actions.deleteItemMaterial({
+          ...restOfInfo, quotation_id: +id, onSuccess, onError,
+        }));
+        dispatch(actions.clearSelectedDeleteInfo())
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleShowCreateNewProductModal = (sectionId) => {
-    setSelectedSectionId(sectionId)
-    setIsShowCreateProductModal(true)
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      setSelectedSectionId(sectionId)
+      setIsShowCreateProductModal(true)
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleCloseProductModal = () => {
+    if (!isEditable) return;
+    setIsShowCreateProductModal(false)
+    dispatch(quotationSectionActions.clearSelectedProduct())
   }
 
   const handleShowCreateNewProductMaterialModal = (productId, type, sectionId, materialHeight, materialWidth) => {
-    setMaterialType(type)
-    setSelectedProductId(productId)
-    setSelectedSectionId(sectionId)
-    setMaterialHeight(materialHeight)
-    setMaterialWidth(materialWidth)
-    setIsShowCreateProductItemModal(true)
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      setMaterialType(type)
+      setSelectedProductId(productId)
+      setSelectedSectionId(sectionId)
+      setMaterialHeight(materialHeight)
+      setMaterialWidth(materialWidth)
+      setIsShowCreateProductItemModal(true)
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
   }
 
-  const handleApply = useCallback((values) => {
-    setBottomBarData({
-      ...bottomBarData,
-      discount: values.discount,
-      discountType: values.discountType,
-      discountAmount: values.discountAmount,
-    })
-  }, [bottomBarData])
+  const handleShowAddSectionModal = () => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      setIsShowAddSectionModal(true)
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
 
   const nextProductNumber = useMemo(() => {
     const selectedSection = sectionList.find(s => s.id === selectedSectionId);
@@ -258,38 +397,48 @@ const TabQuotation = ({
                   key={section.id}
                   sectionInfo={section}
                   showSectionIds={showSectionIds}
-                  setMessage={setMessage}
+                  isEditable={isEditable}
                   moveSection={moveSection}
                   setShowSectionIds={setShowSectionIds}
                   handleDragAndDropSection={handleDragAndDropSection}
-                  setSelectedDeleteSectionId={setSelectedDeleteSectionId}
+                  setIsShowAddSectionModal={setIsShowAddSectionModal}
+                  setIsShowAddProductModal={setIsShowAddProductModal}
+                  setIsShowEditProductModal={setIsShowEditProductModal}
                   showCreateProductModal={handleShowCreateNewProductModal}
+                  setIsShowCreateProductModal={setIsShowCreateProductModal}
+                  setIsShowCreateProductItemModal={setIsShowCreateProductItemModal}
                   showCreateProductItemModal={handleShowCreateNewProductMaterialModal}
                 />
               ))}
             </div>
           </div>
           <div className="tabQuotation__action">
-            <div className="tabQuotation__button" onClick={() => setIsShowAddSectionModal(true)}>
+            <div
+              className="tabQuotation__button"
+              onClick={handleShowAddSectionModal}
+            >
               + Add Section
             </div>
           </div>
         </div>
         <div className="tabQuotation__footerBar">
-          <QuotationBottom />
+          <QuotationBottom
+            isEditable={isEditable}
+          />
         </div>
       </div>
       {isShowCreateProductModal &&
         <CreateProductModal
-          setMessage={setMessage}
+          id={id}
           selectedSectionId={selectedSectionId}
           nextOrderNumber={sectionList.length + 1}
-          closeModal={() => setIsShowCreateProductModal(false)}
+          selectedEditProduct={selectedEditProduct}
+          closeModal={handleCloseProductModal}
         />
       }
       {isShowCreateProductItemModal &&
         <CreateProductItemModal
-          setMessage={setMessage}
+          id={id}
           searchData={searchData}
           materialType={materialType}
           sectionId={selectedSectionId}
@@ -297,6 +446,7 @@ const TabQuotation = ({
           materialHeight={materialHeight}
           nextOrderNumber={nextProductNumber}
           selectedProductId={selectedProductId}
+          selectedEditProductItem={selectedEditProductItem}
           closeModal={() => setIsShowCreateProductItemModal(false)}
         />
       }
@@ -304,20 +454,33 @@ const TabQuotation = ({
         <AddSectionModal
           sectionName={sectionName}
           isDisableSubmit={isDisableSubmit}
+          selectedEditSection={selectedEditSection}
           messageError={messageError?.section_name}
-          onClickApply={handleAddNewSection}
+          onClickApply={handleClickApply}
           handleInputChange={handleInputChange}
-          onClickCancel={() => setIsShowAddSectionModal(false)}
+          onClickCancel={handleCloseSectionModal}
         />
       }
       {isShowConfirmDeleteModal && (
         <ConfirmDeleteModal
-          deleteTitle="section"
           isShow={isShowConfirmDeleteModal}
+          deleteTitle={selectedDeletedInfo?.type}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={handleDeleteQuotationSection}
+          onClickDelete={() => handleClickDelete(selectedDeletedInfo?.type)}
         />
       )}
+      {isShowAddProductModal &&
+        <AddProductItem
+          id={id}
+          setIsShowModal={setIsShowAddProductModal}
+        />
+      }
+      {isShowEditProductModal &&
+        <EditProductItem
+          id={id}
+          setIsShowModal={setIsShowEditProductModal}
+        />
+      }
     </div>
   )
 }

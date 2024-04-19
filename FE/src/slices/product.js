@@ -38,6 +38,7 @@ const slice = createSlice({
         }
         state.list.data.unshift(action.payload);
         state.list.total++
+        state.allFetched = false;
       }
     },
     multiDeleteProduct() { },
@@ -47,6 +48,7 @@ const slice = createSlice({
         state.list.total = state.list.total - action.payload?.length
       }
       state.fetched = false;
+      state.allFetched = false;
     },
     getProductDetail(state, action) {
     },
@@ -64,6 +66,7 @@ const slice = createSlice({
             item.id === payload.id ? payload : item
           );
         }
+        state.allFetched = false;
       }
     },
     getAllProductList() { },
@@ -73,6 +76,9 @@ const slice = createSlice({
         state.allFetched = true;
       }
     },
+    resetFetchedList(state) {
+      state.fetched = false;
+    }
   },
 })
 

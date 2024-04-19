@@ -6,9 +6,11 @@ import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper'
 const InventorySelectForm = ({
   data,
   isDetail = false,
+  borderLight = false,
   selectedItem = {},
   setSelectedItem,
   keyValue = '',
+  className = '',
   messageError = {},
   setMessageError,
   displayProperties = 'label',
@@ -26,7 +28,7 @@ const InventorySelectForm = ({
   }
 
   return (
-    <div className={`inventorySelectForm${isShowItemList ? ' inventorySelectForm--active' : ''}${isDetail ? ' inventorySelectForm--detail' : ''}${messageError?.[keyValue] ? ' inventorySelectForm--error' : ''}`}>
+    <div className={`inventorySelectForm${borderLight ? ' inventorySelectForm--light' : ''}${isShowItemList ? ' inventorySelectForm--active' : ''}${isDetail ? ' inventorySelectForm--detail' : ''}${messageError?.[keyValue] ? ' inventorySelectForm--error' : ''}`}>
       <div className="inventorySelectForm__label" onClick={() => setIsShowItemList(!isShowItemList)}>
         {!isEmptyObject(selectedItem) ? (
           <div className="inventorySelectForm__action inventorySelectForm__action--selected">{selectedItem.label}</div>
@@ -41,7 +43,7 @@ const InventorySelectForm = ({
       </div>
       {isShowItemList &&
         <ClickOutSideWrapper onClickOutside={() => setIsShowItemList(false)}>
-          <div className="inventorySelectForm__list">
+          <div className={`inventorySelectForm__list${borderLight ? ' inventorySelectForm__list--light' : ''}${className ? ` inventorySelectForm__list--${className}` : ''}`}>
             {data.map((item, index) => (
               item.value !== 0 &&
               <div

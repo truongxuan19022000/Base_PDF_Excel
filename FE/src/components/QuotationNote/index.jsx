@@ -1,74 +1,100 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { isSimilarObject } from 'src/helper/helper';
-import { MESSAGE, QUOTATION } from 'src/constants/config';
+import { ALERT, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config';
 import { useQuotationNoteSlice } from 'src/slices/quotationNote';
-import { validateHandleNoteChange } from 'src/helper/validation';
+import { validateHandleNoteChange, validatePermission } from 'src/helper/validation';
+import { alertActions } from 'src/slices/alert';
 
 import NoteDragItem from '../NoteDragItem';
 
 const QuotationNote = ({
   id,
-  notes = [],
-  setMessage,
+  originalNoteList = [],
   resetAction,
+  viewTab = '',
+  isEditable = false,
   selectedAction = '',
 }) => {
-  const { actions } = useQuotationNoteSlice();
   const dispatch = useDispatch();
+
+  const { actions } = useQuotationNoteSlice();
+  const { actions: quotationNoteActions } = useQuotationNoteSlice();
+
+  const { fetched } = useSelector(state => state.quotationNote)
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
 
   const [noteList, setNoteList] = useState([])
   const [messageError, setMessageError] = useState([])
   const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(true)
-
-  const [isChangingNoteList, setIsChangingNoteList] = useState(false);
+  const [isInfoChanged, setIsInfoChanged] = useState(false);
 
   const onSuccess = () => {
-    setMessage({ success: MESSAGE.SUCCESS.CHANGE })
-    setIsDisableSubmit(true)
-    setIsChangingNoteList(false)
+    setIsDisableSubmit(false)
+    setIsInfoChanged(false)
   }
 
   const onError = () => {
-    setIsDisableSubmit(true)
-    setMessage({ failed: MESSAGE.ERROR.DEFAULT })
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
-    if (notes.length > 0) {
-      setNoteList(notes)
+    if (id && !fetched) {
+      dispatch(quotationNoteActions.getQuotationNotes({ quotation_id: +id }))
     }
-  }, [notes])
+  }, [id, fetched])
 
   useEffect(() => {
-    if (notes.length > 0 && noteList.length > 0 && isSimilarObject(notes, noteList)) {
-      setIsChangingNoteList(false)
+    if (originalNoteList.length > 0) {
+      setNoteList(originalNoteList)
     }
-  }, [notes, noteList])
+  }, [originalNoteList])
 
   useEffect(() => {
-    if (selectedAction === 'draft') {
+    if (originalNoteList.length > 0 && noteList.length > 0 && isSimilarObject(originalNoteList, noteList)) {
+      setIsInfoChanged(false)
+    } else {
+      setIsInfoChanged(true)
+    }
+  }, [originalNoteList, noteList])
+
+  useEffect(() => {
+    if (selectedAction === QUOTATION.SAVE_AS_DRAFT && viewTab === QUOTATION.TAB_LABEL.NOTES) {
       handleNoteChange()
       resetAction()
     }
-  }, [selectedAction])
+  }, [selectedAction, viewTab])
 
   useEffect(() => {
     setIsDisableSubmit(false)
     setMessageError([])
   }, [isInputChanged])
 
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
   const handleInputChange = (e, noteId) => {
+    if (!isEditable) return;
     setNoteList(noteList.map(note =>
       note.id === noteId ? { ...note, description: e.target.value } : note
     ))
     setIsInputChanged(!isInputChanged);
-    setIsChangingNoteList(true)
   };
 
   const handleOnKeydown = (e, noteId) => {
+    if (!isEditable) return;
     const value = e.target.value
     if (value?.length === 0) return;
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -77,98 +103,124 @@ const QuotationNote = ({
         note.id === noteId ? { ...note, description: value } : note
       ))
       setIsInputChanged(!isInputChanged)
-      setIsChangingNoteList(true)
     }
   }
 
   const handleChangeType = (noteId, value) => {
-    const tempNotes = noteList.map(note =>
-      note.id === noteId ? { ...note, type: value } : note
-    )
-    setNoteList(tempNotes)
-    setIsInputChanged(!isInputChanged)
-    setIsChangingNoteList(true)
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      const tempNotes = noteList.map(note =>
+        note.id === noteId ? { ...note, type: value } : note
+      )
+      setNoteList(tempNotes)
+      setIsInputChanged(!isInputChanged)
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
   }
 
   const handleDeleteNote = useCallback((noteId) => {
-    if (noteId) {
-      setNoteList(noteList.filter(note => note.id !== noteId))
-      setIsInputChanged(!isInputChanged);
-      setIsChangingNoteList(true);
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (noteId) {
+        setNoteList(noteList.filter(note => note.id !== noteId))
+        setIsInputChanged(!isInputChanged);
+        setIsInfoChanged(true);
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
-  }, [isInputChanged, noteList, notes]);
+  }, [isInputChanged, noteList]);
 
   const handleAddNewNote = () => {
-    if (id) {
-      const nextNumber = noteList.length + 1;
-      const tempId = `new-${nextNumber}`
-      const newItem = {
-        id: tempId,
-        description: '',
-        quotation_id: +id,
-        order: nextNumber,
-        type: QUOTATION.DEFAULT_NOTE_TYPE,
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (id) {
+        const nextNumber = noteList.length + 1;
+        const tempId = `new-${nextNumber}`
+        const newItem = {
+          id: tempId,
+          description: '',
+          quotation_id: +id,
+          order: nextNumber,
+          type: QUOTATION.DEFAULT_NOTE_TYPE,
+        }
+        setNoteList([...noteList, newItem])
+        setIsInputChanged(!isInputChanged);
+        setIsInfoChanged(true)
       }
-      setNoteList([...noteList, newItem])
-      setIsInputChanged(!isInputChanged);
-      setIsChangingNoteList(true)
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleDragAndDropNote = () => {
-    if (id) {
-      const updatedNoteListOrder = [...noteList].map((note, index) => ({
-        ...note,
-        order: index + 1
-      }));
-      dispatch(actions.handleDragAndDropNote({
-        quotation_id: +id,
-        update: updatedNoteListOrder,
-        create: [],
-        delete: [],
-        onSuccess,
-        onError,
-      }));
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (id) {
+        const updatedNoteListOrder = [...noteList].map((note, index) => ({
+          ...note,
+          order: index + 1
+        }));
+        dispatch(actions.handleDragAndDropNote({
+          quotation_id: +id,
+          update: updatedNoteListOrder,
+          create: [],
+          delete: [],
+          onSuccess,
+          onError,
+        }));
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
-
-  const handleNoteChange = () => {
-    if (isDisableSubmit && !id) return;
-    const newItems = noteList
-      .filter(note => notes.every(oldItem => oldItem.id !== note.id));
-
-    const deletedIds = notes
-      .filter(oldItem => !noteList.find(note => +note.id === +oldItem.id))
-      .map(item => item.id);
-
+  const prepareData = () => {
+    const newItems = noteList.filter(note => originalNoteList.every(oldItem => oldItem.id !== note.id));
+    const deletedIds = originalNoteList.filter(oldItem => !noteList.find(note => +note.id === +oldItem.id)).map(item => item.id);
     const updatedItems = noteList.filter(note => {
-      const initialNote = notes.find(initialNote => initialNote.id === note.id);
-      return (
-        initialNote && !isSimilarObject(initialNote, note)
-      );
+      const initialNote = originalNoteList.find(initialNote => initialNote.id === note.id);
+      return (initialNote && !isSimilarObject(initialNote, note));
     });
-
-    const data = {
+    return {
       quotation_id: +id,
       create: newItems,
       delete: deletedIds,
       update: updatedItems,
     };
+  };
 
-    const errors = validateHandleNoteChange(data);
-    if (errors.length > 0) {
-      setMessageError(errors);
+  const handleNoteChange = () => {
+    if (isEditAllowed) {
+      if ((isDisableSubmit && !id) || !isEditable) return;
+      if (!isInfoChanged) {
+        resetAction()
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Action Failed',
+          isHovered: false,
+          description: MESSAGE.ERROR.INFO_NO_CHANGE,
+        }))
+        return;
+      }
+      const data = prepareData();
+      const errors = validateHandleNoteChange(data);
+      if (errors.length > 0) {
+        setMessageError(errors);
+      } else {
+        dispatch(actions.handleQuotationNote({
+          ...data,
+          create: data.create.map(({ id, ...rest }) => rest),
+          onSuccess,
+          onError
+        },
+        ));
+        setMessageError([]);
+        setIsDisableSubmit(true);
+      }
     } else {
-      dispatch(actions.handleQuotationNote({
-        ...data,
-        create: newItems.map(({ id, ...rest }) => rest),
-        onSuccess,
-        onError
-      },
-      ));
-      setMessageError([]);
-      setIsDisableSubmit(true);
+      dispatchAlertWithPermissionDenied()
     }
   };
 
@@ -197,8 +249,8 @@ const QuotationNote = ({
           error={error}
           noteType={type}
           noteList={noteList}
-          setMessage={setMessage}
-          isChangingNoteList={isChangingNoteList}
+          isEditable={isEditable}
+          isInfoChanged={isInfoChanged}
           handleDragAndDropNote={handleDragAndDropNote}
         />
       )
@@ -208,6 +260,7 @@ const QuotationNote = ({
   return (
     <div className="quotationNote">
       <div className="quotationNote__table">
+        <div className='quotationNote__divider'></div>
         <table className="quotationNoteTable">
           <thead>
             <tr>

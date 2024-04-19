@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 
-import { IMAGE_FILE_MAX_SIZE, MESSAGE, REGEX_EMAIL, REGEX_PASSWORD, REGEX_USERNAME, ROLES, DOCUMENT_FILE_MAX_SIZE, TEXT_MAX_LENGTH, ALLOWED_FILE_FORMATS, CHAT_FILE_MAX_SIZE, INVENTORY, REGEX_SPECIAL_CHARACTERS, QUOTATION, REGEX_NATURAL_NUMBER } from 'src/constants/config';
+import { IMAGE_FILE_MAX_SIZE, MESSAGE, REGEX_EMAIL, REGEX_PASSWORD, REGEX_USERNAME, ROLES, DOCUMENT_FILE_MAX_SIZE, TEXT_MAX_LENGTH, ALLOWED_FILE_FORMATS, CHAT_FILE_MAX_SIZE, INVENTORY, QUOTATION, REGEX_NATURAL_NUMBER, INVOICE_BILL_FIELDS, DISCOUNT, UPLOAD_CSV_EXTENSION, PERMISSION } from 'src/constants/config';
 import { normalizeString } from './helper';
 
 export const validateLogin = (values) => {
@@ -39,7 +39,7 @@ export const validateTextMaxLength = (field, values) => {
 export const validateResetPassword = (values) => {
   const errors = {};
   if (!values.reset_password_token) {
-    errors.reset_password_token = 'Invalid authorization.'
+    errors.message = 'Invalid authorization.'
   }
 
   if (!values.new_password) {
@@ -140,7 +140,11 @@ export const validateMaterialItem = (values) => {
         errors.raw_girth = 'Raw girth must be less than 1000 m.'
       }
 
-      if (values.coating_price_status === 1) {
+      if (values.raw_length < INVENTORY.MIN_MATERIAL_LENGTH) {
+        errors.raw_length = `Raw length must be greater than ${INVENTORY.MIN_MATERIAL_LENGTH} m.`
+      }
+
+      if (values.coating_price_status === INVENTORY.CHECKED) {
         const requiredCoatingFields = INVENTORY.FIELD.COATING;
         requiredCoatingFields.forEach((field) => {
           if (!values[field]) {
@@ -183,6 +187,14 @@ export const validateCreateUserInfo = (values) => {
     errors.password = 'Please fill in password.';
   } else if (!REGEX_PASSWORD.test(values.password)) {
     errors.password = 'Invalid password format. Example:"@SaDoa123"';
+  } else if (values.password?.length > 255) {
+    errors.password = 'Password length must be less than 255 digits.'
+  }
+
+  if (!values.confirm_new_password) {
+    errors.confirm_new_password = 'Please confirm your new password.';
+  } else if (values.password !== values.confirm_new_password) {
+    errors.confirm_new_password = 'Passwords are not matched. Please try again.';
   }
 
   if (!values.email) {
@@ -211,8 +223,16 @@ export const validateEditUserInfo = (values) => {
     errors.role_id = 'Please select role.';
   }
 
-  if (values.password?.length > 0 && !REGEX_PASSWORD.test(values.password)) {
+  if (values.password && !REGEX_PASSWORD.test(values.password)) {
     errors.password = 'Invalid password format. Example:"@SaDoa123"';
+  } else if (values.password?.length > 255) {
+    errors.password = 'Password length must be less than 255 digits.'
+  }
+
+  if (values.password && !values.confirm_new_password) {
+    errors.confirm_new_password = 'Please confirm your new password.';
+  } else if (values.password !== values.confirm_new_password) {
+    errors.confirm_new_password = 'Passwords are not matched. Please try again.';
   }
 
   if (!values.email) {
@@ -228,7 +248,7 @@ export const validateCreateNewRole = (values) => {
   const errors = {};
 
   const isSetPermission = Object.values(values.role_setting).some((role) => {
-    return role.create === 1 || role.update === 1 || role.delete === 1;
+    return role.create === 1 || role.update === 1 || role.delete === 1 || role.send === 1;
   });
 
   if (!values.role_name) {
@@ -236,7 +256,7 @@ export const validateCreateNewRole = (values) => {
   }
 
   if (normalizeString(values.role_name) === ROLES.ADMIN) {
-    errors.role_name = 'Cannot set role Name as "Admin". Please try another one.';
+    errors.role_name = 'Cannot set Role Name as "Admin". Please try another one.';
   }
 
   if (!isSetPermission) {
@@ -250,7 +270,7 @@ export const validateEditRole = (values) => {
   const errors = {};
 
   const isSetPermission = Object.values(values.role_setting).some((role) => {
-    return role.create === 1 || role.update === 1 || role.delete === 1;
+    return role.create === 1 || role.update === 1 || role.delete === 1 || role.send === 1;
   });
 
   if (!values.role_name) {
@@ -275,6 +295,22 @@ export const validateFilterRequest = (values) => {
 
   if (endDate && startDate && startDate.isAfter(endDate)) {
     errors.start_date = 'Start date cannot be after the end date.';
+  }
+
+  return errors;
+}
+
+export const validateScrapFilterRequest = (values) => {
+  const errors = {};
+  const endDate = values.end_date ? dayjs(values.end_date) : null;
+  const startDate = values.start_date ? dayjs(values.start_date) : null;
+
+  if (endDate && startDate && startDate.isAfter(endDate)) {
+    errors.start_date = 'Start date cannot be after the end date.';
+  }
+
+  if (values.min_length && values.max_length && (values.min_length > values.max_length)) {
+    errors.min_length = 'Min length must smaller than max length.'
   }
 
   return errors;
@@ -391,7 +427,7 @@ export const validateCreateQuotation = (values) => {
   }
 
   if (values.is_new_customer) {
-    const requiredFields = ['name', 'email', 'phone_number', 'address_1', 'postal_code'];
+    const requiredFields = ['name', 'email', 'phone_number', 'address_1', 'address_2', 'postal_code'];
     requiredFields.forEach(field => {
       if (!values[field]) {
         errors[field] = `Please fill in your ${field.replace('_', ' ')}.`;
@@ -404,18 +440,21 @@ export const validateCreateQuotation = (values) => {
     if (values.phone_number?.length < 10 || values.phone_number?.length > 12) {
       errors.phone_number = 'Invalid phone number.';
     }
+  }
 
-  } else if (!values.customer_id) {
+  if (!values.customer_id && !values.is_new_customer) {
     errors.customer_id = 'Customer is required.';
   }
 
-  ['terms_of_payment_confirmation', 'issue_date', 'valid_till'].forEach(field => {
+  ['issue_date', 'valid_till'].forEach(field => {
     if (!values[field]) {
       errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ')} is required.`;
     }
   });
 
-  if (values.terms_of_payment_confirmation > 100) {
+  if (!values.terms_of_payment_confirmation) {
+    errors.terms_of_payment_confirmation = 'Terms of Payment is required.';
+  } else if (values.terms_of_payment_confirmation > 100) {
     errors.terms_of_payment_confirmation = 'Terms of Payment must less than 100.';
   }
 
@@ -445,8 +484,8 @@ export const validateEditQuotation = (values) => {
     errors.quotation_id = 'Not found the Quotation.';
   }
 
-  if (!values.payment_status) {
-    errors.payment_status = 'Payment Status is invalid.';
+  if (!values.status) {
+    errors.status = 'Payment Status is invalid.';
   }
 
   if (!values.issue_date) {
@@ -467,8 +506,8 @@ export const validateEditQuotation = (values) => {
     }
   }
 
-  if (values.description?.length >= 255) {
-    errors.description = 'The Description must less than 255 digits.';
+  if (values.description?.length >= 1000) {
+    errors.description = 'The Description must less than 1000 digits.';
   }
 
   return errors
@@ -485,8 +524,8 @@ export const validateCreateInvoice = (values) => {
     errors.quotation_id = 'Reference No is required.';
   }
 
-  if (!values.customer_id) {
-    errors.customer_id = 'No found the customer.';
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select issue date.';
   }
 
   return errors
@@ -494,6 +533,9 @@ export const validateCreateInvoice = (values) => {
 
 export const validateUpdateInvoice = (values) => {
   const errors = {}
+
+  const receivedDate = values.payment_received_date ? dayjs(values.payment_received_date) : null;
+  const issuedDate = values.issue_date ? dayjs(values.issue_date) : null;
 
   if (!values.invoice_id) {
     errors.invoice_no = 'No found the invoice id.';
@@ -507,10 +549,14 @@ export const validateUpdateInvoice = (values) => {
     errors.quotation_id = 'Reference No is required.';
   }
 
-  if (!values.customer_id) {
-    errors.customer_id = 'No found the customer.';
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select issue date.';
   }
 
+  if (receivedDate && issuedDate && issuedDate.isAfter(receivedDate)) {
+    errors.issue_date = 'Issue date can not be after the received date.';
+    errors.payment_received_date = 'Received date cannot be before the issue date.';
+  }
   return errors
 }
 
@@ -520,6 +566,10 @@ export const validateUploadDocument = (values) => {
 
   if (!values.customer_id) {
     errors.customer_id = 'No found the customer id.';
+  }
+
+  if (!values.quotation_id) {
+    errors.quotation_id = 'Please select the reference no.';
   }
 
   if (!values.document) {
@@ -608,6 +658,45 @@ const validateNoteItem = (item, itemId) => {
   return itemErrors;
 };
 
+export const validateHandleTermChange = (values) => {
+  const errors = [];
+  if (values.create && Array.isArray(values.create)) {
+    values.create.forEach(item => {
+      const itemErrors = validateTermItem(item, item.id);
+      errors.push(...itemErrors);
+    });
+  }
+  if (values.update && Array.isArray(values.update)) {
+    values.update.forEach(item => {
+      const itemErrors = validateTermItem(item, item.id);
+      errors.push(...itemErrors);
+    });
+  }
+  return errors;
+};
+
+const validateTermItem = (item, itemId) => {
+  const itemErrors = [];
+  for (const key in item) {
+    if (Object.prototype.hasOwnProperty.call(item, key)) {
+      const value = item[key];
+      if (value === null || value === undefined || value === '') {
+        itemErrors.push({
+          id: itemId,
+          message: `The ${key} can not be empty.`,
+        });
+      } else if (value.length >= 1000) {
+        itemErrors.push({
+          id: itemId,
+          message: `The ${key} must be less than 1000 digits.`,
+        });
+      }
+    }
+  }
+
+  return itemErrors;
+};
+
 export const validateCreateQuotationSection = (values) => {
   const errors = [];
   if (!values.quotation_id) {
@@ -647,12 +736,17 @@ export const validateCreateSectionProduct = (values) => {
     }
   });
 
-  const specialCharacterFields = QUOTATION.PRODUCT_FIELD.INPUT;
-  specialCharacterFields.forEach((field) => {
-    if (values[field] && !REGEX_SPECIAL_CHARACTERS.test(values[field])) {
-      errors[field] = `The ${field.replace('_', ' ')} invalid format.`;
-    }
-  });
+  if (!values.storey_text) {
+    errors.storey_text = 'Please fill in storey.'
+  } else if (values.storey_text?.length > 255) {
+    errors.storey_text = 'The storey must be less than 255 digits.'
+  }
+
+  if (!values.area_text) {
+    errors.area_text = 'Please fill in area.'
+  } else if (values.area_text?.length > 255) {
+    errors.area_text = 'The area must be less than 255 digits.'
+  }
 
   return errors;
 };
@@ -676,8 +770,28 @@ export const validateCreateProductMaterial = (values) => {
     errors.order_number = 'Invalid the product order number.';
   }
 
-  if (!values.product_template_id) {
-    errors.product_template_id = 'Please select a product template.';
+  if (!values.title) {
+    errors.title = 'Please fill in product title.';
+  } else if (values.title.length > 255) {
+    errors.title = 'Title must less than 255 digits.';
+  }
+
+  return errors;
+};
+
+export const validateEditProductMaterial = (values) => {
+  const errors = {};
+
+  if (!values.type) {
+    errors.type = 'No found the material type.';
+  }
+
+  if (!values.product_id) {
+    errors.product_id = 'No found the product.';
+  }
+
+  if (!values.order_number) {
+    errors.order_number = 'Invalid the product order number.';
   }
 
   if (!values.title) {
@@ -716,6 +830,60 @@ export const validateCreateGlassMaterial = (values) => {
 
   if (!values.material_id) {
     errors.glass_item = 'Please select a glass item.';
+  }
+
+  if (values.min_size > values.quantity) {
+    errors.glass_item = `This item's min size is ${values.min_size} m².`;
+  }
+
+  if (!values.unit_price) {
+    errors.unit_price = 'Please fill in unit price.';
+  }
+
+  if (!values.title) {
+    errors.title = 'Please fill in glass title.';
+  } else if (values.title.length > 255) {
+    errors.title = 'Glass title must less than 255 digits.';
+  }
+
+  return errors;
+};
+
+export const validateEditGlassMaterial = (values) => {
+  const errors = {};
+
+  if (!values.type) {
+    errors.message = 'No found the material type.';
+  }
+
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation.';
+  }
+
+  if (!values.product_id) {
+    errors.message = 'No found the product.';
+  }
+
+  if (!values.product_item_id) {
+    errors.message = 'No found the product.';
+  }
+
+  if (!values.order_number) {
+    errors.order_number = 'Invalid the order number';
+  }
+
+  if (!values.no_of_panels) {
+    errors.panel = 'Please fill in the number of panels.';
+  } else if (values.no_of_panels <= 0 || !REGEX_NATURAL_NUMBER.test(values.no_of_panels.toString())) {
+    errors.panel = 'Invalid number.';
+  }
+
+  if (!values.material_id) {
+    errors.glass_item = 'Please select a glass item.';
+  }
+
+  if (values.min_size > values.quantity) {
+    errors.glass_item = `This item's min size is ${values.min_size} m².`;
   }
 
   if (!values.unit_price) {
@@ -773,4 +941,677 @@ export const validateCreateExtraOrderMaterial = (values) => {
   }
 
   return errors;
+};
+export const validateEditExtraOrderMaterial = (values) => {
+  const errors = {};
+
+  if (!values.type) {
+    errors.type = 'No found the material type.';
+  }
+
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation.';
+  }
+
+  if (!values.product_id) {
+    errors.message = 'No found the product.';
+  }
+
+  if (!values.product_item_id) {
+    errors.message = 'No found the product.';
+  }
+
+  if (!values.order_number) {
+    errors.order_number = 'Invalid the order number';
+  }
+
+  if (!values.material_id) {
+    errors.material_id = 'Please select a service item.';
+  }
+
+  if (!values.service_type) {
+    errors.service_type = 'Please select a service type.';
+  }
+
+  if (!values.quantity) {
+    errors.quantity = 'Please fill in quantity.';
+  }
+
+  if (!values.unit_price) {
+    errors.unit_price = 'Please fill in unit price.';
+  }
+
+  if (!values.title) {
+    errors.title = 'Please fill in glass title.';
+  } else if (values.title.length > 255) {
+    errors.title = 'Glass title must less than 255 digits.';
+  }
+
+  return errors;
+};
+
+export const validateSelectItem = (values) => {
+  const errors = {};
+  if (!values.quotationId) {
+    errors.message = 'No found the quotation ID.';
+  }
+  if (!values.productTemplateId) {
+    errors.message = 'No found the product template ID.';
+  }
+  if (!values.productItemId) {
+    errors.message = 'No found the selected material ID.';
+  }
+  if (!values.productWidth) {
+    errors.message = 'No found the product width info.';
+  }
+  if (!values.productHeight) {
+    errors.message = 'No found the product height info.';
+  }
+  if (!values.selectedItem) {
+    errors.material_id = 'No found the selected item.';
+  }
+  return errors;
+};
+
+export const validateAddAluminiumItem = (values) => {
+  const errors = {};
+
+  if (!values.width_quantity) {
+    errors.width_quantity = 'Please fill in width quantity.';
+  }
+  if (!values.height_quantity) {
+    errors.height_quantity = 'Please fill in height quantity.';
+  }
+  if (!values.cost_of_raw_aluminium) {
+    errors.cost_of_raw_aluminium = 'Please fill in cost of raw aluminium.';
+  }
+  if (!values.cost_of_powder_coating && values.hasCoating) {
+    errors.cost_of_powder_coating = 'Please fill in cost of powder coating.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  return errors;
+};
+
+export const validateEditAluminiumItem = (values) => {
+  const errors = {};
+
+  if (!values.width_quantity) {
+    errors.width_quantity = 'Please fill in width quantity.';
+  }
+  if (!values.height_quantity) {
+    errors.height_quantity = 'Please fill in height quantity.';
+  }
+  if (!values.cost_of_raw_aluminium) {
+    errors.cost_of_raw_aluminium = 'Please fill in cost of raw aluminium.';
+  }
+  if (!values.cost_of_powder_coating && values.hasCoating) {
+    errors.cost_of_powder_coating = 'Please fill in cost of powder coating.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  if (values.product_template_material_id === null || values.product_template_material_id === undefined || values.product_template_material_id === '') {
+    errors.message = 'No found the product template material id.';
+  }
+  if (values.product_item_template_id === null) {
+    errors.message = 'No found the product item template id.';
+  }
+  return errors;
+};
+
+export const validateAddSquareMeterItem = (values) => {
+  const errors = {};
+
+  if (!values.width) {
+    errors.width = 'No found the product width.';
+  }
+  if (!values.height) {
+    errors.height = 'No found the product height.';
+  }
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+
+  return errors;
+};
+
+export const validateEditSquareMeterItem = (values) => {
+  const errors = {};
+
+  if (!values.width) {
+    errors.width = 'No found the product width.';
+  }
+  if (!values.height) {
+    errors.height = 'No found the product height.';
+  }
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  if (values.product_template_material_id === null || values.product_template_material_id === undefined || values.product_template_material_id === '') {
+    errors.message = 'No found the product template material id.';
+  }
+  if (values.product_item_template_id === null || values.product_item_template_id === undefined || values.product_item_template_id === '') {
+    errors.message = 'No found the product item template id.';
+  }
+
+  return errors;
+};
+
+export const validateAddPieceItem = (values) => {
+  const errors = {};
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quantity) {
+    errors.quantity = 'Please fill in quantity.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  return errors;
+};
+
+export const validateEditPieceItem = (values) => {
+  const errors = {};
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quantity) {
+    errors.quantity = 'Please fill in quantity.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  if (values.product_template_material_id === null || values.product_template_material_id === undefined || values.product_template_material_id === '') {
+    errors.message = 'No found the product template material id.';
+  }
+  if (values.product_item_template_id === null || values.product_item_template_id === undefined || values.product_item_template_id === '') {
+    errors.message = 'No found the product item template id.';
+  }
+
+  return errors;
+};
+
+export const validateAddMeterItem = (values) => {
+  const errors = {};
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  return errors;
+};
+
+export const validateEditMeterItem = (values) => {
+  const errors = {};
+  if (!values.cost_of_item) {
+    errors.cost_of_item = 'Please fill in cost of item.';
+  }
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+  if (!values.material_id) {
+    errors.message = 'No found the material id.';
+  }
+  if (values.product_template_id === null || values.product_template_id === undefined || values.product_template_id === '') {
+    errors.message = 'No found the product template id.';
+  }
+  if (!values.product_item_id) {
+    errors.message = 'No found the product item id.';
+  }
+  if (values.product_template_material_id === null || values.product_template_material_id === undefined || values.product_template_material_id === '') {
+    errors.message = 'No found the product template material id.';
+  }
+  if (values.product_item_template_id === null || values.product_item_template_id === undefined || values.product_item_template_id === '') {
+    errors.message = 'No found the product item template id.';
+  }
+
+  return errors;
+};
+export const validateHandleInvoiceBillChange = (values) => {
+  const errors = [];
+  if (values && Array.isArray(values)) {
+    values.forEach((item, index) => {
+      const itemErrors = validateInvoiceBillData(item, index);
+      errors.push(...itemErrors);
+    });
+  }
+  return errors;
+};
+export const validateInvoiceBillData = (data, index) => {
+  const itemErrors = [];
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      if (value === null || value === undefined || value === '') {
+        itemErrors.push({
+          index: index,
+          message: `The ${INVOICE_BILL_FIELDS[key]} can not be empty.`,
+        });
+      } else if (value.length >= 255) {
+        itemErrors.push({
+          index: index,
+          message: `The ${INVOICE_BILL_FIELDS[key]} must be less than 255 digits.`,
+        });
+      }
+    }
+  }
+  return itemErrors
+}
+
+export const validateCreateClaim = (values) => {
+  const errors = {}
+
+  if (!values.claim_no) {
+    errors.claim_no = 'Please fill in claim no.';
+  } else if (values.claim_no.length > 255) {
+    errors.claim_no = 'Claim no must less than 255 digits.';
+  }
+
+  if (!values.quotation_id) {
+    errors.reference_no = 'Please select a reference no.';
+  }
+
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select an issue date.';
+  }
+
+  return errors
+}
+
+export const validateCreateClaimCopy = (values) => {
+  const errors = {}
+
+  if (!values.claim_no) {
+    errors.claim_no = 'Please fill in claim no.';
+  } else if (values.claim_no.length > 255) {
+    errors.claim_no = 'Claim no must less than 255 digits.';
+  }
+
+  if (!values.quotation_id) {
+    errors.reference_no = 'No found the previous reference no.';
+  }
+
+  if (!values.previous_claim_no) {
+    errors.previous_claim_no = 'No found the previous claim no.';
+  }
+
+  if (!values.claim_id) {
+    errors.previous_claim_no = 'No found the previous claim no.';
+  }
+
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select an issue date.';
+  }
+
+  return errors
+}
+
+export const validateUpdateClaim = (values) => {
+  const errors = {}
+
+  if (!values.claim_id) {
+    errors.message = 'No found the claim id.';
+  }
+
+  if (values.accumulative_from_claim === undefined) {
+    errors.message = 'Invalid accumulative amount.';
+  }
+
+  if (values.subtotal_from_claim === undefined) {
+    errors.message = 'Invalid subtotal amount.';
+  }
+
+  if (!values.claim_progress_id) {
+    errors.message = 'No found the claim progress id.';
+  }
+
+  if (!values.claim_number) {
+    errors.claim_number = 'Please fill in claim number.';
+  } else if (values.claim_number.length > 255) {
+    errors.claim_number = 'Claim number must less than 255 digits.';
+  }
+
+  return errors
+}
+
+export const validateUpdateClaimDetail = (values) => {
+  const errors = {}
+  const receivedDate = values.payment_received_date ? dayjs(values.payment_received_date) : null;
+  const issuedDate = values.issue_date ? dayjs(values.issue_date) : null;
+
+  if (!values.claim_id) {
+    errors.message = 'No found the claim id.';
+  }
+
+  if (!values.claim_no) {
+    errors.claim_no = 'Please fill in claim no.';
+  }
+
+  if (!values.quotation_id) {
+    errors.message = 'No found the quotation id.';
+  }
+
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select issue date.';
+  }
+
+  if (receivedDate && issuedDate && issuedDate.isAfter(receivedDate)) {
+    errors.issue_date = 'Issue date can not be after the received date.';
+    errors.payment_received_date = 'Received date cannot be before the issue date.';
+  }
+
+  if (values.payment_received_date && !values.actual_paid_amount) {
+    errors.actual_paid_amount = 'Please fill in received amount.';
+  }
+
+  if (values.actual_paid_amount && !values.payment_received_date) {
+    errors.payment_received_date = 'Please select received date.';
+  }
+
+  return errors
+}
+
+export const validateCreateVendor = (values) => {
+  const errors = {};
+
+  if (!values.vendor_name) {
+    errors.vendor_name = 'Please fill in vendor name.';
+  }
+
+  if (!values.email) {
+    errors.email = 'Please fill in email.';
+  } else if (!REGEX_EMAIL.test(values.email)) {
+    errors.email = 'Invalid email format. Email: example@example.com';
+  }
+
+  if (!values.phone) {
+    errors.phone = 'Please fill in phone number.';
+  } else if (values.phone?.length < 10 || values.phone?.length > 12) {
+    errors.phone = 'Invalid phone number.';
+  }
+  if (!values.address_1) {
+    errors.address_1 = 'Please fill in address 1.';
+  } else if (values.address_1?.length > 255) {
+    errors.address_1 = 'Address 1 must be less than 255 digits.';
+  }
+
+  if (!values.address_2) {
+    errors.address_2 = 'Please fill in address 2.';
+  } else if (values.address_2?.length > 255) {
+    errors.address_2 = 'Address 2 must be less than 255 digits.';
+  }
+
+  if (!values.postal_code) {
+    errors.postal_code = 'Please fill in postal code.';
+  } else if (values.postal_code?.length > 255) {
+    errors.postal_code = 'Postal code must be less than 255 digits.';
+  }
+
+  if (values.company_name && values.company_name?.length > 255) {
+    errors.company_name = 'Company name must be less than 255 digits.';
+  }
+
+  return errors;
+}
+
+export const validateUpdateVendor = (values) => {
+  const errors = {};
+
+  if (!values.vendor_id) {
+    errors.message = 'No found vendor id.';
+  }
+
+  if (!values.vendor_name) {
+    errors.vendor_name = 'Please fill in vendor name.';
+  }
+
+  if (!values.email) {
+    errors.email = 'Please fill in email.';
+  } else if (!REGEX_EMAIL.test(values.email)) {
+    errors.email = 'Invalid email format. Email: example@example.com';
+  }
+
+  if (!values.phone) {
+    errors.phone_number = 'Please fill in phone number.';
+  } else if (values.phone?.length < 10 || values.phone?.length > 12) {
+    errors.phone_number = 'Invalid phone number.';
+  }
+  if (!values.address_1) {
+    errors.address_1 = 'Please fill in address 1.';
+  } else if (values.address_1?.length > 255) {
+    errors.address_1 = 'Address 1 must be less than 255 digits.';
+  }
+
+  if (!values.address_2) {
+    errors.address_2 = 'Please fill in address 2.';
+  } else if (values.address_2?.length > 255) {
+    errors.address_2 = 'Address 2 must be less than 255 digits.';
+  }
+
+  if (!values.postal_code) {
+    errors.postal_code = 'Please fill in postal code.';
+  } else if (values.postal_code?.length > 255) {
+    errors.postal_code = 'Postal code must be less than 255 digits.';
+  }
+
+  if (values.company_name && values.company_name?.length > 255) {
+    errors.company_name = 'Company name must be less than 255 digits.';
+  }
+
+  return errors;
+}
+
+export const validateUpdateTax = (values) => {
+  const errors = {};
+
+  if (!values.gst_rates) {
+    errors.gst_rates = 'Please fill in rate.';
+  } else if (values.gst_rates > 100) {
+    errors.gst_rates = 'Rate must be less than 100%';
+  }
+
+  return errors;
+}
+
+export const validateCreatePurchaseOrder = (values) => {
+  const errors = {};
+
+  if (!values.vendor_id) {
+    errors.vendor_id = 'No found vendor id.';
+  }
+
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select issue date.';
+  }
+
+  if (!values.purchase_order_no) {
+    errors.purchase_order_no = 'Please fill in purchase order no.';
+  } else if (values.purchase_order_no?.length > 255) {
+    errors.purchase_order_no = 'Purchase order no must be less than 255 digits.';
+  }
+
+
+  return errors;
+}
+
+export const validatePurchaseUpdateShipping = (values) => {
+  const errors = {};
+
+  if (!values.purchase_order_id) {
+    errors.purchase_order_id = 'No found purchase order id.';
+  }
+
+  if (!values.shipping_fee && values.shipping_fee !== 0) {
+    errors.shipping_fee = 'Please fill in shipping fee.';
+  }
+
+  return errors;
+}
+
+export const validatePurchaseUpdateDiscount = (values) => {
+  const errors = {};
+
+  if (!values.purchase_order_id) {
+    errors.purchase_order_id = 'No found purchase order id.';
+  }
+
+  if ((values.discount_type === DISCOUNT.TYPE.PERCENT) && !values.discount_percent && values.discount_percent !== 0) {
+    errors.discount_percent = 'Please fill in discount percent.';
+  }
+
+  if ((values.discount_type === DISCOUNT.TYPE.AMOUNT) && !values.discount_amount && values.discount_amount !== 0) {
+    errors.discount_amount = 'Please fill in discount amount.';
+  }
+
+  return errors;
+}
+
+export const validatePurchaseUpdateTax = (values) => {
+  const errors = {};
+
+  if (!values.purchase_order_id) {
+    errors.purchase_order_id = 'No found purchase order id.';
+  }
+
+  if (!values.tax) {
+    errors.tax = 'Please fill in rate.';
+  }
+
+  return errors;
+}
+
+export const validateUpdatePurchaseOrder = (values) => {
+  const errors = {};
+
+  if (!values.purchase_order_id) {
+    errors.purchase_order_id = 'No found purchase order id.';
+  }
+
+  if (!values.purchase_order_no) {
+    errors.purchase_order_no = 'Please fill in purchase order no.';
+  } else if (values.purchase_order_no?.length > 255) {
+    errors.purchase_order_no = 'Purchase order no must less than 255 digits.';
+  }
+
+  if (!values.issue_date) {
+    errors.issue_date = 'Please select issue date';
+  }
+
+  return errors;
+}
+
+export const validateRejectQuotation = (values) => {
+  const errors = {};
+
+  if (!values.reject_reason) {
+    errors.reject_reason = 'Please fill in reject reason.';
+  } else if (values.reject_reason?.length > 50) {
+    errors.reject_reason = 'Reject reason must less than 50 digits.';
+  }
+
+  return errors;
+}
+
+export const validateUploadCSV = (values) => {
+  const errors = {}
+  const fileExtension = values.file?.name.split('.').pop().toLowerCase()
+
+  if (!values.file) {
+    errors.file = 'Please select a csv file to upload.';
+  } else if (values.file?.size > DOCUMENT_FILE_MAX_SIZE) {
+    errors.file = 'File size must less than 20MB.';
+  } else if (!UPLOAD_CSV_EXTENSION.includes(fileExtension)) {
+    errors.file = 'Only accept type: ' + UPLOAD_CSV_EXTENSION.join(', ');
+  }
+
+  return errors
+}
+
+export const validatePermission = (permissionData = [], keyCode = '', action = '') => {
+  if (permissionData.length === 0 || !keyCode || !action) {
+    return false;
+  }
+
+  const modulePermission = permissionData.find(permission => permission.hasOwnProperty(keyCode));
+
+  if (!modulePermission) {
+    return false;
+  }
+
+  const moduleActions = modulePermission[keyCode];
+
+  return moduleActions.hasOwnProperty(action) && moduleActions[action] === PERMISSION.ALLOW_VALUE;
 };

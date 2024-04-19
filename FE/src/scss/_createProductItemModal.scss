@@ -95,7 +95,6 @@
 
           span {
             height: 100%;
-            width: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -104,11 +103,26 @@
         }
 
         &--unit {
+          width: 52px;
+          margin-left: 10px;
+        }
+
+        &--unitMoney {
           margin-left: 10px;
           margin-right: -5px;
           z-index: 1;
         }
 
+        &--unitPanel {
+          width: 75px;
+          margin-right: 0px;
+        }
+
+        &--unitDisabled {
+          width: 75px;
+          margin-right: 0px;
+          color: #808080;
+        }
         &--option {
           height: 100%;
           display: flex;
@@ -161,6 +175,11 @@
         &--error {
           border: 0.5px solid red;
         }
+      }
+
+      &__message {
+        color: red;
+        margin-top: 10px;
       }
     }
   }

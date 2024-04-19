@@ -1,0 +1,111 @@
+.createPurchase {
+  width: 100%;
+  height: calc(100vh - 63px);
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  overflow: auto;
+  color: #343a40;
+  background-color: #0000004d;
+  transition:
+    width 0.4s,
+    min-width 0.4s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &__content {
+    width: 423px;
+    padding: 24px;
+    border-radius: 10px;
+    background-color: $color_white;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin-top: -250px;
+    box-shadow: 0px 8px 8px -4px #10182808;
+    box-shadow: 0px 20px 24px -4px #10182814;
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 19px;
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: 19px;
+
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+  }
+
+  &__inputBox {
+    height: 40px;
+    display: flex;
+    justify-content: space-between;
+    border-radius: 6px;
+    border: 0.5px solid #00000080;
+
+    &--unit {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding-left: 12px;
+
+      span {
+        margin-right: 3px;
+      }
+    }
+
+    &--error {
+      border: 0.5px solid red;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    padding: 0 10px;
+    border-radius: 6px;
+  }
+
+  &__buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__button {
+    margin-top: 52px;
+    width: 210px;
+    height: auto;
+    padding: 10px 18px;
+    color: $color_brown1;
+    font-size: 16px;
+    margin-right: 12px;
+    font-weight: 400;
+    border-radius: 5px;
+    text-align: center;
+    background-color: $color_white;
+    border: 1px solid $color_brown1;
+    outline: none;
+
+    &--apply {
+      margin-right: 0px;
+      color: $color_white;
+      background-color: $color_brown1;
+    }
+  }
+
+  &__message {
+    color: $color_red;
+    margin-top: 5px;
+    font-size: 16px;
+  }
+}

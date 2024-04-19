@@ -8,7 +8,6 @@ import { useRoleSlice } from 'src/slices/role';
 import { FILTER, INVENTORY } from 'src/constants/config';
 
 const FilterModal = ({
-  viewTab = '',
   submitting = false,
   searchText = '',
   messageError = '',
@@ -24,6 +23,7 @@ const FilterModal = ({
   isDocumentFilter = false,
   isHiddenSortOption = false,
   filterTitle = '',
+  className = '',
   selectedRoleFilter = [],
   selectedFieldFilter = [],
   selectedProfileFilter = [],
@@ -129,14 +129,14 @@ const FilterModal = ({
 
 
   return (
-    <div className={`filterModal${marginTop ? ` mt-${marginTop}` : ''}${isDetail ? ' filterModal--top' : ''}`}>
+    <div className={`filterModal${marginTop ? ` mt-${marginTop}` : ''}${isDetail ? ' filterModal--top' : ''}${className ? ` filterModal--${className}` : ''}`}>
       <div className="filterModal__content" >
         <div className="filterModal__header">
           <div className="filterModal__header--title">Filters</div>
           <div className="filterModal__header--reset" onClick={handleClickResetFilter}>Reset</div>
         </div>
         <div className="filterModal__body">
-          {(viewTab !== 'invoice' && !isHiddenSortOption) && (
+          {!isHiddenSortOption && (
             <div className="filterModal__name">
               <div className="filterModal__name--title">{filterTitle || ''}</div>
               <div className={`filterModal__name--box${isDocumentFilter ? ' filterModal__name--filterDocument' : ''}`}>
@@ -181,7 +181,7 @@ const FilterModal = ({
                       disabled={submitting}
                     />
                     {messageError?.start_date && (
-                      <div className="filterModal__message">{messageError?.start_date || ''}</div>
+                      <div className="filterModal__message">{messageError.start_date || ''}</div>
                     )}
                   </div>
                 </div>
@@ -197,11 +197,14 @@ const FilterModal = ({
                       disabled={submitting}
                     />
                     {messageError?.end_date && (
-                      <div className="filterModal__message">{messageError?.end_date || ''}</div>
+                      <div className="filterModal__message">{messageError.end_date || ''}</div>
                     )}
                   </div>
                 </div>
               </div>
+              {messageError?.message && (
+                <div className="filterModal__message filterModal__message--error">{messageError.message || ''}</div>
+              )}
             </div>
           )}
         </div>
@@ -209,7 +212,6 @@ const FilterModal = ({
           <button
             className="filterModal__button"
             onClick={onClickCancel}
-            disabled={submitting || isDisableSubmit}
           >
             Cancel
           </button>

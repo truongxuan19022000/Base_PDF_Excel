@@ -1,0 +1,115 @@
+.csDetailTab {
+  width: 100%;
+  height: 100%;
+  color: #343a40;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+
+  &__left {
+    flex-grow: 1;
+    height: 100%;
+    margin-right: 32px;
+    padding: 30px 0 0px 36px;
+
+    &--disabled {
+      pointer-events: none;
+    }
+  }
+
+  &__right {
+    width: 333px;
+    height: 100%;
+  }
+
+  &__headline {
+    width: 100%;
+    display: flex;
+    position: relative;
+    justify-content: space-between;
+    margin-bottom: 43px;
+  }
+
+  &__label {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  &__actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  &__button {
+    width: 193px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 400;
+    border-radius: 6px;
+    border: 1px solid $color_brown1;
+    user-select: none;
+    color: $color_brown1;
+    background-color: $color_white;
+    cursor: pointer;
+
+    &--icon {
+      margin-right: 10px;
+      color: #7f7462;
+    }
+
+    &--whatsApp {
+      color: white;
+    }
+
+    &--highlight {
+      color: $color_white;
+      background-color: $color_brown1;
+    }
+
+    &--edit {
+      color: white;
+    }
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__box {
+    width: 100%;
+    height: fit-content;
+    display: flex;
+    margin-bottom: 31px;
+  }
+
+  &__title {
+    width: 120px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  &__detail {
+    width: 65%;
+    font-size: 16px;
+    font-weight: 400;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  &__address {
+    width: 65%;
+    font-size: 16px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+  }
+}

@@ -7,3 +7,4 @@ export const createMaterialItem = (params) => sendPost('admin/materials/create',
 export const getExportMaterialCSV = (params) => sendGet('admin/materials/export', params)
 export const updateMaterialDetail = (params) => sendPost('admin/materials/update', params)
 export const multiDeleteMaterial = (params) => sendPost('admin/materials/multi-delete', params)
+export const uploadCSV = (params) => sendPost('admin/materials/import', params)

@@ -1,106 +1,207 @@
-
 .invoiceSection {
-  position: relative;
-  width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: calc(100vh - 200px);
 
-  &__body {
+  &__inner {
+    position: relative;
     width: 100%;
-    height: fit-content;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-right: 36px;
+    padding-top: 30px;
+  }
 
-    .invoiceItem {
+  &__innerWrapper {
+    position: relative;
+    width: 100%;
+    max-height: calc(100vh - 480px);
+    overflow-y: auto;
+    padding: 0 0 30px 36px;
+  }
+
+  &__divider {
+    width: 100%;
+    position: sticky;
+    top: 0px;
+    border: 0.5px solid white;
+    z-index: 2;
+  }
+
+  &__table {
+    width: 100%;
+    margin-bottom: 20px;
+    position: relative;
+
+    table {
       width: 100%;
-      margin-bottom: 50px;
+      padding-top: 50px;
+    }
 
-      &:last-child {
-        margin-bottom: 0;
+    thead {
+      height: 50px;
+      z-index: 1;
+      border-bottom: 1px solid #d5d5d5;
+      border-top: 1px solid #d5d5d5;
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: $color_white2;
+        border-bottom: 1px solid #d5d5d5;
+        border-top: 1px solid #d5d5d5;
+        background-color: #f9f9f9;
       }
+    }
 
-      &__action {
-        width: 100%;
-        max-height: 700px;
-        overflow-x: auto;
-        padding-right: 30px;
-        display: flex;
-        justify-content: space-between;
+    tbody {
+      tr {
+        height: 60px;
       }
+    }
 
-      &__name {
-        width: max-content;
-        display: flex;
-        align-items: center;
-        cursor: pointer;
+    tr {
+      border-bottom: 1px solid #d5d5d5;
+    }
+  }
 
-        svg {
-          margin-right: 22px;
-        }
+  &__lastTr {
+    border-top: 2px solid #d5d5d5;
+    border-bottom: none !important;
+    font-weight: bold;
+  }
 
-        span {
-          margin-left: 33px;
-        }
-      }
+  &__tableTh {
+    padding: 0 17px;
+    height: 50px;
+    font-size: 15px;
+    font-weight: bold;
 
-      &__buttons {
-        img {
-          cursor: pointer;
-        }
-      }
+    &--schedule {
+      width: 60%;
+    }
+  }
 
-      &__table {
-        width: 100%;
-        margin-top: 12px;
-        max-height: 700px;
-        overflow-x: auto;
-        padding-left: 30px;
+  &__amountWrapper {
+    display: flex;
+    align-items: center;
+    gap: 3px;
 
-        .detailTable {
-          width: 100%;
-          border-collapse: collapse;
+    p {
+      font-size: 16px;
+    }
+  }
 
-          thead {
-            height: 60px;
-            z-index: 1;
-            border-top: 1px solid #dfdfdf;
-            border-bottom: 1px solid #dfdfdf;
-            background-color: $color_white;
+  &__error {
+    color: red;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
 
-            th {
-              position: sticky;
-              top: 0;
-              background-color: $color_white;
-              border-bottom: 2px solid #eaeaea;
-              z-index: 1;
-              user-select: none;
-              cursor: pointer;
-            }
-          }
+  &__tableTd {
+    padding: 0 20px;
+    height: 60px;
+    position: relative;
 
-          tbody {
-            tr {
-              transition: 0.3s all ease-in;
-              cursor: pointer;
+    input {
+      width: 100%;
+      font-size: 16px;
+    }
 
-              td {
-                border-bottom: 1px solid #eaeaea;
-              }
-            }
-          }
-        }
+    textarea {
+      width: 100%;
+      font-size: 16px;
+      height: 50px;
+      margin: 5px 0;
+      padding: 15px 0;
+      resize: none;
+    }
 
-        td,
-        th {
-          height: 60px;
-          padding-left: 16px;
-        }
+    img {
+      cursor: pointer;
+    }
+  }
 
-        th {
-          font-size: 15px;
-          font-weight: 500;
-          letter-spacing: 1px;
-        }
-      }
+  &__buttonWrapper {
+    border-top: 1px solid #d5d5d5;
+    width: calc(100% - 42px);
+    padding-top: 30px;
+    margin: 0px 36px 30px 36px;
+  }
+
+  &__button {
+    padding: 8px 15px;
+    width: fit-content;
+    border-radius: 6px;
+    background-color: #7f7462;
+    color: #fff;
+  }
+
+  &__footer {
+    height: 146px;
+    width: 100%;
+    padding: 17px 42px 26px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-top: 1px solid #d5d5d5;
+  }
+
+  &__footerDetail {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__footerTitle {
+    font-size: 14px;
+    color: #000;
+
+    &--pointer {
+      cursor: pointer;
+    }
+  }
+
+  &__footerPriceGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  &__footerGroup {
+    display: flex;
+    gap: 30px;
+  }
+
+  &__footerPrice {
+    font-size: 18px;
+    color: #000;
+
+    &--big {
+      font-size: 22px;
+    }
+  }
+
+  &__footerFinal {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-end;
+  }
+
+  &__move {
+    position: absolute;
+    left: -32px;
+    top: 14px;
+    padding: 4px 10px;
+    border-radius: 6px;
+
+    &:hover {
+      background-color: #d5d5d5a6;
+      cursor: grab;
     }
   }
 }

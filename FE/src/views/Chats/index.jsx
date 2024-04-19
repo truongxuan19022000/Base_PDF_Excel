@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import Pusher from 'pusher-js';
 
 import { isEmptyObject } from 'src/helper/helper';
 import { useMessageSlice } from 'src/slices/message';
 import { useCustomerSlice } from 'src/slices/customer';
 import { validateDeleteMessage } from 'src/helper/validation';
-import { CHATS, PUSHER_CHANEL, PUSHER_EVENT } from 'src/constants/config';
+import { CHATS } from 'src/constants/config';
 
 import Loading from 'src/components/Loading';
 import ChatWindow from 'src/components/ChatWindow';
@@ -88,20 +87,6 @@ const Chats = () => {
     }
   }, [selectedCustomer, chatDetail])
   useEffect(() => {
-    const pusher = new Pusher(process.env.REACT_APP_PUSHER_APP_KEY, {
-      cluster: process.env.REACT_APP_PUSHER_CLUSTER,
-    });
-    const channel = pusher.subscribe(PUSHER_CHANEL);
-    channel.bind(PUSHER_EVENT, (data) => {
-      if (data && Object.keys(data).length > 0) {
-        dispatch(actions.pushNewMessageToList(data.message?.message))
-      }
-    });
-    return () => {
-      pusher.unsubscribe(PUSHER_CHANEL);
-    };
-  }, [id]);
-  useEffect(() => {
     if (id && conversations.length > 0) {
       const foundConversation = conversations.find(item => +id === +item.customer_id) || {};
       if (!isEmptyObject(foundConversation)) {
@@ -113,6 +98,11 @@ const Chats = () => {
       }
     }
   }, [id, conversations]);
+  useEffect(() => {
+    return () => {
+      dispatch(actions.setCurrentConversation({}));
+    }
+  }, [])
   useEffect(() => {
     const handleEscKeyPress = (event) => {
       if (event.key === 'Escape' && isShowChatActionConfirmModal) {
@@ -218,7 +208,7 @@ const Chats = () => {
         />
       </div>
       <div className="chats__right">
-        {(conversationId && !isLoading) ? (
+        {(conversationId) ? (
           <ChatWindow
             id={id}
             isSearching={isSearching}

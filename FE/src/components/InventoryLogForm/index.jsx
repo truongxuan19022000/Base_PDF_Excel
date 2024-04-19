@@ -74,13 +74,13 @@ const InventoryLogForm = ({
   }
 
   const renderLogsData = (index, item) => {
-    const username = item.username;
-    const changedMessages = JSON.parse(item.message);
-    const logsTime = dayjs(item.created_at).format('DD MMM YYYY, h:mma');
-    const isIncludePriceChanged = changedMessages?.find(msg => msg.field === 'price');
-    const actionType = ACTIVITY.LOGS.MATERIAL_ACTION[item.action_type]
-
+    const username = item?.username;
+    const changedMessages = JSON.parse(item?.message);
+    const logsTime = dayjs(item?.created_at).format('DD MMM YYYY, h:mma');
+    const isIncludePriceChanged = changedMessages?.find(msg => msg?.field === 'price');
+    const actionType = ACTIVITY.LOGS.MATERIAL_ACTION[item?.action_type]
     return (
+      item &&
       <div key={index} className="logsBoxForm">
         <div className="logsBoxForm__content">
           <div className="logsBoxForm__content--left" >

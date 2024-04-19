@@ -254,7 +254,7 @@ const slice = createSlice({
       if (!payload) return;
 
       if (+state.currentConversation?.id !== +payload.conversation_id) {
-        state.conversations.map(item => item?.id === payload?.conversation_id ? item.messages_unread_count++ : item)
+        state.conversations.map(item => item?.id === +payload?.conversation_id ? item.messages_unread_count++ : item)
       } else {
         if (state.currentConversation?.messages_unread_count >= 0) {
           state.currentConversation.messages_unread_count++

@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { memo, useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import dayjs from 'dayjs';
 
-import { CHATS } from 'src/constants/config';
+import { ALERT, CHATS, HIDDEN_MESSAGE_LENGTH } from 'src/constants/config';
+import { downloadFile } from 'src/helper/helper';
+import { alertActions } from 'src/slices/alert';
 
 import StarSvg from '../Icons/StarSvg';
 import TextTypeForm from '../TextTypeForm';
@@ -12,21 +16,70 @@ import MessageActionDialog from '../MessageActionDialog';
 import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper';
 
 const MessageItemForm = ({
-  status = {},
   message = {},
-  listText = [],
-  captionText = [],
   customerInfo = {},
-  expandedMessageIds = [],
-  messageText = '',
-  formattedTime = '',
   isStarred = false,
   isSelectedMsg = false,
   isShowMessageDialog = false,
-  handleReadMore,
-  handleDownloadFile,
   setIsShowMessageDialog,
 }) => {
+  const dispatch = useDispatch()
+
+  const status = CHATS.STATUS?.find(status => +status.value === +message.status) || null;
+  const formattedTime = message.created_at ? dayjs(message.created_at).format('HH:mm') : '';
+  const messageText = message.content?.text?.body
+
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [expandedMessageIds, setExpandedMessageIds] = useState([]);
+
+  const slicedText = useMemo(() => {
+    if (messageText?.length > HIDDEN_MESSAGE_LENGTH && !expandedMessageIds.includes(message.id)) {
+      return messageText.slice(0, HIDDEN_MESSAGE_LENGTH);
+    } else {
+      return messageText;
+    }
+  }, [messageText, expandedMessageIds, message]);
+  const listText = useMemo(() => {
+    if (slicedText) {
+      return slicedText?.split('\n');
+    }
+    return [];
+  }, [slicedText]);
+  const captionText = useMemo(() => {
+    const caption = message.image_video?.caption || message.content?.image?.caption || message.content?.video?.caption
+    if (caption) {
+      return caption?.split('\n')
+    }
+    return []
+  }, [message])
+
+  const handleReadMore = (messageId) => {
+    setExpandedMessageIds((prevExpanded) => [...prevExpanded, messageId]);
+  };
+
+  const handleClickDownload = () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+
+    const file = {
+      fileName: message.content?.document?.filename,
+      url: message.content?.document?.link || message.content?.document?.url,
+    }
+
+    downloadFile(file)
+      .then(() => { })
+      .catch((error) => {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Download Failed',
+          description: error,
+        }));
+      })
+      .finally(() => {
+        setIsDownloading(false);
+      });
+  };
+
   const renderContent = () => {
     switch (message.content?.type) {
       case 'image':
@@ -55,7 +108,7 @@ const MessageItemForm = ({
           <DocumentTypeForm
             message={message}
             customerInfo={customerInfo}
-            handleDownloadFile={handleDownloadFile}
+            handleDownloadFile={handleClickDownload}
           />
         );
       case 'contacts':
@@ -112,4 +165,4 @@ const MessageItemForm = ({
   )
 }
 
-export default MessageItemForm
+export default memo(MessageItemForm)

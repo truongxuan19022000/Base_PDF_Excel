@@ -1,9 +1,11 @@
 import dayjs from 'dayjs';
 
+import { LABEL_TYPE } from 'src/constants/config';
+
 export const setToken = (name, value, time = null) => {
   if (value && time) {
     let d = new Date();
-    d.setTime(d.getTime() + (time * 60 * 60 * 1000));
+    d.setTime(d.getTime() + (time * 60 * 1000));
     const expires = 'expires=' + d.toUTCString();
     document.cookie = `${name}=${value};${expires};path=/`;
   } else if (value) {
@@ -123,12 +125,11 @@ export const isLatestMessage = (message, messagesInGroup) => {
 }
 
 export const isEmptyObject = (obj) => {
-  if (typeof obj !== 'object') {
+  if (typeof obj !== 'object' || obj === null) {
     return true;
   }
-
   for (let key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (obj.hasOwnProperty(key) && obj[key]) {
       return false;
     }
   }
@@ -155,22 +156,57 @@ export const downloadCSVFromData = (downloadData, fileName) => {
   }
 };
 
-export const downloadFile = (file) => {
-  fetch(file?.url || '')
-    .then(response => response.blob())
-    .then(blob => {
+export const downloadByATag = (url, fileName) => {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank'
+  a.download = fileName; // Set the desired file name
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
+export const downloadFile = (file, type = LABEL_TYPE.URL, fileName = 'multi-contract') => {
+  return new Promise((resolve, reject) => {
+    if (type === LABEL_TYPE.URL) {
+      fetch(file?.url || '')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const documentName = file.fileName || fileName;
+          downloadByATag(url, documentName);
+          resolve();
+        })
+        .catch(error => {
+          console.error(error);
+          reject(error);
+        });
+    } else if (type === LABEL_TYPE.PDF) {
+      const byteCharacters = atob(file);
+      const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+      }
+      const blob = new Blob(byteArrays, { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank'
-      a.download = file?.fileName || 'multi_contract';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    })
-    .catch(error => console.error(error));
+      const documentName = file.fileName || fileName;
+      downloadByATag(url, documentName);
+      resolve();
+    }
+  });
 };
 
 export const parseCSVToDataArray = (csvString) => {
@@ -226,7 +262,7 @@ export const formatStringToDate = (dateString) => {
 };
 
 export const formatNumberWithTwoDecimalPlaces = (number) => {
-  if (number === null || number === undefined) return '';
+  if (!number || typeof number === 'object') return '0.00';
   const roundedNumber = Math.round(number * 100) / 100;
   return roundedNumber.toFixed(2);
 };
@@ -319,18 +355,24 @@ export const validatePaymentTerm = (value) => {
 };
 
 export const validateDescription = (value) => {
-  return value.length > 255;
+  return value.length > 1000;
 };
+
 export const formatPriceWithTwoDecimals = (total) => {
+  if (!total || typeof total === 'object') return '0.00';
   if (total) {
-    const decimal = (+total - Math.floor(+total)).toFixed(2).split('.')
-    return [(Math.floor(+total)).toLocaleString(), decimal[1]].join('.')
+    const roundedTotal = (+total).toFixed(2);
+    const natural = Math.floor(+total)
+    const decimal = roundedTotal.split('.')[1];
+    return [natural.toLocaleString('es-US'), decimal].join('.');
   }
-  return 0
-}
+  return '0.00';
+};
+
 export const parseLocaleStringToNumber = (price) => {
+  if (!price) return 0.00;
   if (price.toString().includes('.')) {
-    const splitPrice = price.split('.')
+    const splitPrice = price.toString().split('.')
     // Remove non-numeric characters and replace commas with dots
     const numericString = splitPrice[0].replace(/[^0-9.-]/g, '').replace(',', '.');
     const integerPart = parseFloat(numericString);
@@ -339,3 +381,55 @@ export const parseLocaleStringToNumber = (price) => {
   }
   return price
 };
+
+export const handleSetNumber = (number, callback) => {
+  if (!callback) return
+  if (!isNaN(number)) {
+    callback(number)
+  }
+}
+export const disableInputWhenLargerThanTwoDecimals = (number) => {
+  if (typeof number !== 'number') return true
+  const decimal = number.toString().split('.')[1]
+  return decimal?.length > 2
+}
+
+export const formatDate = (inputDate) => {
+  const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+  if (!dateRegex.test(inputDate)) {
+    return 'NA';
+  }
+  const [day, month, year] = inputDate.split('/');
+  const formattedDate = dayjs(`${year}-${month}-${day}`).format('DD MMM YYYY');
+  return formattedDate;
+};
+
+export const formatTime = (dateTimeString) => {
+  const parsedDate = dayjs(dateTimeString);
+  const formattedTime = parsedDate.format('h:mma'); // 'h' for hour, 'mm' for minute, 'a' for AM/PM
+  return formattedTime;
+}
+
+export const chartRoundNumber = (number) => {
+  if (number % 1000 > 500) {
+    return Math.ceil(number / 1000) * 1000;
+  } else {
+    return Math.floor(number / 1000) * 1000;
+  }
+}
+export const sendEmail = (body) => {
+  const mailtoLink = `mailto:?body=${encodeURIComponent(body)}`;
+  const link = document.createElement('a');
+  link.href = mailtoLink;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export const roundToTwoDecimals = (number) => {
+  if (!number || typeof number === 'object') return 0.00;
+  if (number) {
+    return Math.round(+number * 100) / 100;
+  }
+  return 0.00
+}

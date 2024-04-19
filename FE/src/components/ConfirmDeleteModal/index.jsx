@@ -1,6 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useDispatch } from 'react-redux'
 
 import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper'
+
+import { useQuotationSectionSlice } from 'src/slices/quotationSection'
 
 const ConfirmDeleteModal = ({
   isDetail = false,
@@ -8,10 +11,20 @@ const ConfirmDeleteModal = ({
   marginTop = '',
   closeModal,
   onClickDelete,
+  className = '',
   deleteTitle = '',
 }) => {
+  const dispatch = useDispatch()
+  const { actions } = useQuotationSectionSlice()
+
+  useEffect(() => {
+    return () => {
+      dispatch(actions.clearSelectedDeleteInfo())
+    }
+  }, [])
+
   return (
-    <div className={`confirmDelete${marginTop ? ' mt-' + marginTop : ''}${isDetail ? ' confirmDelete--detail' : ''}`}>
+    <div className={`confirmDelete${className && ` confirmDelete--${className}`}${marginTop ? ' mt-' + marginTop : ''}${isDetail ? ' confirmDelete--detail' : ''}`}>
       {isShow && (
         <ClickOutSideWrapper onClickOutside={closeModal}>
           <div className="confirmDelete__body">

@@ -2,13 +2,10 @@ import React from 'react'
 
 import SelectForm from '../SelectForm'
 
-import { ALLOWED_FILE_FORMATS } from 'src/constants/config'
-
 const CustomerTableAction = ({
   searchText = '',
   buttonTitle = '',
   actionList = [],
-  fileInputRef = null,
   isDetail = false,
   isShowFilter = true,
   isFiltering = false,
@@ -76,15 +73,11 @@ const CustomerTableAction = ({
       <div className="customerTableAction__status">
         <div className="tableAction__button">
           {isUploadDocument ? (
-            <label className="customerTableAction__button--new">
+            <label
+              className="customerTableAction__button--new"
+              onClick={handleFileUpload}
+            >
               + Upload
-              <input
-                type="file"
-                accept={ALLOWED_FILE_FORMATS.map(format => `.${format}`).join(',')}
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-              />
             </label>
           ) : (
             <div

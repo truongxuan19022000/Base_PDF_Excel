@@ -3,17 +3,15 @@
   height: 100%;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   position: relative;
-  margin-left: -20px;
+  gap: 21px;
 
   &--template {
     margin-left: 0;
   }
 
   &__icon {
-    width: 55px;
-    height: 55px;
-    margin-right: 1px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -22,13 +20,30 @@
     &:last-child {
       margin-right: 0;
     }
+  }
 
-    &--edit {
-      margin-left: -15px;
+  &__actionGroup {
+    position: absolute;
+    top: 25px;
+    left: 40px;
+    border-radius: 6px;
+    box-shadow: 0px 0px 2px 0px rgba(0, 0, 0, 0.25);
+    border: 1px solid #bcbcbc;
+    width: 80px;
+    z-index: 10;
+    background-color: #fff;
+  }
+
+  &__action {
+    padding: 8px 0 8px 15px;
+
+    p {
+      font-size: 16px;
+      color: #000;
     }
 
-    &--chat {
-      margin-left: -15px;
+    &:hover {
+      background-color: #ede5d8;
     }
   }
 }

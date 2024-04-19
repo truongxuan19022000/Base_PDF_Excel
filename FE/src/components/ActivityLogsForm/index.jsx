@@ -5,34 +5,40 @@ import { ACTIVITY } from 'src/constants/config';
 
 const ActivityLogsForm = ({
   logsData = [],
-  isInvoiceDetail = false,
+  logsNameList = [],
+  actionNameList = [],
 }) => {
   const renderLogsData = (index, item) => {
-    const logsName = ACTIVITY.LOGS.LABEL[item.type]
-    const actionName = ACTIVITY.LOGS.ACTION[item.action_type]
-    const logsTime = dayjs(item.created_at).format('DD MMM YYYY, h:mma')
-    const username = item?.username
+    const logsName = logsNameList[item?.type]
+    const actionName = actionNameList[item?.action_type]
+    const logsTime = item?.created_at && dayjs(item?.created_at).format('DD MMM YYYY, h:mma')
+    const username = item?.username || item?.user?.username
+    const icon = ACTIVITY.LOGS.ICON_TYPE[item.type] || ACTIVITY.DEFAULT_ICON;
+
     return (
+      item &&
       <div key={index} className="logsBoxForm">
-        <div className="logsBoxForm__content">
+        <div className="logsBoxForm__left">
           <img
             className="logsBoxForm__icon"
-            src={`/icons/brown-${isInvoiceDetail ? 'invoice.svg' : 'quotation.svg'}`}
+            src={icon}
             alt="activity icon"
           />
-          <div className="logsBoxForm__activity">
-            <div className="logsBoxForm__activity--info">
-              <span className="logsBoxForm__activity--name">{logsName || 'Item'}</span>
-              <span className="logsBoxForm__activity--action">{actionName || ''}</span>
-            </div>
-            <div className="logsBoxForm__activity--created">
-              <span className="logsBoxForm__activity--date">{logsTime || ''}</span>
-              <img src="/icons/dot.svg" alt="dot" />
-              <span className="logsBoxForm__activity--role">{username || ''}</span>
+          {(index === logsData.length - 1) ? null : <div className="logsBoxForm__divider"></div>}
+        </div>
+        <div className="logsBoxForm__right">
+          <div className="logsBoxForm__info">
+            <div>{logsName || 'Item'}</div>
+            <div className="logsBoxForm__detail">
+              <div className="logsBoxForm__action">{actionName || ''}</div>
             </div>
           </div>
+          <div className="logsBoxForm__created">
+            <span >{logsTime || ''}</span>
+            <img src="/icons/dot.svg" alt="dot" />
+            <span>{username || ''}</span>
+          </div>
         </div>
-        {(index === logsData.length - 1) ? null : <div className="logsBoxForm__divider"></div>}
       </div>
     );
   }

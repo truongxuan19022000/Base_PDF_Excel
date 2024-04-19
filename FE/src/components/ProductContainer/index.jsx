@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { CCollapse } from '@coreui/react'
 import { useDrag, useDrop } from 'react-dnd'
+import { useDispatch, useSelector } from 'react-redux'
 
-import { formatCurrency } from 'src/helper/helper'
-import { INVENTORY, QUOTATION } from 'src/constants/config'
+import { useQuotationSectionSlice } from 'src/slices/quotationSection'
+import { formatPriceWithTwoDecimals } from 'src/helper/helper'
+import { ALERT, INVENTORY, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config'
+import { validatePermission } from 'src/helper/validation'
+import { alertActions } from 'src/slices/alert'
 
 import MoveAndToggleIcon from '../MoveAndToggleIcon'
 import MaterialContainer from '../MaterialContainer'
@@ -12,24 +16,38 @@ const ProductContainer = ({
   index,
   sectionId,
   product = {},
-  setMessage,
   moveProduct,
+  isEditable = false,
   handleRemoveProduct,
   handleDragAndDropProduct,
   showCreateProductItemModal,
+  setIsShowAddProductModal,
+  setIsShowEditProductModal,
+  setIsShowCreateProductModal,
+  setIsShowCreateProductItemModal,
 }) => {
+  const dispatch = useDispatch()
+  const { actions } = useQuotationSectionSlice();
+
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
   const [materialList, setMaterialList] = useState([])
   const [isShowProductMoveIcon, setIsShowProductMoveIcon] = useState(false)
   const [isHoveringMoveIcon, setIsHoveringMoveIcon] = useState(false)
   const [showDetailProductIds, setShowDetailProductIds] = useState([])
 
   const isShowProductList = useMemo(() => {
-    return showDetailProductIds.includes(product.productId)
+    return showDetailProductIds.includes(+product.productId)
   }, [product, showDetailProductIds])
 
   const [{ isDragging }, drag] = useDrag({
     type: isHoveringMoveIcon ? 'PRODUCT' : '',
-    item: { id: product.productId, index },
+    item: { id: +product.productId, index },
   });
 
   const [, drop] = useDrop(() => ({
@@ -46,15 +64,16 @@ const ProductContainer = ({
   }))
 
   useEffect(() => {
-    if (product.product_items?.length > 0) {
+    if (product?.product_items) {
       setMaterialList(product.product_items)
     }
+    setShowDetailProductIds([...showDetailProductIds, +product.productId])
   }, [product])
 
   const toggleShowDetailProduct = (productId, e) => {
     e.stopPropagation()
     if (showDetailProductIds.includes(productId)) {
-      setShowDetailProductIds(showDetailProductIds.filter(id => id !== productId))
+      setShowDetailProductIds(showDetailProductIds.filter(id => +id !== +productId))
     } else {
       setShowDetailProductIds([...showDetailProductIds, productId])
     }
@@ -70,21 +89,54 @@ const ProductContainer = ({
     setIsHoveringMoveIcon(false)
   }
 
-  const handleRemoveMaterial = (e, materialId) => {
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
+  const handleRemoveMaterial = (e, productItemId) => {
     e.stopPropagation()
-    if (materialId) {
-      setMaterialList(materialList.filter(m => m.id !== materialId))
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (productItemId) {
+        dispatch(actions.handleSelectDeleteInfo({
+          product_item_id: productItemId,
+          product_id: +product.productId,
+          section_id: +sectionId,
+          type: QUOTATION.LABEL.PRODUCT_ITEM,
+        }))
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: 'No found the product item Id.'
+        }))
+      }
     } else {
-      setMessage({
-        failed: 'No found the material Id.'
-      })
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleClickEditSectionProduct = (e, product) => {
+    e.stopPropagation()
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (product) {
+        dispatch(actions.handleSetSelectedProduct(product))
+        setIsShowCreateProductModal(true)
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const renderProductDetail = () => {
     const profile = INVENTORY.PROFILES[product.profile]?.label;
-    const storey = QUOTATION.STOREY[product.storey]?.label;
-    const area = QUOTATION.AREA[product.area]?.label;
+    const storey = product?.storey ? QUOTATION.STOREY[product.storey]?.label : product?.storey_text;
+    const area = product?.area ? QUOTATION.AREA[product.area]?.label : product?.area_text;
     return (
       <tr>
         <td className="productContainerTable__td">
@@ -124,12 +176,12 @@ const ProductContainer = ({
         </td>
         <td className="productContainerTable__td">
           <div className="productContainerTable__td--text productContainerTable__td--price">
-            $ {formatCurrency(+product.sub_total || 0)}
+            $ {formatPriceWithTwoDecimals(+product.sub_total)}
           </div>
         </td>
         <td className="productContainerTable__td">
           <div className="productContainerTable__td--text productContainerTable__td--total">
-            $ {formatCurrency((+product.quantity * +product.sub_total) || 0)}
+            $ {formatPriceWithTwoDecimals(+product.quantity * +product.sub_total)}
           </div>
         </td>
       </tr>
@@ -146,13 +198,13 @@ const ProductContainer = ({
         className="productContainer__header"
         onMouseEnter={() => setIsShowProductMoveIcon(true)}
         onMouseLeave={() => setIsShowProductMoveIcon(false)}
-        onClick={(e) => toggleShowDetailProduct(product.productId, e)}
+        onClick={(e) => toggleShowDetailProduct(+product.productId, e)}
       >
         <div className="productContainer__toggle">
           <MoveAndToggleIcon
             isShowToggleIcon={true}
             isOpen={isShowProductList}
-            isShowMoveIcon={isShowProductMoveIcon}
+            isShowMoveIcon={isShowProductMoveIcon && isEditAllowed && isEditable}
             handleMouseEnterIcon={handleMouseEnter}
             handleMouseLeaveIcon={handleMouseLeave}
           />
@@ -196,7 +248,10 @@ const ProductContainer = ({
           </table>
         </div>
         <div className="productContainer__actions">
-          <div className="productContainer__actions--button">
+          <div
+            className="productContainer__actions--button"
+            onClick={(e) => handleClickEditSectionProduct(e, product)}
+          >
             <img
               src="/icons/edit.svg"
               alt="edit"
@@ -204,7 +259,7 @@ const ProductContainer = ({
           </div>
           <div
             className="productContainer__actions--button"
-            onClick={(e) => handleRemoveProduct(e, product.productId)}
+            onClick={(e) => handleRemoveProduct(e, product)}
           >
             <img
               src="/icons/x-mark.svg"
@@ -219,11 +274,14 @@ const ProductContainer = ({
             {materialList.map((material, index) => (
               <div className="productContainer__list--material" key={index}>
                 <MaterialContainer
+                  product={product}
                   material={material}
-                  setMessage={setMessage}
+                  sectionId={sectionId}
+                  isEditable={isEditable}
                   handleRemoveMaterial={handleRemoveMaterial}
-                  productHeight={product?.height}
-                  productWidth={product?.width}
+                  setIsShowAddProductModal={setIsShowAddProductModal}
+                  setIsShowEditProductModal={setIsShowEditProductModal}
+                  setIsShowCreateProductItemModal={setIsShowCreateProductItemModal}
                 />
               </div>
             ))}
@@ -235,19 +293,19 @@ const ProductContainer = ({
             <div className="productContainer__footer--buttons">
               <div
                 className="productContainer__footer--button"
-                onClick={() => showCreateProductItemModal(product.productId, QUOTATION.MATERIAL_VALUE.PRODUCT, sectionId, product?.height, product?.width)}
+                onClick={() => showCreateProductItemModal(+product.productId, QUOTATION.MATERIAL_VALUE.PRODUCT, +sectionId, product?.height, product?.width)}
               >
                 + Product
               </div>
               <div
                 className="productContainer__footer--button"
-                onClick={() => showCreateProductItemModal(product.productId, QUOTATION.MATERIAL_VALUE.GLASS, sectionId, product?.height, product?.width)}
+                onClick={() => showCreateProductItemModal(+product.productId, QUOTATION.MATERIAL_VALUE.GLASS, +sectionId, product?.height, product?.width)}
               >
                 + Glass
               </div>
               <div
                 className="productContainer__footer--button"
-                onClick={() => showCreateProductItemModal(product.productId, QUOTATION.MATERIAL_VALUE.EXTRA_ORDER, sectionId, product?.height, product?.width)}
+                onClick={() => showCreateProductItemModal(+product.productId, QUOTATION.MATERIAL_VALUE.EXTRA_ORDER, +sectionId, product?.height, product?.width)}
               >
                 + Extra Order
               </div>

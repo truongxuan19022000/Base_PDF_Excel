@@ -10,12 +10,15 @@ const InventoryHardwareForm = ({
   setPriceUnit,
   handleInputChange,
   isInputChanged = false,
+  isMaterialUsed = false,
+  isEditAllowed = false,
   setIsInputChanged,
+  setPrice,
 }) => {
   return (
     <>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.item}
             keyValue="item"
@@ -29,7 +32,7 @@ const InventoryHardwareForm = ({
             <div className="inventoryCell__item--message">{data.messageError.item}</div>
           }
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.code}
             keyValue="code"
@@ -41,8 +44,8 @@ const InventoryHardwareForm = ({
           />
         </div>
       </div>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.category}
             keyValue="category"
@@ -53,7 +56,7 @@ const InventoryHardwareForm = ({
             handleInputChange={handleInputChange}
           />
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.price}
             unit={data.priceUnit}
@@ -69,6 +72,7 @@ const InventoryHardwareForm = ({
             handleInputChange={handleInputChange}
             isInputChanged={isInputChanged}
             setIsInputChanged={setIsInputChanged}
+            setPrice={setPrice}
           />
         </div>
       </div>

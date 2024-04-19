@@ -11,6 +11,8 @@ import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper';
 const SelectQuotationForm = ({
   className = '',
   searchText = '',
+  keyValue = '',
+  messageError = {},
   searchResults = [],
   selectedQuotation = {},
   isSearching = false,
@@ -31,7 +33,7 @@ const SelectQuotationForm = ({
   }, [searchResults, data]);
 
   useEffect(() => {
-      setData(searchResults?.slice(0, 10) || [])
+    setData(searchResults?.slice(0, 10) || [])
   }, [searchResults])
 
   useEffect(() => {
@@ -41,12 +43,6 @@ const SelectQuotationForm = ({
       setSelectBoxHeight((data?.length + 1) * SELECT_BOX_HEIGHT_UNIT)
     }
   }, [data])
-
-  useEffect(() => {
-    if (searchText?.length > 0 && isEmptyObject(selectedQuotation)) {
-      setIsShowItemList(true)
-    }
-  }, [searchText, selectedQuotation])
 
   const fetchMoreData = () => {
     if (hasMore) {
@@ -74,7 +70,7 @@ const SelectQuotationForm = ({
   }
 
   return (
-    <div className={`selectQuotationForm${isShowItemList ? ' selectQuotationForm--active' : ''} ${className}`}>
+    <div className={`selectQuotationForm${isShowItemList ? ' selectQuotationForm--active' : ''} ${className}${messageError?.[keyValue] ? ' inventorySelectForm--error' : ''}`}>
       <div
         className="selectQuotationForm__label"
         onClick={() => setIsShowItemList(!isShowItemList)}

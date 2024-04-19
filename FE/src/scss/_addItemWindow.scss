@@ -1,11 +1,18 @@
 .addItemWindow {
-  position: fixed;
-  top: 0;
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  background: #a1a1a1;
-  z-index: 13;
+  background-color: #0000004d;
+  height: calc(100vh - 63px);
+  z-index: 7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .inventorySelectForm {
+    height: 40px;
+  }
 
   &__slide {
     width: fit-content;
@@ -15,6 +22,7 @@
     transition: 0.5s;
 
     &--scrap {
+
       transform: translateX(-100vw);
     }
 
@@ -32,12 +40,10 @@
   .createItemForm {
     width: 423px;
     border-radius: 10px;
-    box-shadow: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
-    background-color: #FFF;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    box-shadow:
+      0px 8px 8px -4px rgba(16, 24, 40, 0.03),
+      0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+    background-color: #fff;
     padding: 24px 26px 32px 26px;
 
     &--scrap,
@@ -45,10 +51,11 @@
       width: 1122px;
       display: flex;
       flex-direction: column;
+      max-width: 90%;
     }
 
     &--addItemForm {
-      padding: 24px 10px 32px 26px;
+      padding: 24px 16px 32px 26px;
 
       .createItemForm__inner {
         max-height: 80vh;
@@ -69,14 +76,22 @@
       gap: 19px;
     }
 
+    &__table{
+      width: 100%;
+      position: relative;
+      margin-top: 12px;
+      max-height: 50vh;
+      overflow-x: auto;
+    }
+
     &__formGroup {
       display: flex;
       flex-direction: column;
-      gap: 5px
+      gap: 5px;
     }
 
     &__label {
-      color: #343A40;
+      color: #343a40;
       font-size: 13px;
     }
 
@@ -85,7 +100,6 @@
       border-radius: 6px;
       display: flex;
       width: fit-content;
-
     }
 
     &__option {
@@ -97,12 +111,12 @@
       }
 
       &--active {
-        background: #EDE5D8;
+        background: #ede5d8;
       }
 
       p {
         font-size: 14px;
-        color: #343A40;
+        color: #343a40;
       }
     }
 
@@ -131,12 +145,16 @@
         outline: none;
         padding: 10px;
       }
-    }
 
+      &--error{
+        border: 1px solid red;
+      }
+    }
 
     &__buttonWrapper {
       margin-top: 57px;
       display: flex;
+      justify-content: flex-end;
       gap: 13px;
 
       &--scrap {
@@ -154,11 +172,11 @@
 
     &__button {
       outline: none;
-      border: 0.5px solid #7F7462;
+      border: 0.5px solid #7f7462;
       border-radius: 6px;
-      color: #7F7462;
-      flex: 1;
+      color: #7f7462;
       height: 44px;
+      width: 152px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -166,41 +184,99 @@
       background-color: #fff;
 
       &--brown {
-        background-color: #7F7462;
+        background-color: #7f7462;
         color: #fff;
       }
+    }
+
+    &__message {
+      color: red;
     }
   }
 
   .scrapTable {
     width: 100%;
-    border: 1px solid rgba(172, 172, 172, 0.30);
-    border-radius: 6px;
-
-    tr th {
-      padding: 18px 20px 15px 20px;
-      font-weight: normal;
-      font-size: 16px;
-    }
+    border-collapse: collapse;
 
     thead {
-      background: #F9F9F9;
-      border-bottom: 1px solid rgba(172, 172, 172, 0.30);
+      height: 55px;
+      z-index: 1;
 
-      tr th {
-        font-size: 15px;
+      tr {
+        border: 1px solid $color_black3;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background-color: #f4f4f4;
+        border-bottom: 2px solid $color_black3;
+        z-index: 1;
+        user-select: none;
       }
     }
 
     tbody {
       tr {
-        border-top: 1px solid rgba(172, 172, 172, 0.30);
+        border: 1px solid $color_black3;
       }
     }
 
+    &__th {
+      text-overflow: ellipsis;
+      overflow: hidden;
+
+      &--title {
+        width: 31.1%;
+      }
+
+      &--code {
+        width: 16.2%;
+      }
+
+      &--item {
+        width: 24.3%;
+      }
+
+      &--length {
+        width: 15.5%;
+      }
+
+      &--actions {
+        width: 12.5%;
+      }
+    }
+
+    &__text {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    td,
+    th {
+      position: relative;
+      height: 55px;
+      font-size: 16px;
+      padding-left: 16px;
+    }
+
+    th {
+      letter-spacing: 1px;
+      font-weight: 500;
+      color: #343a40;
+    }
+
+    td {
+      font-weight: 400;
+    }
+
     &__thAction {
-      color: #7F7462;
+      color: #7f7462;
+      font-weight: 500;
       text-decoration: underline;
+      cursor: pointer;
     }
   }
 
@@ -208,14 +284,20 @@
     gap: 30px;
     display: flex;
     flex-direction: column;
+    position: relative;
     width: 100%;
+
+    &__group {
+      display: flex;
+      gap: 13px;
+    }
 
     &__block {
       display: flex;
       flex-direction: column;
       gap: 15px;
       padding-bottom: 30px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.50);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.5);
     }
 
     &__blockInner {
@@ -232,19 +314,25 @@
 
     &__label {
       font-size: 13px;
-      color: #343A40;
+      color: #343a40;
     }
 
     &__input {
       width: 100%;
       border-radius: 5px;
-      border: 1px solid rgba(0, 0, 0, 0.50);
+      border: 1px solid rgba(0, 0, 0, 0.5);
       overflow: hidden;
       display: flex;
+      align-items: center;
       background-color: #fff;
 
       &--readOnly {
         background-color: #f4f4f4;
+      }
+
+      &--symbol {
+        margin-left: 10px;
+        margin-right: -5px;
       }
 
       input {
@@ -253,17 +341,39 @@
         width: 100%;
         background-color: transparent;
       }
+
+      &--error {
+        border: 1px solid red;
+      }
+
+      &--message {
+        color: red;
+      }
     }
 
     &__inputUnit {
-      width: 40px;
       height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
       font-size: 16px;
       color: #000;
-      border-left: 1px solid rgba(0, 0, 0, 0.50);
+      border-left: 1px solid rgba(0, 0, 0, 0.5);
+      padding: 0 5px;
+
+      &--left {
+        width: fit-content;
+        padding: 0;
+        padding-left: 10px;
+        border: none;
+      }
+    }
+
+    &__message {
+      position: absolute;
+      left: 0;
+      bottom: -30px;
+      color: red;
     }
   }
 }

@@ -9,6 +9,7 @@ const SelectRoleForm = ({
   messageError,
   roleList = [],
   setIsDisableSubmit,
+  isDisabled = false,
 }) => {
   const [isShowItemList, setIsShowItemList] = useState(false)
 
@@ -30,7 +31,7 @@ const SelectRoleForm = ({
   }
 
   return (
-    <div className={`selectRoleForm${isShowItemList ? ' selectRoleForm--active' : ''}${messageError ? ' selectRoleForm--error' : ''}`}>
+    <div className={`selectRoleForm${isShowItemList ? ' selectRoleForm--active' : ''}${messageError ? ' selectRoleForm--error' : ''}${isDisabled ? ' selectRoleForm--disabled' : ''}`}>
       <div className="selectRoleForm__label" onClick={handleShowRoleList}>
         {role && Object.keys(role).length > 0 ? (
           <div className="selectRoleForm__action selectRoleForm__action--selected">{role?.role_name}</div>

@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
+import { useDispatch, useSelector } from 'react-redux';
 
-import { MESSAGE, QUOTATION } from 'src/constants/config';
+import { ALERT, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config';
+import { validatePermission } from 'src/helper/validation';
+import { alertActions } from 'src/slices/alert';
 
 import SelectNoteForm from '../SelectNoteForm';
+import PriceInputForm from '../InputForm/PriceInputForm';
 
 const NoteDragItem = ({
   note,
@@ -12,8 +16,8 @@ const NoteDragItem = ({
   error = '',
   noteType = '',
   hasAmount = false,
+  isEditable = false,
   isChangingNoteList = false,
-  setMessage,
   handleInputChange,
   handleAmountChange,
   handleClickOutAmount,
@@ -23,6 +27,14 @@ const NoteDragItem = ({
   handleDragAndDropNote,
   actionList = QUOTATION.NOTE_ACTION
 }) => {
+  const dispatch = useDispatch();
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
   const [isShowMoveIcon, setIsShowMoveIcon] = useState(false);
   const [isHoveredOnMoveIcon, setIsHoveredOnMoveIcon] = useState(false);
   const [{ isDragging }, drag] = useDrag({
@@ -30,11 +42,17 @@ const NoteDragItem = ({
     item: { id: note.id, index },
   });
   const [, drop] = useDrop({
+
     accept: 'NOTE',
     hover: (draggedItem) => {
       if (draggedItem.index !== index) {
         if (isChangingNoteList) {
-          setMessage({ failed: MESSAGE.ERROR.UN_SAVE_CHANGED })
+          dispatch(alertActions.openAlert({
+            type: ALERT.FAILED_VALUE,
+            title: 'Action Failed',
+            isHovered: false,
+            description: MESSAGE.ERROR.UN_SAVE_CHANGED,
+          }))
         } else {
           moveNote(draggedItem.index, index);
           draggedItem.index = index;
@@ -61,24 +79,23 @@ const NoteDragItem = ({
           {error &&
             <div className="quotationNoteTable__td--message">{error}</div>
           }
-          <>
-            {isShowMoveIcon &&
-              <div className="quotationNoteTable__td--move"
-                onMouseEnter={() => setIsHoveredOnMoveIcon(true)}
-                onMouseLeave={() => setIsHoveredOnMoveIcon(false)}
-              >
-                <img src="/icons/move-icon.svg" alt="move icon" />
-              </div>
-            }
-            <textarea
-              type="text"
-              placeholder="Type Information & Notes..."
-              className="quotationNoteTable__td--input"
-              value={note.description || ''}
-              onKeyDown={(e) => handleOnKeydown(e, note.id)}
-              onChange={(e) => handleInputChange(e, note.id)}
-            />
-          </>
+          {(isShowMoveIcon && isEditAllowed && isEditable) &&
+            <div className="quotationNoteTable__td--move"
+              onMouseEnter={() => setIsHoveredOnMoveIcon(true)}
+              onMouseLeave={() => setIsHoveredOnMoveIcon(false)}
+            >
+              <img src="/icons/move-icon.svg" alt="move icon" />
+            </div>
+          }
+          <textarea
+            type="text"
+            placeholder="Type Information & Notes..."
+            className="quotationNoteTable__td--textarea"
+            value={note.description || ''}
+            onKeyDown={(e) => handleOnKeydown(e, note.id)}
+            onChange={(e) => handleInputChange(e, note.id)}
+            readOnly={!isEditAllowed}
+          />
         </div>
       </td>
       <td>
@@ -93,12 +110,12 @@ const NoteDragItem = ({
       </td>
       {hasAmount &&
         <td className="quotationNoteTable__td">
-          <input
-            type="text"
-            value={note.amount}
-            placeholder="0"
-            onChange={(e) => handleAmountChange(e, note.id)}
-            onBlur={() => handleClickOutAmount(note.id)}
+          <PriceInputForm
+            keyValue={note.id}
+            inputValue={note.amount}
+            placeholderTitle="0.00"
+            handleAmountChange={handleAmountChange}
+            handleClickOutAmount={handleClickOutAmount}
           />
         </td>
       }

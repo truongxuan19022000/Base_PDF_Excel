@@ -1,22 +1,27 @@
 .invoiceDetail {
   width: 100%;
-  position: relative;
   height: calc(100vh - 63px);
   display: flex;
   flex-direction: column;
+  position: relative;
+
+  &__notification {
+    width: 100%;
+    position: absolute;
+    top: 82px;
+    z-index: 10;
+  }
 
   &__header {
+    width: 100%;
     display: flex;
-    font-size: 25px;
-    font-weight: 600;
-    padding-bottom: 30px;
-    padding-left: 36px;
+    padding: 0 30px;
     padding-top: 30px;
-    position: relative;
+    padding-bottom: 24px;
+    justify-content: space-between;
 
     &--title {
       width: 65%;
-      height: 90px;
       font-size: 25px;
       font-weight: 600;
       display: flex;
@@ -43,19 +48,10 @@
       font-size: 15px;
       font-weight: 400;
       margin-right: 15px;
-      user-select: none;
       cursor: pointer;
 
       img {
         margin-right: 10px;
-      }
-
-      svg {
-        margin-bottom: 2px;
-      }
-
-      &:last-child {
-        margin-right: 0;
       }
     }
 

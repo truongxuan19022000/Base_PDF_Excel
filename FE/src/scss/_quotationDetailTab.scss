@@ -26,12 +26,20 @@
     &--textarea {
       max-width: 885px;
     }
+
+    &--disabled {
+      pointer-events: none;
+    }
   }
 
   &__customerGroup {
     width: 100%;
 
-    .box {
+    &--disabled {
+      pointer-events: none;
+    }
+
+    .infoBox {
       width: 100%;
       margin-bottom: 30px;
       display: flex;
@@ -42,6 +50,10 @@
 
         &:last-child {
           margin-right: 0;
+        }
+
+        &--disabled {
+          pointer-events: none;
         }
 
         &--address {
@@ -90,10 +102,15 @@
         }
       }
 
+      &__phoneCode {
+        height: 100%;
+        width: 88px;
+        padding-right: 15px;
+      }
+
       &__phone {
         width: 429px;
         height: 40px;
-        padding-left: 10px;
         font-size: 16px;
         font-weight: 400;
         border-radius: 6px;
@@ -101,24 +118,6 @@
         display: flex;
         align-items: center;
         border: 0.5px solid $color_black2;
-
-        select {
-          height: 100%;
-          width: 55px;
-          cursor: pointer;
-
-          &:disabled {
-            color: black;
-          }
-        }
-
-        .box__divider {
-          width: 1px;
-          height: 25px;
-          margin-left: 15px;
-          background-color: rgba(0, 0, 0, 0.5);
-          z-index: 1;
-        }
 
         input {
           width: 100%;
@@ -135,6 +134,10 @@
           &:disabled {
             color: black;
           }
+        }
+
+        &--showList {
+          border-radius: 6px 6px 6px 0;
         }
 
         &--error {
@@ -156,6 +159,13 @@
         }
       }
 
+      &__divider {
+        width: 1px;
+        height: 25px;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1;
+      }
+
       &__message {
         color: $color_red;
         margin-top: 0px;
@@ -171,6 +181,7 @@
   &__formData {
     display: flex;
     flex-direction: column;
+    position: relative;
     gap: 7px;
     flex: 1;
     width: 100%;
@@ -181,8 +192,14 @@
       margin-right: 0;
     }
 
+    &--disabled {
+      pointer-events: none;
+    }
+
     &--textArea {
       max-width: unset;
+      height: 155px;
+      resize: none;
     }
 
     .selectForm__action {
@@ -198,6 +215,43 @@
       font-size: 16px;
       font-weight: bold;
     }
+
+    img {
+      position: absolute;
+      right: 12px;
+      top: 37px;
+      cursor: pointer;
+    }
+  }
+
+  &__infoBox {
+    padding: 6px;
+    position: absolute;
+    top: -10px;
+    right: -23px;
+    width: max-content;
+    z-index: 1;
+  }
+
+  &__innerBox {
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 8px 16px;
+    background-color: white;
+    border: 0.5px solid #7f7462;
+  }
+
+  &__shape {
+    width: 12px;
+    height: 12px;
+    rotate: 45deg;
+    position: absolute;
+    right: 37px;
+    top: 32px;
+    background-color: white;
+    border: 0.5px solid #7f7462;
+    border-left: none;
+    border-top: none;
   }
 
   &__input {
@@ -218,9 +272,24 @@
     }
 
     &--textArea {
-      height: 184px;
-      max-height: 200px;
-      min-height: 150px;
+      height: 155px;
+      resize: none;
+    }
+
+    &--disabled {
+      background-color: #f4f4f4;
+    }
+
+    &--unit {
+      width: 55px;
+      height: 40px;
+      position: absolute;
+      right: 0;
+      top: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid #00000033;
     }
   }
 

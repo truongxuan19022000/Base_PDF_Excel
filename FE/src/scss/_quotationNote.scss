@@ -1,4 +1,4 @@
-$bottom-width : 146px;
+$bottom-width: 146px;
 
 .quotationNote {
   height: 100%;
@@ -14,10 +14,22 @@ $bottom-width : 146px;
     overflow-y: auto;
     padding-right: 0;
     padding-top: 0;
+
+    textarea {
+      resize: none;
+    }
   }
 
   &__message {
     margin-left: 30px;
+  }
+
+  &__divider {
+    width: 100%;
+    position: sticky;
+    top: 0px;
+    border: 0.5px solid white;
+    z-index: 2;
   }
 
   &__table {
@@ -34,7 +46,7 @@ $bottom-width : 146px;
       max-height: calc(100vh - 364px);
       height: 100%;
       padding-right: 36px;
-      padding-top: 30px;
+      margin-top: 30px;
     }
 
     .quotationNoteTable {
@@ -64,6 +76,9 @@ $bottom-width : 146px;
           z-index: 1;
           user-select: none;
           background-color: #f9f9f9;
+          border-top: 1px solid $color_black4;
+          border-bottom: 1px solid $color_black4;
+          box-sizing: border-box;
         }
       }
 
@@ -108,13 +123,12 @@ $bottom-width : 146px;
           position: relative;
         }
 
-        &--input {
+        &--textarea {
           width: 100%;
           min-height: 50px;
           max-height: 80px;
-          padding: 10px 0px;
-          padding-right: 53px;
-          padding-top: 20px;
+          margin: 4px 0 4px 0;
+          padding-right: 15px;
         }
 
         &--move {

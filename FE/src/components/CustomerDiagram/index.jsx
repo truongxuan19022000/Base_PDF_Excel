@@ -1,22 +1,30 @@
-import React from 'react'
+import React, { memo } from 'react'
 
-import BarChart from '../BarChart';
+import BarChart from '../BarChart'
+import FilterDate from '../FilterDate'
+import { TIME_TOTAL_REVENUE } from 'src/constants/config'
+import { chartRoundNumber } from 'src/helper/helper'
 
-const CustomerDiagram = () => {
+const CustomerDiagram = ({ setSelectedItem, salesRevenueData = {} }) => {
+  const diagramData = Object.values(salesRevenueData).map(item => chartRoundNumber(+item))
   const chartData = {
-    labels: ['Sun', 'Mon', 'Tue', 'Thu', 'Fri', 'Sat'],
-    values1: [12500, 4000, 7500, 15000, 18000, 15000, 13000],
-    values2: [10500, 7000, 7500, 16000, 12000, 17000, 19000],
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    values1: diagramData,
   }
 
   return (
     <div className="customerDiagram">
-      <div className="customerDiagram__header">Customers</div>
+      <div className="customerDiagram__filter">
+        <FilterDate options={TIME_TOTAL_REVENUE} selectAction={setSelectedItem} />
+      </div>
+      <div className="customerDiagram__header">total sales revenue</div>
       <div className="customerDiagram__diagram">
-        <BarChart data={chartData} />
+        {diagramData.length > 0 &&
+          <BarChart data={chartData} />
+        }
       </div>
     </div>
   )
 }
 
-export default CustomerDiagram
+export default memo(CustomerDiagram)

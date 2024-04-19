@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch } from 'react-redux';
 
 import InventorySelectForm from '../InventorySelectForm'
 
-import { DEFAULT_VALUE, INVENTORY, MESSAGE, QUOTATION } from 'src/constants/config'
+import { DEFAULT_VALUE, INVENTORY, MESSAGE } from 'src/constants/config'
 import { useQuotationSectionSlice } from 'src/slices/quotationSection';
 import { validateCreateSectionProduct } from 'src/helper/validation';
+import { isEmptyObject } from 'src/helper/helper';
 
 const CreateProductModal = ({
-  setMessage,
+  id,
   closeModal,
   nextOrderNumber,
   selectedSectionId,
+  selectedEditProduct = {},
 }) => {
   const { actions } = useQuotationSectionSlice();
 
@@ -23,72 +25,160 @@ const CreateProductModal = ({
   const [glassType, setGlassType] = useState('');
   const [productCode, setProductCode] = useState('');
 
-  const [area, setArea] = useState({});
-  const [storey, setStorey] = useState({});
+  const [areaText, setAreaText] = useState('');
+  const [storeyText, setStoreyText] = useState('');
   const [profile, setProfile] = useState({});
   const [messageError, setMessageError] = useState({});
   const [isInputChanged, setIsInputChanged] = useState(false);
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
 
+  const isEditMode = useMemo(() => {
+    return !isEmptyObject(selectedEditProduct)
+  }, [selectedEditProduct])
+
   const onSuccess = () => {
-    setMessage({ success: MESSAGE.SUCCESS.CREATE })
+    closeModal()
   }
-  const onError = () => {
-    setMessage({ failed: MESSAGE.ERROR.DEFAULT })
-    setIsDisableSubmit(true)
-  }
+
+  const onError = (data) => {
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      setMessageError(data)
+    }
+    setIsDisableSubmit(false);
+  };
 
   useEffect(() => {
     setMessageError({})
     setIsDisableSubmit(false)
   }, [isInputChanged])
 
+  useEffect(() => {
+    if (!isEmptyObject(selectedEditProduct)) {
+      const profile = INVENTORY.PROFILES[selectedEditProduct.profile]
+      setProfile(profile)
+      setAreaText(selectedEditProduct?.area_text)
+      setStoreyText(selectedEditProduct?.storey_text)
+      setProductCode(selectedEditProduct.product_code)
+      setGlassType(selectedEditProduct.glass_type)
+      setQuantity(selectedEditProduct.quantity)
+      setHeight(selectedEditProduct.height)
+      setWidth(selectedEditProduct.width)
+    }
+  }, [selectedEditProduct])
+
+  useEffect(() => {
+    return () => {
+      dispatch(actions.clearSelectedProduct())
+    }
+  }, [])
+
   const handleInputChange = (field, value) => {
+    if (isDisableSubmit) return;
     const fieldSetters = {
-      width: setWidth,
-      height: setHeight,
-      quantity: setQuantity,
       glass_type: setGlassType,
       product_code: setProductCode,
+      storey_text: setStoreyText,
+      area_text: setAreaText,
     };
     const setter = fieldSetters[field];
     if (setter) {
       setter(value);
-      setIsInputChanged(!isInputChanged)
+      setMessageError({});
+    }
+  };
+
+  const handleInputIntegerNumber = (field, value) => {
+    if (isDisableSubmit) return;
+    const formatted = value.replace(/\D/g, '');
+    const fieldSetters = {
+      width: setWidth,
+      height: setHeight,
+      quantity: setQuantity,
+    };
+    const setter = fieldSetters[field];
+    if (setter) {
+      setter(formatted);
+      setMessageError({});
     }
   }
 
   const handleCreateSectionProduct = () => {
-    if (!selectedSectionId || isDisableSubmit || !nextOrderNumber) return;
+    if (!id || !selectedSectionId || isDisableSubmit || !nextOrderNumber) return;
     const data = {
       quotation_section_id: selectedSectionId,
       order_number: +nextOrderNumber,
       product_code: productCode,
       profile: profile.value,
       glass_type: glassType,
+      quotation_id: +id,
       quantity,
-      area: area.value,
-      storey: storey.value,
       width,
       width_unit: DEFAULT_VALUE,
       height,
       height_unit: DEFAULT_VALUE,
-      subtotal: 0,
+      storey_text: storeyText,
+      area_text: areaText,
     }
+
     const errors = validateCreateSectionProduct(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
     } else {
       dispatch(actions.createQuotationSectionProduct({ ...data, onSuccess, onError }))
       setIsDisableSubmit(true);
-      closeModal()
     }
+  }
+
+  const handleEditSectionProduct = () => {
+    if (isDisableSubmit || !id) return;
+    const isInfoChanged = (
+      +width !== +selectedEditProduct.width ||
+      +height !== +selectedEditProduct.height ||
+      +quantity !== selectedEditProduct.quantity ||
+      glassType !== selectedEditProduct.glass_type ||
+      +profile.value !== +selectedEditProduct.profile ||
+      productCode !== selectedEditProduct.product_code ||
+      areaText !== selectedEditProduct.area_text ||
+      storeyText !== selectedEditProduct.storey_text
+    );
+    if (!isInfoChanged) {
+      return setMessageError({
+        message: MESSAGE.ERROR.INFO_NO_CHANGE,
+      })
+    }
+    const data = {
+      product_id: selectedEditProduct?.productId,
+      quotation_section_id: selectedEditProduct?.quotation_section_id,
+      order_number: selectedEditProduct?.order_number,
+      product_code: productCode,
+      profile: profile.value,
+      glass_type: glassType,
+      quotation_id: +id,
+      quantity,
+      width,
+      height,
+      width_unit: DEFAULT_VALUE,
+      height_unit: DEFAULT_VALUE,
+      storey_text: storeyText,
+      area_text: areaText,
+    }
+    const errors = validateCreateSectionProduct(data);
+    if (Object.keys(errors).length > 0) {
+      setMessageError(errors);
+    } else {
+      dispatch(actions.editSectionProduct({ ...data, onSuccess, onError }))
+      setIsDisableSubmit(true);
+    }
+  }
+
+  const handleClickApply = () => {
+    isEditMode ? handleEditSectionProduct() : handleCreateSectionProduct()
   }
 
   return (
     <div className="createProductModal">
       <div className="createProductModal__innerBox">
-        <div className="createProductModal__header">New Product</div>
+        <div className="createProductModal__header">{isEditMode ? 'Edit Product' : 'New Product'}</div>
         <div className="createProductModal__body">
           <div className={`cellBox${(messageError?.profile || messageError?.product_code) ? ' cellBox--error' : ''}`}>
             <div className="cellBox__item">
@@ -152,7 +242,7 @@ const CreateProductModal = ({
                 value={quantity}
                 type="number"
                 placeholder="0"
-                onChange={(e) => handleInputChange('quantity', e.target.value)}
+                onChange={(e) => handleInputIntegerNumber('quantity', e.target.value)}
                 className={`inputBoxForm__input${messageError?.quantity ? ' inputBoxForm__input--error' : ''}`}
               />
               {messageError?.quantity && (
@@ -160,26 +250,22 @@ const CreateProductModal = ({
               )}
             </div>
           </div>
-          <div className={`cellBox cellBox--selectRow${(messageError?.storey || messageError?.area) ? ' cellBox--errorRow' : ''}`}>
+          <div className={`cellBox${(messageError?.storey_text || messageError?.area_text) ? ' cellBox--errorRow' : ''}`}>
             <div className="cellBox__item">
               <div className="cellBox__item--select">
                 <div className="cellBox__item--label">
                   STOREY
                 </div>
-                <InventorySelectForm
-                  placeholder="Select / Type Storey"
-                  selectedItem={storey}
-                  keyValue="storey"
-                  data={QUOTATION.STOREY}
-                  setSelectedItem={setStorey}
-                  messageError={messageError}
-                  setMessageError={setMessageError}
-                  isInputChanged={isInputChanged}
-                  setIsInputChanged={setIsInputChanged}
+                <input
+                  type="text"
+                  className={`cellBox__input${messageError?.storey_text ? ' cellBox__input--error' : ''}`}
+                  placeholder="Storey"
+                  value={storeyText || ''}
+                  onChange={(e) => handleInputChange('storey_text', e.target.value)}
                 />
               </div>
-              {messageError?.storey &&
-                <div className="cellBox__item--messageSelect">{messageError.storey}</div>
+              {messageError?.storey_text &&
+                <div className="cellBox__item--message">{messageError.storey_text}</div>
               }
             </div>
             <div className="cellBox__item">
@@ -187,20 +273,16 @@ const CreateProductModal = ({
                 <div className="cellBox__item--label">
                   AREA
                 </div>
-                <InventorySelectForm
-                  placeholder="Select / Type Area"
-                  selectedItem={area}
-                  keyValue="area"
-                  data={QUOTATION.AREA}
-                  setSelectedItem={setArea}
-                  messageError={messageError}
-                  setMessageError={setMessageError}
-                  isInputChanged={isInputChanged}
-                  setIsInputChanged={setIsInputChanged}
+                <input
+                  type="text"
+                  className={`cellBox__input${messageError?.area_text ? ' cellBox__input--error' : ''}`}
+                  placeholder="Area"
+                  value={areaText || ''}
+                  onChange={(e) => handleInputChange('area_text', e.target.value)}
                 />
               </div>
-              {messageError?.area &&
-                <div className="cellBox__item--messageSelect">{messageError.area}</div>
+              {messageError?.area_text &&
+                <div className="cellBox__item--message">{messageError.area_text}</div>
               }
             </div>
           </div>
@@ -214,7 +296,7 @@ const CreateProductModal = ({
                   value={width}
                   type="number"
                   placeholder="0"
-                  onChange={(e) => handleInputChange('width', e.target.value)}
+                  onChange={(e) => handleInputIntegerNumber('width', e.target.value)}
                 />
                 <span className="cellBox__item--unit">mm</span>
               </div>
@@ -231,7 +313,7 @@ const CreateProductModal = ({
                   value={height}
                   type="number"
                   placeholder="0"
-                  onChange={(e) => handleInputChange('height', e.target.value)}
+                  onChange={(e) => handleInputIntegerNumber('height', e.target.value)}
                 />
                 <span className="cellBox__item--unit">mm</span>
               </div>
@@ -240,18 +322,22 @@ const CreateProductModal = ({
               )}
             </div>
           </div>
+          {messageError?.message &&
+            <div className="createProductModal__message">
+              {messageError.message}
+            </div>
+          }
         </div>
         <div className="createProductModal__footer">
           <button
             className="createProductModal__button"
             onClick={closeModal}
-            disabled={isDisableSubmit}
           >
             Cancel
           </button>
           <button
             className="createProductModal__button createProductModal__button--apply"
-            onClick={handleCreateSectionProduct}
+            onClick={() => handleClickApply(isEditMode)}
             disabled={isDisableSubmit}
           >
             Apply

@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 
+import { alertActions } from 'src/slices/alert'
 import { useUserSlice } from 'src/slices/user'
-import { downloadCSVFromCSVString, isEmptyObject, normalizeString } from 'src/helper/helper'
-import { ACTIONS, FILTER, LINKS, MESSAGE, PAGINATION, USER_PER_PAGE, } from 'src/constants/config'
-import { validateFilterRequest, validateUserDeleteRequest } from 'src/helper/validation'
+import { normalizeString } from 'src/helper/helper'
+import { ACTIONS, ALERT, FILTER, LINKS, MESSAGE, PAGINATION, PERMISSION, ROLES, USER, USER_PER_PAGE, } from 'src/constants/config'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
 
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
@@ -13,7 +14,6 @@ import TableAction from 'src/components/TableAction'
 import FilterModal from 'src/components/FilterModal'
 import TableButtons from 'src/components/TableButtons'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
-import ActionMessageForm from 'src/components/ActionMessageForm'
 
 const UserManagement = () => {
   const { actions } = useUserSlice()
@@ -21,18 +21,13 @@ const UserManagement = () => {
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const currentURL = history.location.pathname.split('/')[1]
-
   const list = useSelector(state => state.user.list)
   const currentUser = useSelector(state => state.user.user)
   const fetched = useSelector(state => state.user.fetchedList)
   const userList = useSelector(state => state.user.list?.data)
-  const isUserUpdated = useSelector(state => state.user.isUserUpdated)
-  const csvUserData = useSelector(state => state.user.csvData)
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const [message, setMessage] = useState({})
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [messageError, setMessageError] = useState({})
   const [selectedRoleFilter, setSelectedRoleFilter] = useState([])
@@ -47,7 +42,8 @@ const UserManagement = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
-  const [selectedFieldFilter, setSelectedFieldFilter] = useState(FILTER.DEFAULT.NAME)
+  const [selectedNameFilter, setSelectedNameFilter] = useState(FILTER.DEFAULT.NAME)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([]);
 
   const userInPage = useMemo(() => {
     if (userList?.length > USER_PER_PAGE) {
@@ -61,15 +57,37 @@ const UserManagement = () => {
     setSubmitting(false)
     setIsDisableSubmit(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = list.current_page === list.last_page
+    const hasNoItem = list.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
     }
+
+    const params = {
+      page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+      sort_name: selectedNameFilter,
+      role_id: selectedRoleFilter,
+      search: normalizeString(searchText),
+      onError,
+    }
+
+    dispatch(actions.getCustomerList(params))
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -79,31 +97,24 @@ const UserManagement = () => {
   }, [fetched])
 
   useEffect(() => {
-    if (isUserUpdated) {
-      dispatch(actions.getUserList({ page: PAGINATION.START_PAGE }))
+    return () => {
+      dispatch(actions.resetFetchedList())
     }
-  }, [isUserUpdated])
+  }, [])
 
   useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list?.total || 0)
     }
   }, [list])
 
   useEffect(() => {
-    if (messageError && Object.keys(messageError)?.length > 0) {
+    if (messageError && Object.keys(messageError).length > 0) {
       const timer = setTimeout(() => setMessageError({}), 3000);
       return () => clearTimeout(timer);
     }
   }, [messageError]);
-
-  useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [message])
 
   useEffect(() => {
     if (messageError?.length > 0) {
@@ -118,7 +129,7 @@ const UserManagement = () => {
       setSubmitting(false)
       setMessageError(null)
       setIsDisableSubmit(false)
-      setSelectedFieldFilter(FILTER.DEFAULT.NAME)
+      setSelectedNameFilter(FILTER.DEFAULT.NAME)
     }
   }, [isFiltering])
 
@@ -131,25 +142,23 @@ const UserManagement = () => {
   }, [selectedIds, userList])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
     setSubmitting(false)
     setMessageError(null)
     setIsDisableSubmit(false)
   }, [isInputChanged, isShowFilterModal])
 
   useEffect(() => {
-    if (csvUserData?.length > 0 && submitting) {
-      downloadCSVFromCSVString(csvUserData, currentURL)
-      setSubmitting(false)
-      dispatch(actions.clearCSVUserData())
-    }
-  }, [submitting, csvUserData, currentURL])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowFilterModal(false);
+        setIsShowConfirmDeleteModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -173,10 +182,10 @@ const UserManagement = () => {
 
     const params = {
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
-    if (selectedFieldFilter?.length > 0) {
-      params.sort_name = selectedFieldFilter;
+    if (selectedNameFilter?.length > 0) {
+      params.sort_name = selectedNameFilter;
     }
     if (selectedRoleFilter?.length > 0) {
       params.role_id = selectedRoleFilter;
@@ -194,10 +203,10 @@ const UserManagement = () => {
 
   const handleSelectFieldFilter = (value) => {
     if (submitting) return;
-    if (selectedFieldFilter === value) {
-      setSelectedFieldFilter('');
+    if (selectedNameFilter === value) {
+      setSelectedNameFilter('');
     } else {
-      setSelectedFieldFilter(value);
+      setSelectedNameFilter(value);
     }
     setIsInputChanged(!isInputChanged)
   }
@@ -215,106 +224,141 @@ const UserManagement = () => {
   const handleFilterSearchApply = (searchText) => {
     if (isErrorExist || isDisableSubmit) return;
     const data = {
-      search: searchText || '',
-      sort_name: selectedFieldFilter || '',
+      search: normalizeString(searchText),
+      sort_name: selectedNameFilter || '',
       role_id: selectedRoleFilter ? selectedRoleFilter : undefined,
       page: PAGINATION.START_PAGE,
     };
     const errors = validateFilterRequest(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
       if (isShowFilterModal) {
         setIsFiltering(true);
       }
-      dispatch(actions.getUserList({ ...data, onSuccess, onError, }));
+      dispatch(actions.getUserList({ ...data, onError, onSuccess }));
       setSelectedIds([]);
       setSubmitting(true);
-      setMessageError('');
       setIsDisableSubmit(true);
+      setMessageError('');
       setIsShowFilterModal(false);
     }
   }
 
   const handleClickResetFilter = () => {
-    setSearchText('')
     setSelectedIds([])
     setIsFiltering(false)
     setSelectedRoleFilter([])
-    setSelectedFieldFilter(FILTER.DEFAULT.NAME)
+    setSelectedNameFilter(FILTER.DEFAULT.NAME)
     setCurrentPageNumber(PAGINATION.START_PAGE)
+    setIsShowFilterModal(false)
+    dispatch(actions.getUserList({
+      page: PAGINATION.START_PAGE,
+      search: normalizeString(searchText),
+    }))
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const handleClickDelete = (data) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.USER, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      const isAdminRole = data.role_id === ROLES.ADMIN_ID;
+      const isCurrentUser = data.id === currentUser.id;
+
+      if (isCurrentUser) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.SELF_DELETE
+        }))
+      } else if (isAdminRole) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.ADMIN_DELETE
+        }))
+      } else {
+        setSelectedDeleteIds([+data.id])
+        setIsShowConfirmDeleteModal(true)
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatchAlertWithPermissionDenied()
     }
-    setIsShowConfirmDeleteModal(true);
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE || deleteInfo?.actionType === ACTIONS.NAME.DELETE) {
-      const data = { user_id: deleteInfo?.deleteIds || [] };
-      const errors = validateUserDeleteRequest(data, userList, currentUser)
-      if (Object.keys(errors)?.length !== 0) {
-        setMessageError(errors)
-        setIsShowConfirmDeleteModal(false)
-        setIsDisableSubmit(true)
-      } else {
-        dispatch(actions.multiDeleteUser({ ...data, onSuccess, onError }));
-        setSelectedIds([])
-        setMessageError({})
-        setIsDisableSubmit(true)
-        setSubmitting(true)
-      }
-    } else if (deleteInfo?.actionType === ACTIONS.NAME.DELETE && deleteInfo?.deleteIds) {
-      const data = { user_id: deleteInfo?.deleteIds || [] };
-      const errors = validateUserDeleteRequest(data, userList, currentUser)
-      if (errors) {
-        setMessageError(errors)
-        setIsShowConfirmDeleteModal(false)
-        setIsDisableSubmit(true)
-      } else {
-        dispatch(actions.multiDeleteUser({ ...data, onSuccess, onError }));
-        setSubmitting(true)
-        setMessageError('')
-        setIsDisableSubmit(true)
-        if (deleteInfo?.deleteIds?.length > 0) {
-          setSelectedIds(selectedIds?.filter(id => !deleteInfo?.deleteIds?.includes(id)))
-        }
-      }
+  const handleAcceptedDelete = () => {
+    if (isDisableSubmit) return;
+    if (selectedDeleteIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }))
+    } else {
+      dispatch(actions.multiDeleteUser({ user_id: selectedDeleteIds, onDeleteSuccess, onError }));
+      setIsShowConfirmDeleteModal(false)
+      setIsDisableSubmit(true)
+      setMessageError({})
+      setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
     }
   }
+
+  const handleCheckIncludeAdmin = (id, data) => {
+    const item = data.find(item => item.id === id);
+    const isDeletable = +item.role_id === ROLES.ADMIN_ID
+    return isDeletable;
+  };
+
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
 
   const handleClickApply = (actionType) => {
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportUserCSV({
-        search: normalizeString(searchText),
-        sort_name: selectedFieldFilter || '',
-        role_id: selectedRoleFilter || [],
-        user_id: selectedIds || [],
-        onError
-      }))
-      setSubmitting(true)
-      setSelectedItem(null)
+    if (selectedIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION
+      }));
+    } else {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.USER, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          const isIncludeAdmin = selectedIds.find(id => handleCheckIncludeAdmin(id, list.data))
+          const isIncludeCurrentUser = selectedIds.find(id => id === +currentUser.id)
+
+          if (isIncludeCurrentUser) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                USER.MESSAGE_ERROR.INCLUDE_CURRENT_USER : USER.MESSAGE_ERROR.SELF_DELETE
+            }))
+          } else if (isIncludeAdmin) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                USER.MESSAGE_ERROR.INCLUDE_ADMIN : USER.MESSAGE_ERROR.DELETE_ADMIN
+            }))
+          } else {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(true)
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportUserCSV({
+          user_ids: selectedIds,
+          onError
+        }))
+        setSelectedItem(null)
+      }
     }
   }
 
@@ -326,7 +370,7 @@ const UserManagement = () => {
 
   const renderTableList = () => {
     return userInPage?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       return (
         <tr key={index} className={isChecked ? 'userTable__selected' : ''}>
           <td className="userTable__td userTable__td--checkbox">
@@ -362,7 +406,7 @@ const UserManagement = () => {
                 isShowEdit={true}
                 isShowDelete={true}
                 clickEdit={goToEditPage}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleClickDelete(data)}
               />
             </div>
           </td>
@@ -373,14 +417,6 @@ const UserManagement = () => {
 
   return (
     <div className="user">
-      {!isEmptyObject(message) &&
-        <div className="user__message">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <TableAction
         searchText={searchText}
         isFiltering={isFiltering}
@@ -396,6 +432,7 @@ const UserManagement = () => {
         createURL={LINKS.CREATE.USER}
         buttonTitle="New User"
         tableUnit="user"
+        permissionKey={PERMISSION.KEY.USER}
       />
       <div className="user__table">
         {messageError?.admin && (
@@ -438,7 +475,7 @@ const UserManagement = () => {
           deleteTitle="user"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleAcceptedDelete}
         />
       )}
       {isShowFilterModal && (
@@ -450,7 +487,7 @@ const UserManagement = () => {
           filterRequest={FILTER.NAME || []}
           selectedRoleFilter={selectedRoleFilter}
           isDisableSubmit={isDisableSubmit || false}
-          selectedFieldFilter={selectedFieldFilter || ''}
+          selectedNameFilter={selectedNameFilter || ''}
           onClickApply={handleFilterSearchApply}
           handleSelectRoleFilter={handleSelectRoleFilter}
           handleClickResetFilter={handleClickResetFilter}

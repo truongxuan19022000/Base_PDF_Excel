@@ -1,20 +1,37 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useDispatch } from 'react-redux';
+
+import { isEmptyObject } from 'src/helper/helper';
+import { useQuotationSectionSlice } from 'src/slices/quotationSection';
 
 const AddSectionModal = ({
   marginTop = '',
   sectionName = '',
   messageError = '',
   isDisableSubmit = false,
+  selectedEditSection = {},
   onClickApply,
   onClickCancel,
   handleInputChange,
 }) => {
+  const dispatch = useDispatch()
+  const { actions } = useQuotationSectionSlice()
+
+  const isEditMode = useMemo(() => {
+    return !isEmptyObject(selectedEditSection)
+  }, [selectedEditSection])
+
+  useEffect(() => {
+    return () => {
+      dispatch(actions.clearSelectedDeleteInfo())
+    }
+  }, [])
 
   return (
     <div className={`addSectionModal${marginTop ? ` mt-${marginTop}` : ''}`}>
       <div className="addSectionModal__content" >
         <div className="addSectionModal__header">
-          <div className="addSectionModal__header--title">New Section</div>
+          <div className="addSectionModal__header--title">{isEditMode ? 'Edit' : 'New'} Section</div>
         </div>
         <div className="addSectionModal__body">
           <div className="addSectionModal__inputBox">
@@ -43,7 +60,7 @@ const AddSectionModal = ({
           </button>
           <button
             className="addSectionModal__button addSectionModal__button--apply"
-            onClick={onClickApply}
+            onClick={() => onClickApply(isEditMode)}
             disabled={isDisableSubmit}
           >
             Apply

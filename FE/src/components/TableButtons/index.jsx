@@ -6,21 +6,26 @@ const TableButtons = ({
   data = {},
   clickChat,
   clickEdit,
+  clickMail,
+  clickCopy,
   clickDelete,
   clickDownLoad,
+  isShowMail = false,
+  isShowCopy = false,
   isTemplate = false,
   isShowEdit = false,
   isShowDelete = false,
   isInventory = false,
   haveWhatsApp = false,
   isShowDownLoad = false,
+  idField = 'id',
 }) => {
   return (
     <div className={`tableButtons${isTemplate ? ' tableButtons--template' : ''}`}>
       {isShowDelete && (
         <div
           className="tableButtons__icon"
-          onClick={() => clickDelete(ACTIONS.NAME.DELETE, data?.id)}
+          onClick={() => clickDelete(ACTIONS.NAME.DELETE, data?.[idField])}
         >
           <img
             src="/icons/delete.svg"
@@ -30,8 +35,8 @@ const TableButtons = ({
       )}
       {isShowEdit && (
         <div
-          className="tableButtons__icon tableButtons__icon--edit"
-          onClick={() => clickEdit(isInventory ? data : data?.id)}
+          className="tableButtons__icon"
+          onClick={() => clickEdit(isInventory ? data : data?.[idField])}
         >
           <img
             src="/icons/edit.svg"
@@ -41,7 +46,7 @@ const TableButtons = ({
       )}
       {haveWhatsApp && (
         <div
-          className="tableButtons__icon tableButtons__icon--chat"
+          className="tableButtons__icon"
           onClick={() => clickChat(data)}
         >
           <img
@@ -50,17 +55,39 @@ const TableButtons = ({
           />
         </div>
       )}
-      {isShowDownLoad && (
+      {isShowDownLoad &&
         <div
-          className="tableButtons__icon tableButtons__icon--chat"
-          onClick={() => clickDownLoad(data?.id)}
+          className="tableButtons__icon"
+          onClick={() => clickDownLoad(data?.[idField])}
         >
           <img
             src="/icons/download.svg"
             alt="download"
           />
         </div>
-      )}
+      }
+      {isShowCopy &&
+        <div
+          className="tableButtons__icon"
+          onClick={() => clickCopy(data)}
+        >
+          <img
+            src="/icons/copy.svg"
+            alt="copy"
+          />
+        </div>
+      }
+      {isShowMail &&
+        <div
+          className="tableButtons__icon"
+          onClick={() => clickMail(data)}
+        >
+          <img
+            src="/icons/mail.svg"
+            alt="mail"
+          />
+        </div>
+      }
     </div>
   )
 }

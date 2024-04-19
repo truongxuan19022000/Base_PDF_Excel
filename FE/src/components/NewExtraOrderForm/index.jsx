@@ -2,8 +2,10 @@ import React from 'react'
 
 import SelectSearchForm from '../SelectSearchForm'
 import InventorySelectForm from '../InventorySelectForm'
+import PriceInputForm from '../InputForm/PriceInputForm'
 
 import { INVENTORY } from 'src/constants/config'
+import { formatPriceWithTwoDecimals } from 'src/helper/helper'
 
 const NewExtraOrderForm = ({
   data = {},
@@ -16,7 +18,31 @@ const NewExtraOrderForm = ({
   setSelectedServiceItem,
   handleTypeSearchChange,
   setSelectedServiceTitle,
+  setQuantityUnit,
+  setPriceUnit,
+  setUnitPrice,
+  handleAmountChange,
+  handleClickOutAmount,
 }) => {
+  const handleSelectItem = (item) => {
+    if (item) {
+      const service = INVENTORY.SERVICE[item?.service_type];
+      const priceUnit = INVENTORY.PRICE_UNIT[item.price_unit]?.label;
+      const foundUnit = INVENTORY.QUANTITY_UNIT[item.price_unit]?.label;
+      setPriceUnit(priceUnit)
+      setServiceType(service)
+      setQuantityUnit(foundUnit)
+      setSelectedServiceItem(item)
+      setUnitPrice(formatPriceWithTwoDecimals(+item.price))
+    }
+  }
+
+  const handleSelectServiceType = (item) => {
+    if (item) {
+      setServiceType(item)
+    }
+  }
+
   return (
     <div className="createProductItemModal__body">
       <div className="cellBox">
@@ -46,8 +72,9 @@ const NewExtraOrderForm = ({
               placeholder="Select Service Type"
               selectedItem={data.serviceType}
               keyValue="service_type"
+              className="profile2"
               data={INVENTORY.SERVICE}
-              setSelectedItem={setServiceType}
+              setSelectedItem={handleSelectServiceType}
               messageError={data.messageError}
               setMessageError={setMessageError}
               isInputChanged={data.isInputChanged}
@@ -74,7 +101,7 @@ const NewExtraOrderForm = ({
               isInputChanged={data.isInputChanged}
               selectedItemTitle={data.selectedServiceTitle}
               setSearchText={setSearchText}
-              setSelectedItem={setSelectedServiceItem}
+              setSelectedItem={handleSelectItem}
               setIsInputChanged={setIsInputChanged}
               setIsDisableSubmit={setIsDisableSubmit}
               messageError={data.messageError?.material_id}
@@ -99,7 +126,9 @@ const NewExtraOrderForm = ({
               placeholder="0"
               onChange={(e) => handleInputChange('extra_quantity', e.target.value)}
             />
-            <span className="cellBox__item--unit">{data.quantityUnit}</span>
+            <span className={`cellBox__item--unit${data.quantityUnit ? '' : ' cellBox__item--unitDisabled'}${data.quantityUnit === INVENTORY.UNIT_LABEL.PANEL ? ' cellBox__item--unitPanel' : ''}`}>
+              {data.quantityUnit || 'unit'}
+            </span>
           </div>
           {data.messageError?.quantity && (
             <div className="cellBox__item--message">{data.messageError.quantity}</div>
@@ -110,21 +139,26 @@ const NewExtraOrderForm = ({
             UNIT PRICE
           </div>
           <div className={`cellBox__item--inputBox${data.messageError?.unit_price ? ' cellBox__item--error' : ''}`}>
-            <div className="cellBox__item--unit">$</div>
-            <input
-              value={data.unitPrice}
-              type="number"
-              placeholder="0.00"
-              className="cellBox__item--inputUnitPrice"
-              onChange={(e) => handleInputChange('unit_price', e.target.value)}
+            <div className="cellBox__item--unitMoney">$</div>
+            <PriceInputForm
+              inputValue={data.unitPrice}
+              field="unit_price"
+              placeholderTitle="0.00"
+              handleAmountChange={handleAmountChange}
+              handleClickOutAmount={handleClickOutAmount}
             />
-            <span className="cellBox__item--unit">{data.priceUnit}</span>
+            <span className={`cellBox__item--unit${data.priceUnit ? '' : ' cellBox__item--unitDisabled'}${data.priceUnit?.slice(1) === INVENTORY.UNIT_LABEL.PANEL ? ' cellBox__item--unitPanel' : ''}`}>
+              {data.priceUnit || 'unit'}
+            </span>
           </div>
           {data.messageError?.unit_price && (
             <div className="cellBox__item--message">{data.messageError.unit_price}</div>
           )}
         </div>
       </div>
+      {data.messageError?.message &&
+        <div className="cellBox__message">{data.messageError.message}</div>
+      }
     </div>
   )
 }

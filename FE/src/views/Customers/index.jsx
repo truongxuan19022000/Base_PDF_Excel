@@ -3,10 +3,11 @@ import { useHistory } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 
+import { alertActions } from 'src/slices/alert';
 import { useCustomerSlice } from 'src/slices/customer';
-import { validateFilterRequest } from 'src/helper/validation';
-import { ACTIONS, FILTER, LINKS, MESSAGE, PAGINATION } from 'src/constants/config';
-import { downloadCSVFromCSVString, isEmptyObject, normalizeString } from 'src/helper/helper';
+import { validateFilterRequest, validatePermission } from 'src/helper/validation';
+import { ACTIONS, ALERT, FILTER, LINKS, MESSAGE, PAGINATION, PERMISSION, ROLES } from 'src/constants/config';
+import { normalizeString } from 'src/helper/helper';
 
 import Checkbox from 'src/components/Checkbox';
 import Pagination from 'src/components/Pagination';
@@ -14,7 +15,6 @@ import FilterModal from 'src/components/FilterModal';
 import TableAction from 'src/components/TableAction';
 import TableButtons from 'src/components/TableButtons';
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal';
-import ActionMessageForm from 'src/components/ActionMessageForm';
 
 const Customers = () => {
   const { actions } = useCustomerSlice()
@@ -22,24 +22,20 @@ const Customers = () => {
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const list = useSelector(state => state.customer.list)
   const currentUser = useSelector(state => state.user.user)
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const list = useSelector(state => state.customer.list)
   const fetched = useSelector(state => state.customer.fetched)
   const customers = useSelector(state => state.customer.list?.data)
-  const csvData = useSelector(state => state.customer.csvData)
-  const currentURL = history.location.pathname.split('/')[1]
 
-  const [message, setMessage] = useState({})
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
   const [messageError, setMessageError] = useState('')
   const [isFiltering, setIsFiltering] = useState(false)
   const [endDateFilter, setEndDateFilter] = useState('')
-  const [haveWhatsApp, setHaveWhatsApp] = useState(false)
-  const [isErrorExist, setIsErrorExist] = useState(false)
   const [totalDataNumber, setTotalDataNumber] = useState(0)
   const [isSelectedAll, setIsSelectedAll] = useState(false)
   const [startDateFilter, setStartDateFilter] = useState('')
@@ -49,18 +45,36 @@ const Customers = () => {
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
   const [selectedFieldFilter, setSelectedFieldFilter] = useState(FILTER.DEFAULT.NAME)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([])
 
-  const onSuccess = () => {
+  const onDeleteSuccess = () => {
     setMessageError('')
-    setSubmitting(false)
     setIsDisableSubmit(false)
-    setIsShowFilterModal(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = list.current_page === list.last_page
+    const hasNoItem = list.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
+    }
+    const params = {
+      page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+      sort_name: selectedFieldFilter,
+      search: normalizeString(searchText),
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY/MM/DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY/MM/DD'),
+      onError,
+    }
+    dispatch(actions.getCustomerList(params))
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -70,14 +84,13 @@ const Customers = () => {
   }, [fetched])
 
   useEffect(() => {
-    if (Object.keys(currentUser).length > 0) {
-      const hasSendPermission = currentUser?.permission?.some(item => item.hasOwnProperty('customer') && item.customer.send === 1);
-      setHaveWhatsApp(hasSendPermission)
+    return () => {
+      dispatch(actions.resetFetchedList())
     }
-  }, [currentUser])
+  }, [])
 
   useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list?.total || 0)
     }
@@ -103,40 +116,23 @@ const Customers = () => {
   }, [selectedIds, customers])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
     setSubmitting(false)
     setMessageError(null)
     setIsDisableSubmit(false)
   }, [isInputChanged, isShowFilterModal])
 
   useEffect(() => {
-    if (messageError?.length > 0) {
-      setIsErrorExist(true)
-    } else {
-      setIsErrorExist(false)
-    }
-  }, [messageError])
-
-  useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [message])
-
-  useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      downloadCSVFromCSVString(csvData, currentURL)
-      setSubmitting(false)
-      dispatch(actions.clearCSVDataCustomer())
-    }
-  }, [submitting, csvData, currentURL])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+        setIsShowFilterModal(false)
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleSelectItem = (isChecked, itemId) => {
     if (isChecked) {
@@ -154,64 +150,48 @@ const Customers = () => {
     }
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const handleClickDelete = (customerId) => {
+    if (isDisableSubmit) return;
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.CUSTOMER, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      if (customerId) {
+        setSelectedDeleteIds([customerId])
+        setIsShowConfirmDeleteModal(true)
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.UNKNOWN_ID,
+        }))
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }))
     }
-    setIsShowConfirmDeleteModal(true);
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    const isLastItem = (list.data?.length === 1)
-    const isSelectAllItemOfLastPage = (isSelectedAll && list.current_page === list.last_page)
-    const isOutOfItemInPage = isLastItem || isSelectAllItemOfLastPage
-    let tempoPageNumber = null;
-    if ((list.last_page > PAGINATION.START_PAGE) && isOutOfItemInPage) {
-      tempoPageNumber = list.current_page - 1
+  const handleAcceptedDelete = () => {
+    if (isDisableSubmit) return;
+    if (selectedDeleteIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        isHovered: false,
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }))
     } else {
-      tempoPageNumber = PAGINATION.START_PAGE
-    }
-    const data = {
-      customer_id: deleteInfo?.deleteIds || [],
-      page: +tempoPageNumber,
-      search: normalizeString(searchText),
-      sort_name: selectedFieldFilter,
-      start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-      end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-    };
-
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      dispatch(actions.multiDeleteCustomer({ ...data, onSuccess, onError }));
-      setMessageError({})
-      setSubmitting(true)
-      setSelectedIds([])
-      setIsDisableSubmit(true)
+      dispatch(actions.multiDeleteCustomer({
+        customer_id: selectedDeleteIds,
+        onDeleteSuccess,
+        onError,
+      }))
       setIsShowConfirmDeleteModal(false)
-    } else if (deleteInfo?.actionType === ACTIONS.NAME.DELETE && deleteInfo?.deleteIds) {
-      dispatch(actions.multiDeleteCustomer({ ...data, onSuccess, onError }));
-      setSubmitting(true)
-      setMessageError({})
       setIsDisableSubmit(true)
-      setIsShowConfirmDeleteModal(false)
-      if (deleteInfo?.deleteIds) {
-        setSelectedIds(selectedIds?.filter(id => !deleteInfo?.deleteIds?.includes(id)))
-      }
+      setMessageError({})
+      setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
     }
   }
 
@@ -221,7 +201,7 @@ const Customers = () => {
 
     const params = {
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     };
 
     if (selectedFieldFilter?.length > 0) {
@@ -232,17 +212,32 @@ const Customers = () => {
       params.search = normalizeString(searchText);
     }
     if (startDateFilter) {
-      params.start_date = dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.start_date = dayjs(startDateFilter).format('YYYY-MM-DD');
     }
     if (endDateFilter) {
-      params.end_date = dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.end_date = dayjs(endDateFilter).format('YYYY-MM-DD');
     }
     dispatch(actions.getCustomerList(params));
   }
 
   const handleSearch = () => {
-    handleFilterSearchApply(normalizeString(searchText))
-    setSelectedIds([])
+    if (isDisableSubmit) return;
+    const data = {
+      search: normalizeString(searchText),
+      sort_name: selectedFieldFilter,
+      page: PAGINATION.START_PAGE,
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
+    };
+    const errors = validateFilterRequest(data);
+    if (Object.keys(errors).length > 0) {
+      setMessageError(errors);
+    } else {
+      dispatch(actions.getCustomerList({ ...data, onError }));
+      setSelectedIds([]);
+      setMessageError({});
+      setIsShowFilterModal(false)
+    }
   }
 
   const handleSelectFieldFilter = (value) => {
@@ -262,65 +257,84 @@ const Customers = () => {
     } else {
       setEndDateFilter(date);
     }
-    setIsInputChanged(!isInputChanged);
+    setMessageError({})
   }
 
-  const handleFilterSearchApply = (searchText) => {
-    if (isErrorExist || isDisableSubmit) return;
+  const handleFilterSearchApply = () => {
+    if (isDisableSubmit) return;
     const data = {
-      search: searchText || '',
-      sort_name: selectedFieldFilter || '',
+      search: normalizeString(searchText),
+      sort_name: selectedFieldFilter,
       page: PAGINATION.START_PAGE,
-      start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-      end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
     };
     const errors = validateFilterRequest(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
       if (isShowFilterModal) {
         setIsFiltering(true);
       }
-      dispatch(actions.getCustomerList({ ...data, onSuccess, onError, }));
+      dispatch(actions.getCustomerList({ ...data, onError }));
       setSelectedIds([]);
-      setSubmitting(true);
       setMessageError('');
-      setIsDisableSubmit(true);
       setIsShowFilterModal(false)
     }
   }
 
   const handleClickResetFilter = () => {
-    setSearchText('')
     setSelectedIds([])
     setEndDateFilter('')
     setStartDateFilter('')
     setIsFiltering(false)
     setSelectedFieldFilter(FILTER.DEFAULT.NAME)
+    setIsShowFilterModal(false)
+    dispatch(actions.getCustomerList({
+      page: PAGINATION.START_PAGE,
+      sort_name: FILTER.DEFAULT.NAME,
+      search: normalizeString(searchText),
+    }))
   }
 
   const handleClickApply = (actionType) => {
     if (submitting) return;
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportCustomerCSV({
-        sort_name: selectedFieldFilter || '',
-        search: normalizeString(searchText),
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        customer_id: selectedIds || [],
-        onError
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.CUSTOMER, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          setSelectedDeleteIds(selectedIds)
+          setIsShowConfirmDeleteModal(true)
+        } else {
+          dispatch(alertActions.openAlert({
+            type: ALERT.FAILED_VALUE,
+            title: 'Action Deny',
+            description: MESSAGE.ERROR.AUTH_ACTION,
+          }))
+        }
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportCustomerCSV({
+          sort_name: selectedFieldFilter || '',
+          search: normalizeString(searchText),
+          start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+          end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
+          customer_ids: selectedIds,
+          onError
+        }))
+        setSelectedItem(null)
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
       }))
-      setSubmitting(true)
-      setSelectedItem(null)
     }
   }
 
   const goToDetailPage = (customerId) => {
     if (customerId) {
-      history.push(`/customers/${customerId}`)
+      history.push(`/customers/${customerId}?tab=details`)
     }
   }
 
@@ -333,7 +347,7 @@ const Customers = () => {
 
   const renderCustomers = () => {
     return customers?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       const formattedDate = data.created_at ? dayjs(data.created_at).format('DD MMM YYYY') : 'NA';
       return (
         <tr key={index} className={isChecked ? 'customerTable__selected' : ''}>
@@ -369,10 +383,10 @@ const Customers = () => {
                 data={data}
                 isShowEdit={true}
                 isShowDelete={true}
-                haveWhatsApp={haveWhatsApp}
+                haveWhatsApp={currentUser.role_id === ROLES.ADMIN_ID}
                 clickChat={goToChatPage}
                 clickEdit={goToDetailPage}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleClickDelete(+data.id)}
               />
             </div>
           </td>
@@ -383,14 +397,6 @@ const Customers = () => {
 
   return (
     <div className="customers">
-      {!isEmptyObject(message) &&
-        <div className="customers__message">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <TableAction
         searchText={searchText}
         isFiltering={isFiltering}
@@ -407,6 +413,7 @@ const Customers = () => {
         createURL={LINKS.CREATE.CUSTOMER}
         buttonTitle="New Customer"
         tableUnit="customer"
+        permissionKey={PERMISSION.KEY.CUSTOMER}
       />
       <div className="customers__table">
         <table className="customerTable">
@@ -443,7 +450,7 @@ const Customers = () => {
           isShow={isShowConfirmDeleteModal}
           deleteTitle="customer"
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleAcceptedDelete}
         />
       )}
       {isShowFilterModal && (

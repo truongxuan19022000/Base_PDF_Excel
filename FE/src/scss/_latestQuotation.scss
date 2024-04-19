@@ -1,0 +1,116 @@
+.latestQuotation {
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem;
+    height: 55px;
+    border-bottom: 1px solid $color_black3;
+    text-transform: capitalize;
+    background-color: #F9F9F9;
+    border-radius: 8px 8px 0 0;
+
+    .header {
+      &__title {
+        color: #453516CC;
+        font-weight: 600;
+      }
+
+      &__addNew {
+        height: fit-content;
+        background-color: transparent;
+        padding: 8px 14px;
+        background-color: #7f7462;
+        border-radius: 6px;
+        font-weight: 500;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        text-transform: capitalize;
+      }
+    }
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+
+    thead {
+      height: 50px;
+      z-index: 1;
+      background-color: $color_white;
+
+      th {
+        position: sticky;
+        top: 0;
+        background-color: $color_white2;
+        z-index: 1;
+        user-select: none;
+        text-transform: uppercase;
+      }
+    }
+
+    tbody {
+      tr {
+        transition: 0.3s all ease-in;
+        border-top: 1px solid $color_black3;
+      }
+    }
+
+    td,
+    th {
+      height: 50px;
+      padding-left: 16px;
+      text-align: left;
+    }
+
+    th {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+
+    td {
+      .status {
+        width: fit-content;
+        padding: 5px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 16px;
+        text-transform: capitalize;
+        border: none;
+
+        &--pending-approval,
+        &--pending {
+          color: #bf8932;
+          background-color: #ebd09133;
+        }
+
+        &--rejected {
+          color: $color_red2;
+          background-color: #fef3f2;
+        }
+
+        &--approved,
+        &--paid {
+          color: #027a48;
+          background-color: #ecfdf3;
+        }
+
+        &--draft {
+          color: #1877de;
+          background-color: #e7f2fe;
+        }
+
+        &--cancelled {
+          color: #00000099;
+          background-color: rgba(180, 180, 180, 0.3);
+        }
+      }
+    }
+  }
+}

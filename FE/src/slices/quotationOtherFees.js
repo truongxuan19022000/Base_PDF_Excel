@@ -5,6 +5,7 @@ import quotationOtherFeesSaga from 'src/sagas/quotationOtherFeesSaga';
 
 export const initialState = {
   otherFeesList: [],
+  fetched: false,
 };
 
 const slice = createSlice({
@@ -16,6 +17,7 @@ const slice = createSlice({
     getQuotationOtherFeesSuccess(state, action) {
       if (action?.payload) {
         state.otherFeesList = action.payload || [];
+        state.fetched = true;
       }
     },
     handleQuotationOtherFees() {
@@ -30,6 +32,9 @@ const slice = createSlice({
       if (action?.payload) {
         state.otherFeesList = action.payload?.data;
       }
+    },
+    resetFetchedList(state) {
+      state.fetched = false;
     },
   }
 })

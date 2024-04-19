@@ -5,22 +5,23 @@ import { CUSTOMERS } from 'src/constants/config';
 
 const ActivityLogs = ({ logsData = [] }) => {
   const renderLogsData = (index, item) => {
-    const iconSrc = CUSTOMERS.LOGS.ICON[item.type]
-    const logsName = CUSTOMERS.LOGS.LABEL[item.type]
-    const actionName = CUSTOMERS.LOGS.ACTION[item.action_type]
-    const logsTime = dayjs(item.created_at).format('DD MMM YYYY, h:mma')
-    const username = item.user?.username
+    const iconSrc = CUSTOMERS.LOGS.ICON[item?.type]
+    const logsName = CUSTOMERS.LOGS.LABEL[item?.type]
+    const actionName = CUSTOMERS.LOGS.ACTION[item?.action_type]
+    const logsTime = dayjs(item?.created_at).format('DD MMM YYYY, h:mma')
+    const username = item?.user?.username
 
     let logFileName = '';
-    if (item.type === CUSTOMERS.TYPE_VALUE.QUOTATION) {
-      logFileName = item.quotation?.reference_no;
-    } else if (item.type === CUSTOMERS.TYPE_VALUE.INVOICE) {
-      logFileName = item.quotation?.invoice_no;
-    } else if (item.type === CUSTOMERS.TYPE_VALUE.CUSTOMER) {
-      logFileName = item.action_type === CUSTOMERS.ACTION_CREATE_VALUE ? '' : 'Information';
+    if (item?.type === CUSTOMERS.TYPE_VALUE.QUOTATION) {
+      logFileName = item?.quotation?.reference_no;
+    } else if (item?.type === CUSTOMERS.TYPE_VALUE.INVOICE) {
+      logFileName = item?.quotation?.invoice_no;
+    } else if (item?.type === CUSTOMERS.TYPE_VALUE.CUSTOMER) {
+      logFileName = item?.action_type === CUSTOMERS.ACTION_CREATE_VALUE ? '' : 'Information';
     }
 
     return (
+      item &&
       <div key={index} className="logsBox">
         <div className="logsBox__content">
           <img

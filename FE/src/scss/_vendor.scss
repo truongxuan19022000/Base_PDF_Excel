@@ -1,0 +1,123 @@
+.vendor {
+  padding: 35px 32px;
+  padding-bottom: 50px;
+  position: relative;
+
+  &__message {
+    position: absolute;
+    width: calc(100% - 64px);
+    top: 46px;
+    left: 33px;
+  }
+
+  &__table {
+    width: 100%;
+    position: relative;
+    margin-top: 12px;
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
+
+    .vendorTable {
+      width: 100%;
+      border-collapse: collapse;
+
+      thead {
+        height: 60px;
+        z-index: 1;
+
+        th {
+          position: sticky;
+          top: 0;
+          background-color: $color_white2;
+          border-bottom: 2px solid $color_black3;
+          z-index: 1;
+        }
+      }
+
+      tbody {
+        tr {
+          transition: 0.3s all ease-in;
+          border-top: 1px solid $color_black3;
+        }
+      }
+
+      &__selected {
+        background-color: $color_milk2;
+      }
+
+      &__th {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+
+        &--checkbox {
+          width: 4%;
+        }
+
+        &--vendor {
+          width: 24.5%;
+        }
+
+        &--phone {
+          width: 14.8%;
+        }
+
+        &--email {
+          width: 20.9%;
+        }
+
+        &--date {
+          width: 18.4%;
+        }
+      }
+
+      &__td {
+        max-width: 170px;
+        width: 170px;
+        text-overflow: ellipsis;
+
+        &--textBox {
+          overflow: hidden;
+          display: -webkit-box;
+          white-space: nowrap;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        &--buttons {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          overflow: unset;
+          gap: 21px;
+        }
+      }
+
+      td,
+      th {
+        position: relative;
+        height: 60px;
+        padding-left: 16px;
+      }
+
+      th {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 1px;
+      }
+    }
+  }
+
+  &__paginate {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 825px;
+    left: 0;
+  }
+}

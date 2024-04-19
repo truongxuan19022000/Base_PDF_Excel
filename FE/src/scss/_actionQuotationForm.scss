@@ -18,11 +18,11 @@
   }
 
   &__label {
-    width: 100%;
     height: 100%;
     display: flex;
-    justify-content: space-between;
+    gap: 10px;
     align-items: center;
+    width: fit-content;
     cursor: pointer;
 
     img {
@@ -34,6 +34,7 @@
   }
 
   &__action {
+    width: max-content;
     font-size: 15px;
     font-weight: 400;
     color: $color_white;
@@ -57,7 +58,15 @@
     background-color: $color_white;
     overflow-y: auto;
     border: 0.5px solid #00000033;
-    z-index: 2;
+    z-index: 3;
+
+    &--fullWidth {
+      width: fit-content;
+    }
+
+    span {
+      white-space: nowrap;
+    }
   }
 
   &__option {
@@ -70,11 +79,16 @@
     user-select: none;
     cursor: pointer;
 
+    &--children {
+      padding-left: 46px;
+    }
+
     img {
       width: 15px;
       height: 15px;
       margin-right: 12px;
       margin-bottom: 4px;
+      margin-top: 4px;
     }
 
     &:first-child {
@@ -88,6 +102,14 @@
 
     &:hover {
       background-color: $color_brown3;
+    }
+  }
+
+  &__childrenDropDown {
+    margin-left: 5px;
+
+    svg {
+      color: #000 !important;
     }
   }
 }

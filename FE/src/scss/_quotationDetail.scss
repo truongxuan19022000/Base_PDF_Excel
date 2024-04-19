@@ -10,7 +10,44 @@
     width: 100%;
     position: absolute;
     top: 82px;
-    z-index: 1;
+    z-index: 10;
+  }
+
+  &__adminBtn {
+    display: flex;
+    gap: 15px;
+    margin-right: 15px;
+  }
+
+  &__btn {
+    width: max-content;
+    min-width: 142px;
+    height: 35px;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 15px;
+
+    img {
+      margin-right: 8px;
+    }
+
+    &--approved {
+      color: #027a48;
+      background-color: #ecfdf3;
+      border: 0.5px solid #027a48;
+    }
+
+    &--rejected {
+      color: #b42318;
+      background-color: #fef3f2;
+      border: 0.5px solid #b42318;
+    }
+
+    &--canceled {
+      color: #7f7462;
+      background-color: white;
+      border: 0.5px solid #7f7462;
+    }
   }
 
   &__header {
@@ -18,10 +55,11 @@
     padding: 0 30px;
     padding-bottom: 30px;
     display: flex;
+    align-items: center;
     justify-content: space-between;
 
     &--title {
-      width: 65%;
+      width: 50%;
       font-size: 25px;
       font-weight: 600;
       display: flex;
@@ -32,7 +70,10 @@
     }
 
     &--buttons {
+      width: max-content;
       display: flex;
+      justify-content: flex-end;
+      margin-left: 20px;
     }
 
     &--button {

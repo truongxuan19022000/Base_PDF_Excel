@@ -1,36 +1,35 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 
+import { alertActions } from 'src/slices/alert'
+import { useFileSlice } from 'src/slices/file'
 import { useCustomerSlice } from 'src/slices/customer'
-import { useDocumentSlice } from 'src/slices/document'
-import { ACTIONS, FILTER, MESSAGE, PAGINATION } from 'src/constants/config'
-import { validateFilterRequest, validateUploadDocument } from 'src/helper/validation'
-import { downloadCSVFromCSVString, formatCustomerName, normalizeString } from 'src/helper/helper'
+import { ACTIONS, ALERT, FILTER, MESSAGE, PAGINATION, PERMISSION } from 'src/constants/config'
+import { validateFilterRequest, validatePermission, validateUploadDocument } from 'src/helper/validation'
+import { downloadFile, normalizeString } from 'src/helper/helper'
 
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
-import FilterModal from 'src/components/FilterModal'
 import TableButtons from 'src/components/TableButtons'
 import CustomerTableAction from '../CustomerTableAction'
+import FilterScrapModal from '../ScrapForms/FilterScrapModal'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
 
-const CustomerDocument = ({ customerName = '', setMessage }) => {
+const CustomerDocument = ({
+  id,
+  setIsShowUploadFileModal,
+}) => {
   const { actions } = useCustomerSlice()
-  const { actions: documentActions } = useDocumentSlice()
+  const { actions: fileActions } = useFileSlice()
 
-  const fileInputRef = useRef(null);
-
-  const { id } = useParams()
   const dispatch = useDispatch()
 
-  const csvData = useSelector(state => state.customer.csvData)
+  const { fetchedDocument, isCustomerDocumentUpdated } = useSelector(state => state.customer)
   const customerDocumentData = useSelector(state => state.customer.customerDocument)
-  const isCustomerDocumentUpdated = useSelector(state => state.customer.isCustomerDocumentUpdated)
+  const permissionData = useSelector(state => state.user.permissionData)
 
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [messageError, setMessageError] = useState('')
@@ -41,13 +40,14 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
   const [isSelectedAll, setIsSelectedAll] = useState(false)
   const [totalDataNumber, setTotalDataNumber] = useState(0)
   const [startDateFilter, setStartDateFilter] = useState('')
-  const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
   const [uploadedDocument, setUploadedDocument] = useState(null)
   const [isShowFilterModal, setIsShowFilterModal] = useState(false)
   const [selectedFieldFilter, setSelectedFieldFilter] = useState([])
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([]);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const onSuccess = () => {
     setMessageError('')
@@ -55,27 +55,48 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     setIsDisableSubmit(false)
     setIsShowFilterModal(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
-    }
     setUploadedDocument(null)
     setIsClickUpload(false)
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = customerDocumentData.current_page === customerDocumentData.last_page
+    const hasNoItem = customerDocumentData.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
+    }
+
+    if (id) {
+      const params = {
+        customer_id: +id,
+        page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+        search: normalizeString(searchText),
+        start_date: startDateFilter && dayjs(startDateFilter).format('YYYY/MM/DD'),
+        end_date: endDateFilter && dayjs(endDateFilter).format('YYYY/MM/DD'),
+        onError,
+      }
+      dispatch(actions.getCustomerQuotationList(params))
+    }
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
-    if (id) {
-      dispatch(actions.getCustomerDocumentList({
-        customer_id: +id,
-        page: PAGINATION.START_PAGE,
-      }))
+    if (id && !fetchedDocument) {
+      dispatch(actions.getCustomerDocumentList({ customer_id: +id }))
     }
-  }, [id])
+  }, [id, fetchedDocument])
 
   useEffect(() => {
     if (isCustomerDocumentUpdated && id) {
@@ -87,7 +108,7 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
   }, [isCustomerDocumentUpdated, id])
 
   useEffect(() => {
-    if (customerDocumentData && Object.keys(customerDocumentData)?.length > 0) {
+    if (customerDocumentData && Object.keys(customerDocumentData).length > 0) {
       setCurrentPageNumber(customerDocumentData.current_page)
       setTotalDataNumber(customerDocumentData?.total || 0)
     }
@@ -109,17 +130,22 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
   }, [isClickUpload, isDisableSubmit])
 
   useEffect(() => {
-    setMessageError('')
-  }, [isInputChanged])
+    !isShowFilterModal && setMessageError({})
+  }, [isShowFilterModal])
 
   useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      const filename = formatCustomerName(customerName) + '_document'
-      downloadCSVFromCSVString(csvData, filename)
-      setSubmitting(false)
-      dispatch(actions.clearCSVDataCustomer())
-    }
-  }, [submitting, csvData])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+        setIsShowUploadFileModal(false)
+        setIsShowFilterModal(false)
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -137,133 +163,150 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     }
   }
 
-  const handleFilterSearchApply = (searchText) => {
+  const handleInputValue = (field, value) => {
     if (isDisableSubmit) return;
-    if (selectedFieldFilter?.length === 0 && !startDateFilter && !endDateFilter) {
-      setIsShowFilterModal(false);
-      setIsFiltering(false);
-      dispatch(actions.getCustomerDocumentList({
-        customer_id: +id,
-        search: searchText || '',
-        page: PAGINATION.START_PAGE,
-        onSuccess,
-        onError,
-      }));
+    const fieldSetters = {
+      start_date: setStartDateFilter,
+      end_date: setEndDateFilter,
+    };
+    const setter = fieldSetters[field];
+    if (setter) {
+      setter(value);
+      setMessageError({})
+    }
+  }
+
+  const handleCheckBoxChange = (value) => {
+    if (selectedFieldFilter.includes(value)) {
+      setSelectedFieldFilter(selectedFieldFilter.filter(id => id !== value))
+    } else {
+      setSelectedFieldFilter([...selectedFieldFilter, value])
+    }
+    setMessageError({})
+  }
+
+  const handleFilterSearchApply = () => {
+    if (isDisableSubmit) return;
+    const isEmptyRequest = !(
+      selectedFieldFilter.length > 0 ||
+      startDateFilter ||
+      endDateFilter
+    );
+    if (isEmptyRequest) {
+      setMessageError({
+        message: 'Please select your request.'
+      })
     } else {
       const data = {
         customer_id: +id,
-        search: searchText || '',
+        search: normalizeString(searchText),
         type: selectedFieldFilter || [],
         page: PAGINATION.START_PAGE,
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+        start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+        end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
       };
       const errors = validateFilterRequest(data);
       if (Object.keys(errors).length > 0) {
         setMessageError(errors);
-        setIsDisableSubmit(true);
       } else {
         if (isShowFilterModal) {
           setIsFiltering(true);
         }
-        dispatch(actions.getCustomerDocumentList({ ...data, onSuccess, onError, }));
+        dispatch(actions.getCustomerDocumentList({ ...data, onError }));
         setSelectedIds([]);
-        setSubmitting(true);
         setMessageError('');
-        setIsDisableSubmit(true);
+        setIsShowFilterModal(false)
       }
     }
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const handleSelectDeleteInfo = (deleteId) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      if (deleteId) {
+        setSelectedDeleteIds([deleteId])
+        setIsShowConfirmDeleteModal(true);
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.UNKNOWN_ID,
+        }));
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }))
     }
-    setIsShowConfirmDeleteModal(true);
-  }
-
-  const handleInputDateFilter = (date, field) => {
-    if (submitting) return;
-    if (field === FILTER.LABEL.START_DATE) {
-      setStartDateFilter(date);
-    } else {
-      setEndDateFilter(date);
-    }
-    setIsInputChanged(!isInputChanged);
   }
 
   const handleSearch = () => {
-    handleFilterSearchApply(normalizeString(searchText))
-    setSelectedIds([])
+    if (submitting) return;
+    const data = {
+      customer_id: +id,
+      search: normalizeString(searchText),
+      type: selectedFieldFilter,
+      page: PAGINATION.START_PAGE,
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
+    };
+    const errors = validateFilterRequest(data);
+    if (Object.keys(errors).length > 0) {
+      setMessageError(errors);
+    } else {
+      dispatch(actions.getCustomerDocumentList({ ...data, onError }));
+      setSelectedIds([]);
+      setMessageError('');
+      setIsShowFilterModal(false)
+    }
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    const isLastItem = (customerDocumentData.data?.length === 1)
-    const isSelectAllItemOfLastPage = (isSelectedAll && customerDocumentData.current_page === customerDocumentData.last_page)
-    const isOutOfItemInPage = isLastItem || isSelectAllItemOfLastPage
-    let tempoPageNumber = null;
-    if ((customerDocumentData.last_page > PAGINATION.START_PAGE) && isOutOfItemInPage) {
-      tempoPageNumber = customerDocumentData.current_page - 1
-    } else {
-      tempoPageNumber = PAGINATION.START_PAGE
-    }
-    const data = {
-      document_id: deleteInfo?.deleteIds || [],
-      page: +tempoPageNumber,
-      search: normalizeString(searchText),
-      start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-      end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY/MM/DD'),
-    };
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      dispatch(documentActions.multiDeleteDocument({ ...data, onSuccess, onError }));
-      setMessageError({})
-      setSubmitting(true)
-      setSelectedIds([])
-      setIsDisableSubmit(true)
-      setIsShowConfirmDeleteModal(false)
-    } else if (deleteInfo?.actionType === ACTIONS.NAME.DELETE && deleteInfo?.deleteIds) {
-      dispatch(documentActions.multiDeleteDocument({ ...data, onSuccess, onError }));
-      setSubmitting(true)
-      setMessageError({})
-      setIsDisableSubmit(true)
-      setIsShowConfirmDeleteModal(false)
-      if (deleteInfo?.deleteIds) {
-        setSelectedIds(selectedIds?.filter(id => !deleteInfo?.deleteIds?.includes(id)))
-      }
-    }
+  const handleDelete = () => {
+    if (isDisableSubmit || selectedDeleteIds.length === 0) return;
+    dispatch(fileActions.multiDeleteDocument({
+      document_id: selectedDeleteIds,
+      onDeleteSuccess,
+      onError
+    }));
+    setMessageError({})
+    setIsDisableSubmit(true)
+    setIsShowConfirmDeleteModal(false)
+    setSelectedIds(selectedIds?.filter(id => !selectedDeleteIds.includes(id)))
   }
 
   const handleClickApply = (actionType) => {
     if (submitting) return;
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportCustomerDocumentCSV({
-        search: normalizeString(searchText),
-        type: selectedFieldFilter || [],
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        document_id: selectedIds || [],
-        customer_id: +id,
-        onError
-      }))
-      setSubmitting(true)
-      setSelectedItem(null)
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          setSelectedDeleteIds(selectedIds)
+          setIsShowConfirmDeleteModal(true)
+        } else {
+          dispatch(alertActions.openAlert({
+            type: ALERT.FAILED_VALUE,
+            title: 'Action Deny',
+            description: MESSAGE.ERROR.AUTH_ACTION,
+          }))
+        }
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportCustomerDocumentCSV({
+          document_ids: selectedIds,
+          customer_id: +id,
+          onError,
+          onSuccess,
+        }))
+        setSubmitting(true)
+        setSelectedItem(null)
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }));
     }
   }
 
@@ -271,8 +314,9 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     setCurrentPageNumber(pageNumber);
     setSelectedIds([]);
     const params = {
+      customer_id: +id,
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
     if (selectedFieldFilter?.length > 0) {
       params.type = selectedFieldFilter;
@@ -281,23 +325,13 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
       params.search = normalizeString(searchText);
     }
     if (startDateFilter) {
-      params.start_date = dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.start_date = dayjs(startDateFilter).format('YYYY-MM-DD');
     }
     if (endDateFilter) {
-      params.end_date = dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.end_date = dayjs(endDateFilter).format('YYYY-MM-DD');
     }
 
     dispatch(actions.getCustomerDocumentList(params));
-  }
-
-  const handleSelectFieldFilter = (value) => {
-    if (submitting) return;
-    if (selectedFieldFilter?.includes(value)) {
-      setSelectedFieldFilter(selectedFieldFilter?.filter(type => type !== value));
-    } else {
-      setSelectedFieldFilter([...selectedFieldFilter, value]);
-    }
-    setIsInputChanged(!isInputChanged)
   }
 
   const handleClickResetFilter = () => {
@@ -315,13 +349,18 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     }))
   }
 
-  const handleFileUpload = () => {
-    const selectedFile = fileInputRef?.current?.files[0];
-    setUploadedDocument(selectedFile);
-    setIsDisableSubmit(false);
-    setIsClickUpload(true)
-    setIsInputChanged(!isInputChanged)
-  };
+  const handleClickUploadFile = () => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.CREATE)
+    if (isAllowed) {
+      setIsShowUploadFileModal(true)
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }))
+    }
+  }
 
   const handleUploadDocument = () => {
     setIsClickUpload(false)
@@ -333,19 +372,45 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     const errors = validateUploadDocument(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
-      dispatch(documentActions.uploadDocument({ ...data, onSuccess, onError }));
+      dispatch(fileActions.uploadDocument({ ...data, onSuccess, onError }));
       setMessageError({});
       setIsDisableSubmit(true);
     }
   };
 
-  const handleClickDownload = (data) => { }
+  const handleClickDownload = (data) => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+
+    const file = {
+      fileName: data.document_name,
+      url: data.file,
+    };
+
+    downloadFile(file)
+      .then(() => {
+        dispatch(alertActions.openAlert({
+          type: ALERT.SUCCESS_VALUE,
+          title: 'Successfully Download',
+          description: 'File has been downloaded',
+        }));
+      })
+      .catch((error) => {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Download Failed',
+          description: error,
+        }));
+      })
+      .finally(() => {
+        setIsDownloading(false);
+      });
+  };
 
   const renderDocumentList = () => {
     return customerDocumentData?.data?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       const formattedDate = data.created_at ? dayjs(data.created_at).format('DD MMM YYYY') : 'NA';
       return (
         <tr key={index} className={isChecked ? 'csDocumentTable__selected' : ''}>
@@ -360,7 +425,8 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
               {data.document_name}
             </div>
           </td>
-          <td className="csDocumentTable__td csDocumentTable__td--type">{data.file_type}</td>
+          <td className="csDocumentTable__td">{data.file_type}</td>
+          <td className="csDocumentTable__td">{data.reference_no}</td>
           <td className="csDocumentTable__td">{formattedDate}</td>
           <td className="csDocumentTable__td">
             <div className="csDocumentTable__td--buttons">
@@ -368,7 +434,7 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
                 data={data}
                 isShowDelete={true}
                 isShowDownLoad={true}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleSelectDeleteInfo(+data.id)}
                 clickDownLoad={() => handleClickDownload(data)}
               />
             </div>
@@ -382,12 +448,10 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
     <div className="csDocument">
       <div className="csDocument__actionBar">
         <CustomerTableAction
-          isDetail={!!id}
           isShowFilter={true}
           isUploadDocument={true}
           searchText={searchText}
           buttonTitle="Upload"
-          fileInputRef={fileInputRef}
           actionList={ACTIONS.EXTEND}
           isFiltering={isFiltering}
           selectedAction={selectedItem}
@@ -397,14 +461,15 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
           onClickApply={handleClickApply}
           setSelectedAction={setSelectedItem}
           setIsShowFilterModal={setIsShowFilterModal}
-          handleFileUpload={handleFileUpload}
+          handleFileUpload={handleClickUploadFile}
         />
       </div>
       <div className="csDocument__table">
+        <div className="csDocument__divider"></div>
         <table className="csDocumentTable">
           <thead>
             <tr>
-              <th className="csDocumentTable__th csDocumentTable__th--checkbox" style={{ width: '4%' }}>
+              <th className="csDocumentTable__th csDocumentTable__th--checkbox">
                 <Checkbox
                   isChecked={isSelectedAll}
                   onChange={(e) => handleSelectAllItems(e.target.checked)}
@@ -412,6 +477,7 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
               </th>
               <th className="csDocumentTable__th csDocumentTable__th--file">FILE NAME</th>
               <th className="csDocumentTable__th csDocumentTable__th--type">TYPE</th>
+              <th className="csDocumentTable__th csDocumentTable__th--reference">REFERENCE NO.</th>
               <th className="csDocumentTable__th csDocumentTable__th--upload">UPLOADED ON</th>
               <th className="csDocumentTable__th">ACTIONS</th>
             </tr>
@@ -431,29 +497,28 @@ const CustomerDocument = ({ customerName = '', setMessage }) => {
       {isShowConfirmDeleteModal && (
         <ConfirmDeleteModal
           isDetail={!!id}
-          deleteTitle="customer"
+          className="topPosition"
+          deleteTitle="document"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleDelete}
         />
       )}
       {isShowFilterModal && (
-        <FilterModal
-          isDetail={!!id}
-          filterTitle="FILTER TYPE"
-          isDocumentFilter={true}
-          submitting={submitting}
-          searchText={searchText}
+        <FilterScrapModal
+          checkList={FILTER.DOCUMENTS}
+          className="customerDetail"
+          isShowStatus={false}
+          isShowLength={false}
           messageError={messageError}
           endDateFilter={endDateFilter}
           startDateFilter={startDateFilter}
           isDisableSubmit={isDisableSubmit}
-          filterRequest={FILTER.DOCUMENTS}
-          selectedFieldFilter={selectedFieldFilter}
+          selectedStatus={selectedFieldFilter}
+          handleInputValue={handleInputValue}
           onClickApply={handleFilterSearchApply}
-          handleInputDateFilter={handleInputDateFilter}
+          handleCheckBoxChange={handleCheckBoxChange}
           handleClickResetFilter={handleClickResetFilter}
-          handleSelectFieldFilter={handleSelectFieldFilter}
           onClickCancel={() => setIsShowFilterModal(false)}
         />
       )}

@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react'
-import { useHistory, useParams } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 
-import { ROLES } from 'src/constants/config'
 import { useRoleSlice } from 'src/slices/role'
-import { validateEditRole } from 'src/helper/validation'
-import { isEmptyObject, isSimilarObject, normalizeString } from 'src/helper/helper'
+import { alertActions } from 'src/slices/alert'
+import { validateEditRole, validatePermission } from 'src/helper/validation'
+import { ALERT, MESSAGE, PERMISSION, ROLES } from 'src/constants/config'
+import { isEmptyObject, isSimilarObject } from 'src/helper/helper'
 
 import HeadlineBar from 'src/components/HeadlineBar'
 import PermissionForm from 'src/components/PermissionForm'
@@ -14,15 +15,23 @@ const EditRole = () => {
   const { actions } = useRoleSlice()
 
   const { id } = useParams()
-  const history = useHistory()
   const dispatch = useDispatch()
 
   const roleDetail = useSelector(state => state.role.detail)
   const currentRoleSetting = useSelector(state => state.role.currentRoleSetting)
+  const currentUser = useSelector(state => state.user?.user)
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.ROLE, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
+  const isAdmin = useMemo(() => {
+    return +id === ROLES.ADMIN_ID
+  }, [id])
 
   const [roleName, setRoleName] = useState('')
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [submitting, setSubmitting] = useState(false)
   const [messageError, setMessageError] = useState(null)
   const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
@@ -32,18 +41,14 @@ const EditRole = () => {
   const [changedRoleData, setChangedRoleData] = useState(originalRoleData || {});
 
   const onSuccess = () => {
-    setRoleName('')
-    setSubmitting(false)
     setMessageError({})
-    setIsInfoChanged(false)
+    setIsDisableSubmit(false)
     setOriginalRoleData(changedRoleData)
-    history.push('/roles-setting')
   }
 
   const onError = (data) => {
     setMessageError(data)
-    setIsDisableSubmit(true)
-    setSubmitting(false)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -61,12 +66,11 @@ const EditRole = () => {
       }
       setOriginalRoleData(initialRole)
     }
-    setIsAdmin(normalizeString(roleDetail?.role_name) === ROLES.ADMIN)
   }, [roleDetail])
 
   useEffect(() => {
     if (!isEmptyObject(roleDetail)) {
-      const permissionArray = Object.keys(currentRoleSetting)?.map(key => {
+      const permissionArray = Object.keys(currentRoleSetting).map(key => {
         const { code, ...rest } = currentRoleSetting[key];
         return { [key]: rest };
       });
@@ -85,52 +89,62 @@ const EditRole = () => {
   }, [roleDetail, roleName, currentRoleSetting]);
 
   useEffect(() => {
-    if (!isEmptyObject(originalRoleData) && !isEmptyObject(changedRoleData)) {
-      setIsInfoChanged(!isSimilarObject(originalRoleData, changedRoleData))
-    } else {
-      setIsInfoChanged(false)
-    }
+    setIsInfoChanged(!isSimilarObject(originalRoleData, changedRoleData))
   }, [originalRoleData, changedRoleData])
 
-  useEffect(() => {
-    setMessageError(null)
-    setIsDisableSubmit(false)
-  }, [isInputChanged])
-
-  useEffect(() => {
-    setIsAdmin(false)
-    setSubmitting(false)
-    setMessageError(null)
-    setIsDisableSubmit(false)
-  }, [history.location.pathname])
-
   const handleInputChange = (value) => {
-    if (submitting) {
-      return
-    }
+    if (isDisableSubmit) return;
     setRoleName(value);
-    setIsInputChanged(!isInputChanged)
+    setMessageError({})
   }
 
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
   const handleSaveChange = () => {
-    const isErrorExist = !!(messageError?.length > 0)
-    if (isErrorExist || isDisableSubmit || !isInfoChanged) {
-      return
+    if (!isEditAllowed) {
+      dispatchAlertWithPermissionDenied()
+      return;
     }
-    const data = {
-      role_id: id,
-      role_name: roleName,
-      role_setting: currentRoleSetting
+
+    if (isDisableSubmit) return;
+
+    if (isAdmin) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EDIT_ADMIN,
+      }));
+      return;
     }
-    const errors = validateEditRole(data)
-    if (Object.keys(errors).length > 0) {
-      setMessageError(errors)
-      setIsDisableSubmit(true)
+
+    if (isInfoChanged) {
+      const data = {
+        role_id: id,
+        role_name: roleName,
+        role_setting: currentRoleSetting,
+        isCurrentRoleChange: +id === +currentUser.role_id,
+      }
+
+      const errors = validateEditRole(data)
+      if (Object.keys(errors).length > 0) {
+        setMessageError(errors)
+      } else {
+        dispatch(actions.updateRole({ ...data, onSuccess, onError }))
+        setMessageError({})
+        setIsDisableSubmit(true)
+      }
     } else {
-      dispatch(actions.updateRole({ ...data, onSuccess, onError }))
-      setMessageError({})
-      setIsDisableSubmit(true)
-      setSubmitting(true)
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.INFO_NO_CHANGE,
+      }));
     }
   }
 
@@ -143,11 +157,12 @@ const EditRole = () => {
         isDisableSubmit={isDisableSubmit}
       />
       <PermissionForm
+        id={id}
         isEditingRole={true}
-        roleName={roleName || ''}
+        roleName={roleName}
         isAdmin={isAdmin}
         isInputChanged={isInputChanged}
-        messageError={messageError || ''}
+        messageError={messageError}
         roleDetail={roleDetail ? roleDetail?.role : []}
         setIsInputChanged={setIsInputChanged}
         handleInputChange={handleInputChange}

@@ -15,12 +15,15 @@ const InventoryServiceForm = ({
   setMessageError,
   isEditMode,
   isInputChanged = false,
+  isMaterialUsed = false,
+  isEditAllowed = false,
   setIsInputChanged,
+  setPrice,
 }) => {
   return (
     <>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.item}
             keyValue="item"
@@ -34,7 +37,7 @@ const InventoryServiceForm = ({
             <div className="inventoryCell__item--message">{data.messageError.item}</div>
           }
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.code}
             keyValue="code"
@@ -46,8 +49,8 @@ const InventoryServiceForm = ({
           />
         </div>
       </div>
-      <div className={`inventoryCell${data.messageError?.service_type ? ' inventoryCell--error' : ''}`}>
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${data.messageError?.service_type ? ' inventoryCell--error' : ''}${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.category}
             keyValue="category"
@@ -58,7 +61,7 @@ const InventoryServiceForm = ({
             handleInputChange={handleInputChange}
           />
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <div className="inventoryCell__item--select">
             <div className="inventoryCell__item--label">
               Service Type
@@ -81,8 +84,8 @@ const InventoryServiceForm = ({
           }
         </div>
       </div>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.minSize}
             unit={data.sizeUnit}
@@ -99,7 +102,7 @@ const InventoryServiceForm = ({
             setIsInputChanged={setIsInputChanged}
           />
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.price}
             unit={data.priceUnit}
@@ -115,6 +118,7 @@ const InventoryServiceForm = ({
             handleInputChange={handleInputChange}
             isInputChanged={isInputChanged}
             setIsInputChanged={setIsInputChanged}
+            setPrice={setPrice}
           />
         </div>
       </div>

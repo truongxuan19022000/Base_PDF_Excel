@@ -1,19 +1,30 @@
 .csInvoice {
   width: 100%;
   height: 100%;
-  position: relative;
   padding: 23px 32px;
+  max-height: calc(100vh - 179px);
+  overflow: auto;
+  position: relative;
 
   &__actionBar {
     width: 100%;
     padding-bottom: 19px;
   }
 
+  &__divider {
+    width: 100%;
+    position: sticky;
+    top: 0px;
+    border: 0.5px solid white;
+    z-index: 2;
+  }
+
   &__table {
     width: 100%;
     position: relative;
-    max-height: 500px;
     overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
 
     .csInvoiceTable {
       width: 100%;
@@ -23,15 +34,10 @@
         height: 60px;
         z-index: 1;
 
-        tr {
-          border: 1px solid $color_black3;
-        }
-
         th {
           position: sticky;
           top: 0;
           background-color: $color_white2;
-          border-bottom: 2px solid $color_black3;
           z-index: 1;
           user-select: none;
         }
@@ -40,7 +46,7 @@
       tbody {
         tr {
           transition: 0.3s all ease-in;
-          border: 1px solid $color_black3;
+          border-top: 1px solid $color_black3;
         }
       }
 
@@ -65,11 +71,13 @@
           height: 100%;
           display: flex;
           align-items: center;
+          padding-right: 10px;
         }
       }
 
       &__th {
         max-width: 170px;
+        width: 170px;
         text-overflow: ellipsis;
         overflow: hidden;
 
@@ -78,15 +86,43 @@
         }
 
         &--invoice {
-          width: 24%;
+          width: 18.6%;
         }
 
         &--reference {
-          width: 28%;
+          width: 25.5%;
         }
 
-        &--create {
-          width: 20%;
+        &--amount {
+          width: 13.4%;
+        }
+
+        &--amount {
+          width: 11.8%;
+        }
+
+        &--date {
+          width: 11.6%;
+        }
+      }
+
+      &__status {
+        width: fit-content;
+        padding: 5px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 16px;
+        text-transform: capitalize;
+        border: none;
+
+        &--pending {
+          color: #bf8932;
+          background-color: #ebd09133;
+        }
+
+        &--paid {
+          color: #027a48;
+          background-color: #ecfdf3;
         }
       }
 
@@ -106,12 +142,9 @@
   }
 
   &__paginate {
-    width: 100%;
     position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    top: 615px;
+    width: 100%;
+    top: 768px;
     left: 0;
   }
 }

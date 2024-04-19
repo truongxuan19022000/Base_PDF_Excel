@@ -5,10 +5,10 @@ import { useHistory } from 'react-router-dom'
 import HeadlineBar from 'src/components/HeadlineBar'
 import CustomerForm from 'src/components/CustomerForm'
 
-import { COUNTRY_CODE } from 'src/constants/config'
+import { COUNTRY_CODE, PHONE_CODE } from 'src/constants/config'
 import { useCustomerSlice } from 'src/slices/customer'
 import { validateCreateCustomer } from 'src/helper/validation'
-import { formatPhoneNumber } from 'src/helper/helper'
+import { formatPhoneNumber, isEmptyObject } from 'src/helper/helper'
 
 const CreateCustomer = () => {
   const { actions } = useCustomerSlice()
@@ -26,7 +26,7 @@ const CreateCustomer = () => {
   const [messageError, setMessageError] = useState('')
   const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
-  const [phoneCode, setPhoneCode] = useState(COUNTRY_CODE[1].value)
+  const [phoneCode, setPhoneCode] = useState(COUNTRY_CODE[1].label)
 
   const onSuccess = () => {
     history.push('/customers')
@@ -34,7 +34,7 @@ const CreateCustomer = () => {
 
   const onError = (data) => {
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -64,12 +64,12 @@ const CreateCustomer = () => {
       setIsInputChanged(!isInputChanged)
     }
   }
-
   const handleCreate = () => {
     const isErrorExist = !!(messageError?.length > 0)
     if (isErrorExist || isDisableSubmit) return;
+    const phone = !isEmptyObject(phoneCode) ? phoneCode.label : PHONE_CODE.SINGAPORE;
     const trimmedPhoneNumber = phoneNumber?.startsWith('0') ? phoneNumber?.substring(1) : phoneNumber;
-    const phoneNumberFormatted = (phoneCode + trimmedPhoneNumber)
+    const phoneNumberFormatted = (phone + trimmedPhoneNumber)
     const data = {
       name: name,
       email: email,
@@ -83,7 +83,6 @@ const CreateCustomer = () => {
     const errors = validateCreateCustomer(data)
     if (Object.keys(errors).length > 0) {
       setMessageError(errors)
-      setIsDisableSubmit(true)
     } else {
       dispatch(actions.createCustomer({ ...data, onSuccess, onError }))
       setMessageError('')

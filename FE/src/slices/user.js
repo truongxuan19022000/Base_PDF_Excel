@@ -3,6 +3,7 @@ import { useInjectReducer, useInjectSaga } from 'src/utils/redux-injector';
 import { getToken } from 'src/helper/helper';
 
 import userSaga from 'src/sagas/user';
+import { SELECT_NOTIFICATION_TYPES } from 'src/constants/config';
 
 export const initialState = {
   user: {},
@@ -11,9 +12,13 @@ export const initialState = {
   csvData: {},
   fetched: false,
   fetchedList: false,
-  fetchedDetail: false,
-  isUserUpdated: false,
+  isCurrentUserUpdated: false,
   isLoggedIn: !!getToken('access_token'),
+  notifications: {},
+  notificationsCount: 0,
+  messages: [],
+  permissionData: [],
+  unseenMessagesCount: 0
 };
 
 const slice = createSlice({
@@ -23,7 +28,8 @@ const slice = createSlice({
     login(state, action) { },
     loginSuccess(state, action) {
       if (action?.payload) {
-        state.user = action.payload?.user_information
+        state.user = action.payload.user_information;
+        state.permissionData = action.payload.user_information?.permission || [];
         state.isLoggedIn = true;
       }
     },
@@ -31,7 +37,6 @@ const slice = createSlice({
       state.user = {};
       state.list = {};
       state.detail = {};
-      state.fetched = false;
       state.isLoggedIn = false;
     },
     logoutSuccess(state, action) { },
@@ -39,8 +44,8 @@ const slice = createSlice({
     getUserSuccess(state, action) {
       if (action.payload?.data) {
         state.user = action.payload.data;
-        state.isUserUpdated = false;
-        state.fetched = true;
+        state.permissionData = action.payload.data?.permission || [];
+        state.isCurrentUserUpdated = false;
       }
     },
     forgotPassword(state, action) { },
@@ -58,11 +63,9 @@ const slice = createSlice({
     getUserDetailSuccess(state, action) {
       if (action?.payload) {
         state.detail = action.payload
-        state.fetchedDetail = true;
       }
     },
     createUser(state, action) {
-      state.fetchedList = true;
     },
     createUserSuccess(state, action) {
       const res = action?.payload
@@ -80,6 +83,7 @@ const slice = createSlice({
         }
         state.list.data.unshift(newData);
         state.list.total++
+        state.fetchedList = false;
       }
     },
     multiDeleteUser() {
@@ -106,26 +110,56 @@ const slice = createSlice({
         state.list.data = state.list?.data?.map((item) =>
           item.id === updatedPayload.id ? updatedPayload : item
         )
+        state.fetchedList = false;
       }
     },
-    clearUserList(state, action) {
-      state.list = {};
-      state.fetchedList = true;
-    },
-    setIsUserUpdated(state, action) {
-      state.isUserUpdated = true;
-    },
-    setIsFetchedList(state, action) {
-      state.fetchedList = action?.payload || false;
+    setIsCurrentUserUpdated(state, action) {
+      state.isCurrentUserUpdated = true;
     },
     getExportUserCSV() { },
-    getExportUserCSVSuccess(state, action) {
-      if (action?.payload) {
-        state.csvData = action?.payload;
+    getExportUserCSVSuccess() {
+    },
+    resetFetchedList(state) {
+      state.fetched = false;
+      state.fetchedList = false;
+    },
+    getNotifications() { },
+    getNotificationsSuccess(state, action) {
+      state.notifications = action.payload.notifications
+      state.notificationsCount = action.payload.notifications_count
+    },
+    updateNotificationsStatus() { },
+    updateNotificationsStatusSuccess(state, action) {
+      if (action.payload.type === SELECT_NOTIFICATION_TYPES.SINGLE.id) {
+        state.notifications.data = state.notifications.data.filter(item => item.id !== action.payload.notification_id)
+        state.notificationsCount--
+      } else {
+        state.notifications.data = []
+        state.notificationsCount = 0
       }
     },
-    clearCSVUserData(state) {
-      state.csvData = {};
+    getMessages() { },
+    getMessagesSuccess(state, action) {
+      state.messages = action.payload?.conversations?.data || []
+      state.unseenMessagesCount = action.payload?.unread_message_count || 0
+    },
+    pushNewNotificationToList(state, action) {
+      state.notifications.data = [action.payload, ...state.notifications.data]
+      state.notificationsCount++
+    },
+    pushNewMessageToList(state, action) {
+      const isFirstCustomer = state.messages[0]?.customer.id === action.payload.customer.id
+      if (isFirstCustomer) {
+        state.messages = [action.payload, ...state.messages.slice(1)];
+      } else {
+        state.messages = [action.payload, ...state.messages]
+      }
+      state.unseenMessagesCount++
+    },
+    updateMessagesStatus(state, action) { },
+    updateMessagesStatusSuccess(state, action) {
+      state.messages = state.messages.filter(item => item.conversation_id !== action.payload.conversation_id)
+      state.unseenMessagesCount--
     },
   },
 })

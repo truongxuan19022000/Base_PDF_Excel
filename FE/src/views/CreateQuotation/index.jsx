@@ -5,11 +5,12 @@ import { useHistory, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import 'react-datepicker/dist/react-datepicker.css';
 
+import Loading from 'src/components/Loading';
 import HeadlineBar from 'src/components/HeadlineBar';
 import CustomerForm from 'src/components/CustomerForm';
 import SelectCustomerForm from 'src/components/SelectCustomerForm';
 
-import { PHONE_CODE, QUOTATION } from 'src/constants/config';
+import { COUNTRY_CODE, PHONE_CODE, QUOTATION } from 'src/constants/config';
 import { useCustomerSlice } from 'src/slices/customer';
 import { useQuotationSlice } from 'src/slices/quotation';
 import { validateCreateQuotation } from 'src/helper/validation';
@@ -25,7 +26,8 @@ const CreateQuotation = () => {
 
   const fetchedAll = useSelector(state => state.customer.fetchedAll)
   const customerAll = useSelector(state => state.customer.customerAll)
-  const customerDetail = useSelector(state => state.customer.detail?.customer)
+  const customerDetail = useSelector(state => state.customer.detail)
+  const isLoading = useSelector(state => state.customer.isLoading)
 
   const [searchText, setSearchText] = useState('');
   const [messageError, setMessageError] = useState({});
@@ -51,18 +53,26 @@ const CreateQuotation = () => {
   const [postalCode, setPostalCode] = useState('');
   const [description, setDescription] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneCode, setPhoneCode] = useState('+65');
+  const [phoneCode, setPhoneCode] = useState(COUNTRY_CODE[1]);
+  const [quotationDescription, setQuotationDescription] = useState(QUOTATION.DEFAULT_QUOTATION_DESCRIPTION);
 
   const isEditMode = useMemo(() => {
     return !!params.id
   }, [params.id])
 
-  const onSuccess = () => {
-    history.push('/quotation')
+  const onSuccess = (newId) => {
+    setMessageError({})
+    setIsDisableSubmit(false);
+    setTimeout(() => {
+      history.push(`/quotation/${newId}?tab=details`)
+    }, 2000);
   }
 
-  const onError = () => {
-    setIsDisableSubmit(true)
+  const onError = (data) => {
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      setMessageError(data)
+    }
+    setIsDisableSubmit(false);
   }
 
   useEffect(() => {
@@ -80,6 +90,8 @@ const CreateQuotation = () => {
   useEffect(() => {
     if (+paymentTermNumber > 0) {
       setPaymentTermBalance(100 - +paymentTermNumber)
+    } else {
+      setPaymentTermBalance('')
     }
   }, [paymentTermNumber])
 
@@ -119,6 +131,7 @@ const CreateQuotation = () => {
 
   useEffect(() => {
     setIsDisableSubmit(false)
+    setMessageError({})
   }, [isInputChanged])
 
   const handleDateChangeRaw = (e) => {
@@ -150,6 +163,7 @@ const CreateQuotation = () => {
       valid_till: setValidTillDate,
       reference_no: setReferenceNumber,
       terms_of_payment_confirmation: setPaymentTermNumber,
+      quotation_description: setQuotationDescription,
     };
 
     const setter = fieldSetters[field];
@@ -167,6 +181,11 @@ const CreateQuotation = () => {
           message.description = QUOTATION.MESSAGE_ERROR.DESCRIPTION;
         }
         break;
+      case QUOTATION.KEYS.QUOTATION_DESCRIPTION:
+        if (validateDescription(value)) {
+          message.quotation_description = QUOTATION.MESSAGE_ERROR.DESCRIPTION;
+        }
+        break;
       default:
         break;
     }
@@ -177,8 +196,8 @@ const CreateQuotation = () => {
   const handleCreateQuotation = () => {
     if (isDisableSubmit) return;
     const trimmedPhoneNumber = phoneNumber?.startsWith('0') ? phoneNumber?.substring(1) : phoneNumber;
-    const phoneNumberFormatted = (phoneCode || PHONE_CODE.SINGAPORE + trimmedPhoneNumber)
-
+    const foundPhoneCode = !isEmptyObject(phoneCode) ? phoneCode.label : PHONE_CODE.SINGAPORE
+    const phoneNumberFormatted = (foundPhoneCode + trimmedPhoneNumber)
     const data = {
       reference_no: referenceNumber,
       description: description,
@@ -195,10 +214,11 @@ const CreateQuotation = () => {
       phone_number: phoneNumberFormatted?.replace(/\s/g, ''),
       created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       is_new_customer: true,
+      quotation_description: quotationDescription,
     }
 
-    if (selectedCustomer?.id) {
-      data.customer_id = selectedCustomer.id
+    if (!isShowCreateNewCustomer) {
+      data.customer_id = selectedCustomer?.id
       data.name = selectedCustomer?.name
       data.is_new_customer = false
     }
@@ -226,7 +246,7 @@ const CreateQuotation = () => {
   const handleTypeSearchChange = (e) => {
     if (isDisableSubmit) return;
     const text = e.target.value;
-    setSearchText(normalizeString(text))
+    setSearchText(text)
     setIsInputChanged(!isInputChanged)
     setIsSearching(true)
     if (typingTimeout) {
@@ -245,6 +265,7 @@ const CreateQuotation = () => {
   const handleClickCreateNewCustomer = () => {
     setIsShowCreateNewCustomer(true)
     setSelectedCustomer({})
+    setMessageError({})
   }
 
   return (
@@ -285,6 +306,7 @@ const CreateQuotation = () => {
                   selectedCustomer={selectedCustomer}
                   messageError={messageError?.customer_id}
                   isShowCreateNewCustomer={isShowCreateNewCustomer}
+                  isInputChange={isInputChanged}
                   setCustomerName={setName}
                   setSearchText={setSearchText}
                   setIsInputChanged={setIsInputChanged}
@@ -301,7 +323,9 @@ const CreateQuotation = () => {
                 }
               </div>
             </div>
-            {(!isEmptyObject(selectedCustomer) || isShowCreateNewCustomer) &&
+            {isLoading ?
+              <Loading /> :
+              (!isEmptyObject(customerDetail) || isShowCreateNewCustomer) &&
               <div className="createQuotation__customerGroup">
                 <CustomerForm
                   name={name}
@@ -315,6 +339,7 @@ const CreateQuotation = () => {
                   messageError={messageError}
                   isActiveInput={isShowCreateNewCustomer}
                   handleInputChange={handleChange}
+                  setPhoneCode={setPhoneCode}
                   isNotCustomer={true}
                 />
               </div>
@@ -420,12 +445,22 @@ const CreateQuotation = () => {
                   placeholder="Project Description"
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   name="description"
+                  value={description}
                 />
-                {messageError?.description &&
-                  <p className="createQuotation__error">
-                    {messageError.description || ''}
-                  </p>
-                }
+                {messageError?.description && <p className="createQuotation__error">{messageError.description}</p>}
+              </div>
+            </div>
+            <div className="createQuotation__section">
+              <div className="createQuotation__formData createQuotation__formData--textArea">
+                <label>Quotation Description</label>
+                <textarea
+                  className={`createQuotation__input createQuotation__input--textArea${messageError?.quotation_description ? ' createQuotation__input--textAreaError' : ''}`}
+                  placeholder="Quotation Description"
+                  onChange={(e) => handleInputChange('quotation_description', e.target.value)}
+                  name="description"
+                  value={quotationDescription}
+                />
+                {messageError?.quotation_description && <p className="createQuotation__error">{messageError.quotation_description}</p>}
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { useUserSlice } from 'src/slices/user'
 import { REGEX_PASSWORD } from 'src/constants/config'
 import { validateResetPassword } from 'src/helper/validation'
 
+import Loading from 'src/components/Loading'
 import LoginLogo from 'src/components/LoginLogo'
 import SubmitButton from 'src/components/SubmitButton'
 import InputForm from 'src/components/InputForm/InputForm'
@@ -17,12 +18,9 @@ const ResetPassword = () => {
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const [message, setMessage] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [errorNewPassword, setErrorNewPassword] = useState('')
+  const [errorMessage, setErrorMessage] = useState({})
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [errorConfirmNewPassword, setErrorConfirmNewPassword] = useState('')
 
   const [typeInput, setTypeInput] = useState('password')
   const [typeConfirmInput, setTypeConfirmInput] = useState('password')
@@ -34,45 +32,30 @@ const ResetPassword = () => {
 
   const onSuccess = () => {
     setIsChangeSuccess(true)
+    setIsDisableSubmit(false)
   }
 
   const onError = (data) => {
-    setMessage(data)
-    setIsDisableSubmit(true)
+    setErrorMessage(typeof data === 'string' ? { message: data } : data)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
-    if (!newPassword || !confirmNewPassword) {
-      return
-    }
-
-    if (!REGEX_PASSWORD.test(newPassword)) {
-      return
-    } else {
-      setIsVisiblePopover(false)
-    }
-
-    if (newPassword === confirmNewPassword) {
-      setIsMatched(true)
-      setIsVisiblePopover(false)
-    } else {
-      setIsMatched(false)
+    if (newPassword || confirmNewPassword) {
+      const isPassMatched = newPassword === confirmNewPassword
+      setIsMatched(isPassMatched)
+      setIsVisiblePopover(REGEX_PASSWORD.test(newPassword))
     }
   }, [newPassword, confirmNewPassword])
 
   useEffect(() => {
-    setMessage('')
-    setErrorMessage('')
-    setErrorNewPassword('')
+    setErrorMessage({})
     setIsDisableSubmit(false)
-    setErrorConfirmNewPassword('')
   }, [newPassword])
 
   useEffect(() => {
-    setMessage('')
-    setErrorMessage('')
+    setErrorMessage({})
     setIsDisableSubmit(false)
-    setErrorConfirmNewPassword('')
   }, [confirmNewPassword])
 
   const handleInputChange = (field, newValue) => {
@@ -99,6 +82,7 @@ const ResetPassword = () => {
 
   const handleSaveResetPassword = (e) => {
     e.preventDefault()
+    if (isDisableSubmit) return;
     const token = new URLSearchParams(window.location.search).get('token');
     const data = {
       reset_password_token: token,
@@ -106,22 +90,8 @@ const ResetPassword = () => {
       confirm_password: confirmNewPassword
     }
     const errors = validateResetPassword(data)
-    const isErrorExist = !!(errorNewPassword?.length > 0 || errorConfirmNewPassword?.length > 0 || !!errorMessage?.length > 0)
-    if (isErrorExist || isDisableSubmit) {
-      return
-    }
-
     if (Object.keys(errors).length > 0) {
-      if (errors?.new_password) {
-        setErrorNewPassword(errors?.new_password)
-      }
-      if (errors?.confirm_password && !errors?.new_password) {
-        setErrorConfirmNewPassword(errors?.confirm_password)
-      }
-      if (errors?.message && !errors?.new_password && !errors?.confirm_password) {
-        setErrorMessage(errors?.message)
-      }
-      setIsDisableSubmit(true)
+      setErrorMessage(errors)
     } else {
       dispatch(actions.resetPassword({
         reset_password_token: token,
@@ -137,11 +107,15 @@ const ResetPassword = () => {
   const goToLogin = () => {
     history.push('/login')
   }
-
   return (
     <div className="wrapper">
       <div className="resetPassword" onClick={() => setIsVisiblePopover(false)}>
         <form className="resetPassword__form" onSubmit={(e) => handleSaveResetPassword(e)}>
+          {isDisableSubmit &&
+            <div className="resetPassword__loading">
+              <Loading />
+            </div>
+          }
           <LoginLogo />
           <div className="resetPassword__headline">Reset Password</div>
           {isChangedSuccess ? (
@@ -173,14 +147,14 @@ const ResetPassword = () => {
                     placeHolder="Password"
                     iconEye="/icons/eye.svg"
                     iconUrl="/icons/lock.svg"
-                    errorMessage={errorMessage}
+                    errorMessage={errorMessage?.new_password}
                     iconEyeFade="/icons/eye-fade.svg"
                     handleShowPassword={() => handleShowPassword('password')}
-                    isError={errorNewPassword?.length > 0 || errorMessage?.length > 0}
+                    isError={errorMessage?.new_password || Object.keys(errorMessage).length > 0}
                     handleInputChange={(value) => handleInputChange('newPassword', value)}
                   />
-                  {(errorNewPassword?.length > 0) && (
-                    <div className="inputGroup__errorMessage">{errorNewPassword}</div>
+                  {errorMessage?.new_password && (
+                    <div className="inputGroup__errorMessage">{errorMessage.new_password}</div>
                   )}
                 </div>
                 {(isVisiblePopover && typeInput === 'text') && (<PopoverPasswordMessage />)}
@@ -196,19 +170,16 @@ const ResetPassword = () => {
                     iconUrl="/icons/lock.svg"
                     placeHolder="Confirm Password"
                     iconEyeFade="/icons/eye-fade.svg"
-                    isError={errorConfirmNewPassword?.length > 0 || errorMessage?.length > 0}
+                    isError={errorMessage?.confirm_password || Object.keys(errorMessage).length > 0}
                     handleShowPassword={() => handleShowPassword('confirm')}
                     handleInputChange={(value) => handleInputChange('confirmNewPassword', value)}
                   />
-                  {(errorConfirmNewPassword?.length > 0) && (
-                    <div className="inputGroup__errorMessage">{errorConfirmNewPassword}</div>
+                  {errorMessage?.confirm_password && (
+                    <div className="inputGroup__errorMessage">{errorMessage.confirm_password}</div>
                   )}
                 </div>
-                {(errorMessage?.length > 0) && (
-                  <div className="inputGroup__errorMessage">{errorMessage}</div>
-                )}
-                {(message?.length > 0) && (
-                  <div className="inputGroup__errorMessage">{message}</div>
+                {(errorMessage?.message) && (
+                  <div className="inputGroup__errorMessage inputGroup__errorMessage--bottom">{errorMessage.message}</div>
                 )}
               </div>
               <SubmitButton

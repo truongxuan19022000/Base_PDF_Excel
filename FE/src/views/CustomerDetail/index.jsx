@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useHistory, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { CAlert } from '@coreui/react'
 
-import { CUSTOMERS } from 'src/constants/config'
+import { ALERT, CUSTOMERS, MESSAGE, PAGINATION, PERMISSION } from 'src/constants/config'
 import { useCustomerSlice } from 'src/slices/customer'
 
-import CustomerInfo from 'src/components/CustomerInfo'
+import SaveSvg from 'src/components/Icons/SaveSvg'
+import CustomerClaim from 'src/components/CustomerClaim'
 import CustomerInvoice from 'src/components/CustomerInvoice'
 import CustomerDocument from 'src/components/CustomerDocument'
 import CustomerQuotation from 'src/components/CustomerQuotation'
-import { isEmptyObject } from 'src/helper/helper'
-import ActionMessageForm from 'src/components/ActionMessageForm'
+import CustomerDetailTab from 'src/components/CustomerDetailTab'
+import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
+import UploadFileModal from 'src/components/CustomerDocument/UploadFileModal'
+import { validatePermission } from 'src/helper/validation'
+import { alertActions } from 'src/slices/alert'
 
 const CustomerDetail = () => {
   const { actions } = useCustomerSlice()
@@ -20,23 +23,45 @@ const CustomerDetail = () => {
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const currentUser = useSelector(state => state.user.user)
-
   const search = history.location.search
   const viewTab = new URLSearchParams(search).get('tab')
   const customerDetail = useSelector(state => state.customer.detail)
-  const isCustomerUpdate = useSelector(state => state.customer.isCustomerUpdate)
+  const { isCustomerUpdate, fetchedLogs } = useSelector(state => state.customer)
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const [message, setMessage] = useState({})
-  const [isWarning, setIsWarning] = useState(false);
-  const [haveWhatsApp, setHaveWhatsApp] = useState(false);
   const [selectedView, setSelectedView] = useState(CUSTOMERS.VIEW.QUOTATION);
+  const [isClickSave, setIsClickSave] = useState(false);
+  const [isDisableSubmit, setIsDisableSubmit] = useState(false);
+  const [isShowUploadFileModal, setIsShowUploadFileModal] = useState(false);
+  const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false);
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.CUSTOMER, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
+  const onDeleteSuccess = () => {
+    setTimeout(() => {
+      history.push('/customers')
+    }, 2000);
+  }
+
+  const onError = () => {
+    setIsDisableSubmit(false)
+  }
 
   useEffect(() => {
-    if (id) {
-      history.push(`/customers/${id}/?tab=details`)
-    }
-  }, [id])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+        setIsShowUploadFileModal(false)
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -45,17 +70,22 @@ const CustomerDetail = () => {
   }, [id])
 
   useEffect(() => {
-    if (isCustomerUpdate) {
-      dispatch(actions.getCustomer({ customer_id: +id }))
+    if (id && !fetchedLogs) {
+      dispatch(actions.getCustomerActivity({ customer_id: +id, page: PAGINATION.START_PAGE }))
     }
-  }, [isCustomerUpdate])
+  }, [id, fetchedLogs])
 
   useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
+    return () => {
+      dispatch(actions.clearCustomerDetail())
     }
-  }, [message])
+  }, [])
+
+  useEffect(() => {
+    if (isCustomerUpdate && id) {
+      dispatch(actions.getCustomer({ customer_id: +id }))
+    }
+  }, [isCustomerUpdate, id])
 
   useEffect(() => {
     const detailInfo = CUSTOMERS.TAB.find(item => item.LABEL === viewTab);
@@ -66,47 +96,75 @@ const CustomerDetail = () => {
     }
   }, [viewTab])
 
-  useEffect(() => {
-    if (Object.keys(currentUser).length > 0) {
-      const hasSendPermission = currentUser?.permission?.some(item => item.hasOwnProperty('customer') && item.customer.send === 1);
-      setHaveWhatsApp(hasSendPermission)
-    }
-  }, [currentUser])
-
   const handleSelectView = (tab) => {
-    history.push(`/customers/${id}/?tab=${tab}`)
+    history.push(`/customers/${id}?tab=${tab}`)
+  }
+
+  const handleDelete = () => {
+    if (isDisableSubmit || !id) return;
+    dispatch(actions.multiDeleteCustomer({ customer_id: [id], onDeleteSuccess, onError }));
+    setIsDisableSubmit(true)
+    setIsShowConfirmDeleteModal(false)
+  }
+
+  const handleClickDelete = () => {
+ if (isEditAllowed) {
+      setIsShowConfirmDeleteModal(true)
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }))
+    }
+  }
+
+  const handleClickSave = () => {
+    if (isEditAllowed) {
+      setIsClickSave(true)
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Deny',
+        description: MESSAGE.ERROR.AUTH_ACTION,
+      }))
+    }
   }
 
   const renderView = () => {
     switch (selectedView) {
       case CUSTOMERS.VIEW.DETAILS:
         return (
-          <CustomerInfo
+          <CustomerDetailTab
             id={id}
-            setMessage={setMessage}
-            haveWhatsApp={haveWhatsApp}
-            customerDetail={customerDetail}
+            isClickSave={isClickSave}
+            detailInfo={customerDetail}
+            setIsClickSave={setIsClickSave}
           />
         );
       case CUSTOMERS.VIEW.QUOTATION:
         return (
           <CustomerQuotation
-            setMessage={setMessage}
-            customerName={customerDetail?.customer?.name}
+            id={id}
           />
         );
       case CUSTOMERS.VIEW.INVOICE:
         return (
           <CustomerInvoice
-            setMessage={setMessage}
-            customerName={customerDetail?.customer?.name}
+            id={id}
+          />
+        );
+      case CUSTOMERS.VIEW.CLAIMS:
+        return (
+          <CustomerClaim
+            id={id}
           />
         );
       case CUSTOMERS.VIEW.DOCUMENTS:
         return (
           <CustomerDocument
-            setMessage={setMessage}
-            customerName={customerDetail?.customer?.name}
+            id={id}
+            setIsShowUploadFileModal={setIsShowUploadFileModal}
           />
         );
       default:
@@ -116,20 +174,27 @@ const CustomerDetail = () => {
 
   return (
     <div className="customerDetail">
-      {isWarning &&
-        <div className="customerDetail__warning">
-          <CAlert className="customerDetail__warningBanner" color="warning">
-            Please select items before implement action
-          </CAlert>
-          <img
-            className="customerDetail__close"
-            src="/icons/close-mark.svg"
-            alt="close"
-            onClick={() => setIsWarning(false)}
-          />
+      <div className="customerDetail__header">
+        <div className="customerDetail__header--title">
+          {customerDetail?.name || ''}
         </div>
-      }
-      <div className="customerDetail__header">{customerDetail?.customer?.name || ''}</div>
+        <div className="customerDetail__header--buttons">
+          <div
+            className="customerDetail__header--button"
+            onClick={handleClickDelete}
+          >
+            <img src="/icons/brown-trash.svg" alt="delete icon" />
+            <span>Delete</span>
+          </div>
+          <div
+            className="customerDetail__header--button customerDetail__header--buttonGray"
+            onClick={handleClickSave}
+          >
+            <SaveSvg />
+            <span>Save</span>
+          </div>
+        </div>
+      </div>
       <div className="detailRoute">
         {CUSTOMERS.TAB.map((url, index) => (
           <div
@@ -142,16 +207,22 @@ const CustomerDetail = () => {
         ))}
       </div>
       <div className="customerDetail__content">
-        {!isEmptyObject(message) &&
-          <div className="customerDetail__content--message">
-            <ActionMessageForm
-              successMessage={message.success}
-              failedMessage={message.failed}
-            />
-          </div>
-        }
         {renderView()}
       </div>
+      {isShowConfirmDeleteModal && (
+        <ConfirmDeleteModal
+          deleteTitle="customer"
+          isShow={isShowConfirmDeleteModal}
+          onClickDelete={() => handleDelete(Number(id))}
+          closeModal={() => setIsShowConfirmDeleteModal(false)}
+        />
+      )}
+      {isShowUploadFileModal &&
+        <UploadFileModal
+          id={id}
+          closeModal={() => setIsShowUploadFileModal(false)}
+        />
+      }
     </div>
   )
 }

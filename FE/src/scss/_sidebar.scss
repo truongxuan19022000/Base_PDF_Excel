@@ -1,23 +1,19 @@
 .sidebar {
-  min-width: 250px;
   width: 250px;
+  min-width: 250px;
   background-color: #ede5d8;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition:
-    width 0.4s,
-    min-width 0.4s;
+  transition: width 0.4s, min-width 0.4s;
   overflow: hidden;
   z-index: 12;
 
   &__hidden {
     min-width: 0px;
     width: 0;
-    transition:
-      width 0.4s,
-      min-width 0.4s;
+    transition: width 0.4s, min-width 0.4s;
   }
 
   &__header {
@@ -33,6 +29,8 @@
   &__content {
     padding: 0 13px;
     width: 100%;
+    min-height: calc(100vh - 184px);
+    overflow: auto;
   }
 
   &__link {
@@ -107,13 +105,16 @@
     }
   }
 
+  &__subLinks {
+    margin-left: 22px;
+    border-left: 1.5px solid #000000;
+  }
+
   .subLink {
     width: 100%;
     height: 100%;
     display: flex;
-    margin-left: 22px;
-    border-left: 1.5px solid #000000;
-    padding: 4px 0;
+    margin-bottom: 16px;
     padding-left: 27px;
     animation: swingInTop 0.2s ease 0s 1 normal forwards;
 
@@ -121,9 +122,6 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-    }
-
-    &__subCaption {
     }
 
     &__title {

@@ -33,6 +33,9 @@ const slice = createSlice({
         state.notes = action.payload?.data;
       }
     },
+    resetFetchedList(state) {
+      state.fetched = false;
+    }
   }
 })
 

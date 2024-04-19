@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch } from 'react-redux';
 import { CDropdown, CDropdownItem, CDropdownMenu, CDropdownToggle } from '@coreui/react';
-import dayjs from 'dayjs';
 
-import { downloadFile, isEmptyObject } from 'src/helper/helper';
+import { isEmptyObject } from 'src/helper/helper';
 import { useMessageSlice } from 'src/slices/message';
 import { validateMessageAction } from 'src/helper/validation';
-import { CHATS, HIDDEN_MESSAGE_LENGTH } from 'src/constants/config';
+import { CHATS } from 'src/constants/config';
 
 import EmojiBox from '../EmojiBox/Emoji';
 import EmojiSvg from '../Icons/EmojiSvg';
@@ -45,41 +44,15 @@ const MessageForm = ({
   const [isDropdown, setIsDropdown] = useState(false);
   const [latestMessage, setLatestMessage] = useState({});
   const [isOpenEmojiBox, setIsOpenEmojiBox] = useState(false);
-  const [expandedMessageIds, setExpandedMessageIds] = useState([]);
   const [selectedDeleteMessage, setSelectedDeleteMessage] = useState({});
 
-  const messageText = message.content?.text?.body
   const isChecked = selectedIds.includes(message.id);
   const isStarred = +message.starred === +CHATS.STARRED;
   const emojiList = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
   const isAdmin = +message.sender === +CHATS.SENDER.ADMIN || false;
   const isMultiEmoji = message.reaction_by_business && message.reaction_by_customer;
-  const status = CHATS.STATUS?.find(status => +status.value === +message.status) || null;
-  const formattedTime = message.created_at ? dayjs(message.created_at).format('HH:mm') : '';
   const dropdownClassName = `message__dropdownIcon ${(message.content?.image || message.content?.video) ? 'message__dropdownIcon--media' : ''}`
 
-  const slicedText = useMemo(() => {
-    if (messageText?.length > HIDDEN_MESSAGE_LENGTH && !expandedMessageIds.includes(message.id)) {
-      return messageText.slice(0, HIDDEN_MESSAGE_LENGTH);
-    } else {
-      return messageText;
-    }
-  }, [messageText, expandedMessageIds, message]);
-
-  const listText = useMemo(() => {
-    if (slicedText) {
-      return slicedText?.split('\n');
-    }
-    return [];
-  }, [slicedText]);
-
-  const captionText = useMemo(() => {
-    const caption = message.image_video?.caption || message.content?.image?.caption || message.content?.video?.caption
-    if (caption) {
-      return caption?.split('\n')
-    }
-    return []
-  }, [message])
 
   const isMediaType = useMemo(() => {
     return CHATS.MEDIA_TYPES.includes(message.content?.type)
@@ -169,22 +142,12 @@ const MessageForm = ({
     }
   }
 
-  const handleDownloadFile = () => {
-    const file = {
-      fileName: message.content?.document?.filename,
-      url: message.content?.document?.link || message.content?.document?.url,
-    }
-    downloadFile(file);
-  }
 
   const handleToggleDropdown = () => {
     setIsDropdown(!isDropdown)
     setIsOpenEmojiBox(false)
   }
 
-  const handleReadMore = (messageId) => {
-    setExpandedMessageIds((prevExpanded) => [...prevExpanded, messageId]);
-  };
 
   const handleClickReact = (e) => {
     e.stopPropagation()
@@ -268,19 +231,11 @@ const MessageForm = ({
             </div>
           </ClickOutSideWrapper>
           <MessageItemForm
-            status={status}
             message={message}
-            listText={listText}
             isStarred={isStarred}
-            captionText={captionText}
-            messageText={messageText}
             customerInfo={customerInfo}
             isSelectedMsg={isSelectedMsg}
-            formattedTime={formattedTime}
-            expandedMessageIds={expandedMessageIds}
             isShowMessageDialog={isShowMessageDialog}
-            handleReadMore={handleReadMore}
-            handleDownloadFile={handleDownloadFile}
             setIsShowMessageDialog={setIsShowMessageDialog}
           />
         </div>
@@ -289,8 +244,14 @@ const MessageForm = ({
             <CDropdownToggle className="message__reactDropdown">
               <div className={`message__react ${isAdmin ? 'message__react--admin' : ''}`}>
                 <div className={`message__reactEmoji ${isMultiEmoji ? 'message__reactEmoji--multi' : ''}`}>
-                  <p>{message.reaction_by_business}</p>
-                  <p>{message.reaction_by_customer}</p>
+                  {message.reaction_by_business === message.reaction_by_customer ?
+                    <p>{message.reaction_by_business}</p>
+                    :
+                    <>
+                      <p>{message.reaction_by_business}</p>
+                      <p>{message.reaction_by_customer}</p>
+                    </>
+                  }
                   {isMultiEmoji &&
                     <p>2</p>
                   }
@@ -316,4 +277,4 @@ const MessageForm = ({
   )
 }
 
-export default MessageForm
+export default memo(MessageForm)

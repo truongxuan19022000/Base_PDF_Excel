@@ -27,7 +27,7 @@ const UnitForm = ({
   return (
     <div className={`unitForm${isShowItemList ? ' unitForm--active' : ''} ${className}${isDetail ? ' unitForm--detail' : ''}`}>
       <div className={`unitForm__label${unitData.length < 2 ? ' unitForm__label--unselect' : ''}`} onClick={handleClickShowSelectList}>
-        {selectedUnit && Object.keys(selectedUnit)?.length > 0 ? (
+        {selectedUnit && Object.keys(selectedUnit).length > 0 ? (
           <div className="unitForm__action unitForm__action--selected">{selectedUnit?.label}</div>
         ) : (
           <div className="unitForm__action">

@@ -27,18 +27,17 @@
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 28px 32px 40px 20px;
+    padding: 28px 0 40px 20px;
+
+    .scrollContainer__loading {
+      margin: 20px 0;
+    }
   }
 
   .logsBoxForm {
     width: 100%;
     height: fit-content;
-
-    &__content {
-      width: 100%;
-      height: fit-content;
-      display: flex;
-    }
+    display: flex;
 
     &__icon {
       width: 29px;
@@ -46,54 +45,55 @@
       margin-right: 18px;
     }
 
-    &__activity {
-      display: flex;
-      flex-direction: column;
-
-      &--info {
-        width: 100%;
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 5px;
-
-        span {
-          margin-right: 5px;
-
-          &:last-child {
-            margin-right: 0;
-          }
-        }
-      }
-
-      &--name {
-        text-transform: capitalize;
-      }
-
-      &--code {
-        text-transform: capitalize;
-      }
-
-      &--action {
-        font-weight: 400;
-      }
-
-      &--created {
-        font-size: 13px;
-        font-weight: 400;
-        color: $color_black80;
-
-        img {
-          margin: 0 10px;
-        }
-      }
-    }
-
     &__divider {
       height: 40px;
-      margin-top: 1px;
+      margin-top: 5px;
       margin-bottom: 14px;
       margin-left: 14px;
       border-left: 1.5px solid #acacac;
+    }
+
+    &__right {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__info {
+      width: 100%;
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding-right: 40px;
+    }
+
+    &__detail {
+      display: flex;
+    }
+
+    &__fileName {
+      width: 100%;
+      max-width: 185px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    &__action {
+      margin-left: 4px;
+      font-weight: 400;
+    }
+
+    &__created {
+      font-size: 13px;
+      font-weight: 400;
+      color: $color_black80;
+
+      img {
+        margin: 0 10px;
+      }
     }
   }
 }

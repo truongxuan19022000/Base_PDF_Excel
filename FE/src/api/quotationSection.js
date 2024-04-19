@@ -1,4 +1,4 @@
-import { sendGet, sendPost } from './index'
+import { sendDelete, sendGet, sendPost } from './index'
 
 export const getQuotationSectionList = (id) => sendGet('admin/quotation-sections', id)
 export const createQuotationSection = (params) => sendPost('admin/quotation-sections/create', params)
@@ -6,3 +6,12 @@ export const handleQuotationSection = (params) => sendPost('admin/quotation-sect
 export const createProductMaterial = (params) => sendPost('admin/quotation-sections/products/items/create', params)
 export const createQuotationSectionProduct = (params) => sendPost('admin/quotation-sections/products/create', params)
 export const handleChangeProductOrder = (params) => sendPost('admin/quotation-sections/products/update-order-number', params)
+export const createMaterialItem = (params) => sendPost('admin/quotation-sections/products/material-item/create', params)
+export const deleteQuotationSection = (id) => sendDelete('admin/quotation-sections/delete', id)
+export const deleteSectionProduct = (id) => sendDelete('admin/quotation-sections/products/delete', id)
+export const deleteProductItem = (id) => sendDelete('admin/quotation-sections/products/items/delete', id)
+export const deleteItemMaterial = (id) => sendPost('admin/quotation-sections/products/material-item/delete', id)
+export const editMaterialItem = (params) => sendPost('admin/quotation-sections/products/material-item/update', params)
+export const editSectionProduct = (params) => sendPost('admin/quotation-sections/products/update', params)
+export const editProductItem = (params) => sendPost('admin/quotation-sections/products/items/update', params)
+export const editQuotationSection = (params) => sendPost('admin/quotation-sections/update', params)

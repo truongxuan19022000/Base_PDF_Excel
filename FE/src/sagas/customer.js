@@ -1,13 +1,27 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
-import { customerActions as actions } from 'src/slices/customer';
+import { customerActions as actions, customerActions } from 'src/slices/customer';
 import { messageActions as messageActions } from 'src/slices/message';
+import { ALERT, PAGINATION } from 'src/constants/config';
+import { alertActions } from 'src/slices/alert';
 
 import * as api from '../api/customer';
 import * as apiInvoice from '../api/invoice';
 import * as apiQuotation from '../api/quotation';
 import * as apiDocument from '../api/document';
 
-import { PAGINATION } from 'src/constants/config';
+const addSuccessAlert = (title = 'Action Successfully', description = '') => alertActions.openAlert({
+  type: ALERT.SUCCESS_VALUE,
+  title,
+  isHovered: false,
+  description,
+})
+
+const addFailedAlert = (title = 'Action Failed', description = '') => alertActions.openAlert({
+  type: ALERT.FAILED_VALUE,
+  title,
+  isHovered: false,
+  description,
+})
 
 function* getCustomerListSaga({ payload }) {
   try {
@@ -29,11 +43,11 @@ function* getCustomerListSaga({ payload }) {
   }
 }
 
-function* createCustomerSaga({ payload }) {
+function* getNewCustomerCountSaga({ payload }) {
   try {
-    const res = yield call(api.createCustomer, payload);
+    const res = yield call(api.getNewCustomerCount, payload);
     if (res?.data?.status === 1) {
-      yield put(actions.createCustomerSuccess(res.data?.data));
+      yield put(actions.getNewCustomerCountSuccess(res.data));
       if (payload?.onSuccess) {
         payload?.onSuccess(res.data?.message)
       }
@@ -49,32 +63,68 @@ function* createCustomerSaga({ payload }) {
   }
 }
 
-function* multiDeleteCustomerSaga({ payload }) {
+function* createCustomerSaga({ payload }) {
   try {
-    const res = yield call(api.multiDeleteCustomer, payload);
+    const res = yield call(api.createCustomer, payload);
     if (res?.data?.status === 1) {
-      const requestData = {
-        page: payload?.page,
-        search: payload?.search,
-        sort_name: payload.sort_name,
-        start_date: payload?.start_date,
-        end_date: payload?.end_date,
-      }
-      const customer_res = yield call(api.getCustomerList, requestData);
-      yield put(actions.multiDeleteCustomerSuccess(payload?.customer_id));
-      yield put(messageActions.deleteChatWithCustomerId(payload?.customer_id));
-      if (customer_res.data?.status === 1) {
-        yield put(actions.getCustomerListSuccess(customer_res.data));
-      }
+      yield put(addSuccessAlert(
+        'Successfully Created',
+        'Customer has been created',
+      ));
+      yield put(actions.createCustomerSuccess(res.data?.data));
       if (payload?.onSuccess) {
-        payload?.onSuccess(payload?.customer_id, res.data?.message,)
+        payload?.onSuccess(res.data?.message)
       }
     } else {
+      yield put(addFailedAlert(
+        'Creation Failed',
+        'Customer unable to create',
+      ));
       if (payload?.onError) {
         payload?.onError(res.data?.message);
       }
     }
   } catch (error) {
+    yield put(addFailedAlert(
+      'Creation Failed',
+      'Customer unable to create',
+    ));
+    if (payload?.onError) {
+      payload?.onError('There was a problem.')
+    }
+  }
+}
+
+function* multiDeleteCustomerSaga({ payload }) {
+  try {
+    const res = yield call(api.multiDeleteCustomer, payload);
+    if (res?.data?.status === 1) {
+      yield put(addSuccessAlert(
+        'Successfully Deleted',
+        'Customer has been deleted',
+      ));
+      yield put(actions.multiDeleteCustomerSuccess(payload?.customer_id));
+      yield put(messageActions.deleteChatWithCustomerId(payload?.customer_id));
+      if (payload?.onSuccess) {
+        payload?.onSuccess(payload?.customer_id, res.data?.message,)
+      }
+      if (payload?.onDeleteSuccess) {
+        payload?.onDeleteSuccess(res.data?.message)
+      }
+    } else {
+      yield put(addFailedAlert(
+        'Deletion Failed',
+        'Customer unable to delete',
+      ));
+      if (payload?.onError) {
+        payload?.onError(res.data?.message);
+      }
+    }
+  } catch (error) {
+    yield put(addFailedAlert(
+      'Deletion Failed',
+      'Customer unable to delete',
+    ));
     if (payload?.onError) {
       payload?.onError('There was a problem.')
     }
@@ -101,20 +151,18 @@ function* getCustomerSaga({ payload }) {
   }
 }
 
-function* updateCustomerSaga({ payload }) {
+function* getCustomerActivitySaga({ payload }) {
   try {
-    const res = yield call(api.updateCustomer, payload);
-    if (res.data?.status === 1 && payload) {
+    const data = {
+      ...payload,
+      per_page: PAGINATION.CUSTOMER_LOG_PER_PAGE_NUMBER,
+    }
+    const res = yield call(api.getCustomerActivity, data);
+    if (res?.data?.status === 1) {
       if (payload?.onSuccess) {
         payload?.onSuccess(res.data?.message)
       }
-      const updatedInfo = {
-        id: +payload?.customer_id,
-        name: payload?.name,
-        phone_number: payload?.phone_number,
-      }
-      yield put(actions.updateCustomerSuccess(payload));
-      yield put(messageActions.updateCustomerName(updatedInfo));
+      yield put(actions.getCustomerActivitySuccess(res.data.data?.activities));
     } else {
       if (payload?.onError) {
         payload?.onError(res.data?.message);
@@ -127,20 +175,71 @@ function* updateCustomerSaga({ payload }) {
   }
 }
 
+function* updateCustomerSaga({ payload }) {
+  try {
+    const res = yield call(api.updateCustomer, payload);
+    if (res.data?.status === 1 && payload) {
+      yield put(addSuccessAlert(
+        'Successfully Saved',
+        'Customer has been saved',
+      ));
+      if (payload?.onSuccess) {
+        payload?.onSuccess(res.data?.message)
+      }
+      const updatedInfo = {
+        id: +payload?.customer_id,
+        name: payload?.name,
+        phone_number: payload?.phone_number,
+      }
+      yield put(actions.updateCustomerSuccess(payload));
+      yield put(messageActions.updateCustomerName(updatedInfo));
+    } else {
+      yield put(addFailedAlert(
+        'Save Failed',
+        'Customer unable to save',
+      ));
+      if (payload?.onError) {
+        payload?.onError(res.data?.message);
+      }
+    }
+  } catch (error) {
+    yield put(addFailedAlert(
+      'Save Failed',
+      'Customer unable to save',
+    ));
+    if (payload?.onError) {
+      payload?.onError('There was a problem.')
+    }
+  }
+}
+
 function* getExportCustomerCSVSaga({ payload }) {
   try {
     const res = yield call(api.getExportCustomerCSV, payload);
-    if (res.status === 200) {
+    if (res.data?.status === 1) {
+      window.open(res.data?.url, '_blank');
       if (payload?.onSuccess) {
         payload?.onSuccess()
       }
-      yield put(actions.getExportCustomerCSVSuccess(res.data));
+      yield put(addSuccessAlert(
+        'Successfully Exportation',
+        'Customer has been export',
+      ));
+      yield put(actions.getExportCustomerCSVSuccess());
     } else {
+      yield put(addFailedAlert(
+        'Exportation Failed',
+        'Customer unable to export',
+      ));
       if (payload?.onError) {
         payload?.onError();
       }
     }
   } catch (error) {
+    yield put(addFailedAlert(
+      'Exportation Failed',
+      'Customer unable to export',
+    ));
     if (payload?.onError) {
       payload?.onError('There was a problem.')
     }
@@ -231,6 +330,46 @@ function* getCustomerQuotationListSaga({ payload }) {
   }
 }
 
+function* getQuotationListWithCustomerSaga({ payload }) {
+  try {
+    const res = yield call(apiQuotation.getAllQuotationList, payload);
+    if (res?.data?.status === 1) {
+      yield put(actions.getQuotationListWithCustomerSuccess(res.data));
+      if (payload?.onSuccess) {
+        payload?.onSuccess(res.data?.message)
+      }
+    } else {
+      if (payload?.onError) {
+        payload?.onError(res.data?.message);
+      }
+    }
+  } catch (error) {
+    if (payload?.onError) {
+      payload?.onError('There was a problem.')
+    }
+  }
+}
+
+function* getCustomerClaimListSaga({ payload }) {
+  try {
+    const res = yield call(api.getCustomerClaimList, payload);
+    if (res?.data?.status === 1) {
+      yield put(actions.getCustomerClaimListSuccess(res.data));
+      if (payload?.onSuccess) {
+        payload?.onSuccess(res.data?.message)
+      }
+    } else {
+      if (payload?.onError) {
+        payload?.onError(res.data?.message);
+      }
+    }
+  } catch (error) {
+    if (payload?.onError) {
+      payload?.onError('There was a problem.')
+    }
+  }
+}
+
 function* getCustomerInvoiceListSaga({ payload }) {
   try {
     const res = yield call(api.getCustomerInvoiceList, payload);
@@ -276,15 +415,28 @@ function* deleteCustomerQuotationSaga({ payload }) {
     const res = yield call(apiQuotation.multiDeleteQuotation, payload);
     if (res?.data?.status === 1) {
       yield put(actions.deleteCustomerQuotationSuccess(payload?.quotation_id));
-      if (payload?.onSuccess) {
-        payload?.onSuccess(res.data?.message)
+      yield put(actions.handleResetFetchedLogsData());
+      if (payload?.onDeleteSuccess) {
+        payload?.onDeleteSuccess(res.data?.message)
       }
+      yield put(addSuccessAlert(
+        'Successfully Deleted',
+        'Customer document has been deleted',
+      ));
     } else {
+      yield put(addFailedAlert(
+        'Deletion Failed',
+        'Customer document unable to delete',
+      ));
       if (payload?.onError) {
         payload?.onError(res.data?.message);
       }
     }
   } catch (error) {
+    yield put(addFailedAlert(
+      'Deletion Failed',
+      'Customer document unable to delete',
+    ));
     if (payload?.onError) {
       payload?.onError('There was a problem.')
     }
@@ -295,56 +447,29 @@ function* deleteCustomerInvoiceSaga({ payload }) {
   try {
     const res = yield call(apiInvoice.multiDeleteInvoice, payload);
     if (res?.data?.status === 1) {
+      yield put(addSuccessAlert(
+        'Successfully Deleted',
+        'Customer invoice has been deleted',
+      ));
       yield put(actions.deleteCustomerInvoiceSuccess(payload?.quotation_id));
+      yield put(actions.handleResetFetchedLogsData());
       if (payload?.onSuccess) {
         payload?.onSuccess(res.data?.message)
       }
     } else {
+      yield put(addFailedAlert(
+        'Deletion Failed',
+        'Customer invoice unable to delete',
+      ));
       if (payload?.onError) {
         payload?.onError(res.data?.message);
       }
     }
   } catch (error) {
-    if (payload?.onError) {
-      payload?.onError('There was a problem.')
-    }
-  }
-}
-
-function* getExportCustomerQuotationCSVSaga({ payload }) {
-  try {
-    const res = yield call(apiQuotation.getExportQuotationCSV, payload);
-    if (res.status === 200) {
-      if (payload?.onSuccess) {
-        payload?.onSuccess()
-      }
-      yield put(actions.getExportCustomerQuotationCSVSuccess(res.data));
-    } else {
-      if (payload?.onError) {
-        payload?.onError();
-      }
-    }
-  } catch (error) {
-    if (payload?.onError) {
-      payload?.onError('There was a problem.')
-    }
-  }
-}
-
-function* getExportCustomerInvoiceCSVSaga({ payload }) {
-  try {
-    const res = yield call(apiInvoice.getExportInvoiceCSV, payload);
-    if (res.status === 200) {
-      if (payload?.onSuccess) {
-        payload?.onSuccess()
-      }
-      yield put(actions.getExportCustomerQuotationCSVSuccess(res.data));
-    } else {
-      if (payload?.onError) {
-        payload?.onError();
-      }
-    }
-  } catch (error) {
+    yield put(addFailedAlert(
+      'Deletion Failed',
+      'Customer invoice unable to delete',
+    ));
     if (payload?.onError) {
       payload?.onError('There was a problem.')
     }
@@ -354,17 +479,25 @@ function* getExportCustomerInvoiceCSVSaga({ payload }) {
 function* getExportCustomerDocumentCSVSaga({ payload }) {
   try {
     const res = yield call(apiDocument.getExportDocumentCSV, payload);
-    if (res.status === 200) {
+    if (res.data?.status === 1) {
+      window.open(res.data?.url, '_blank');
       if (payload?.onSuccess) {
         payload?.onSuccess()
       }
-      yield put(actions.getExportCustomerQuotationCSVSuccess(res.data));
     } else {
+      yield put(addFailedAlert(
+        'Exportation Failed',
+        'Customer document unable to export',
+      ));
       if (payload?.onError) {
         payload?.onError();
       }
     }
   } catch (error) {
+    yield put(addFailedAlert(
+      'Exportation Failed',
+      'Customer document unable to export',
+    ));
     if (payload?.onError) {
       payload?.onError('There was a problem.')
     }
@@ -381,14 +514,16 @@ function* customerSaga() {
   yield takeLatest(actions.getSearchCustomerList.type, getSearchCustomerListSaga);
   yield takeLatest(actions.getCustomerWithPage.type, getCustomerWithPageSaga);
   yield takeLatest(actions.getAllCustomerList.type, getAllCustomerListSaga);
+  yield takeLatest(actions.getNewCustomerCount.type, getNewCustomerCountSaga);
+  yield takeLatest(actions.getCustomerClaimList.type, getCustomerClaimListSaga);
   yield takeLatest(actions.getCustomerInvoiceList.type, getCustomerInvoiceListSaga);
   yield takeLatest(actions.getCustomerDocumentList.type, getCustomerDocumentListSaga);
   yield takeLatest(actions.getCustomerQuotationList.type, getCustomerQuotationListSaga);
   yield takeLatest(actions.deleteCustomerQuotation.type, deleteCustomerQuotationSaga);
   yield takeLatest(actions.deleteCustomerInvoice.type, deleteCustomerInvoiceSaga);
-  yield takeLatest(actions.getExportCustomerInvoiceCSV.type, getExportCustomerInvoiceCSVSaga);
-  yield takeLatest(actions.getExportCustomerQuotationCSV.type, getExportCustomerQuotationCSVSaga);
   yield takeLatest(actions.getExportCustomerDocumentCSV.type, getExportCustomerDocumentCSVSaga);
+  yield takeLatest(actions.getQuotationListWithCustomer.type, getQuotationListWithCustomerSaga);
+  yield takeLatest(actions.getCustomerActivity.type, getCustomerActivitySaga);
 }
 
 export default customerSaga

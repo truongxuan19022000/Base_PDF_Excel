@@ -1,6 +1,6 @@
 .noteBottom {
   border-top: 1px solid rgba(0, 0, 0, 0.25);
-  background: #FFF;
+  background: #fff;
   width: 100%;
   height: $bottom-width;
   padding: 17px 48px 23px 56px;
@@ -20,11 +20,12 @@
 
   .amountModal {
     width: 423px;
-    height: 499px;
     border-radius: 10px;
-    box-shadow: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
-    background-color: #FFF;
-    position: sticky;
+    box-shadow:
+      0px 8px 8px -4px rgba(16, 24, 40, 0.03),
+      0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+    background-color: #fff;
+    position: fixed;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
@@ -46,11 +47,11 @@
     &__formGroup {
       display: flex;
       flex-direction: column;
-      gap: 5px
+      gap: 5px;
     }
 
     &__label {
-      color: #343A40;
+      color: #343a40;
       font-size: 13px;
     }
 
@@ -59,7 +60,6 @@
       border-radius: 6px;
       display: flex;
       width: fit-content;
-
     }
 
     &__option {
@@ -68,15 +68,20 @@
 
       &:first-child {
         border-right: 0.5px solid #00000080;
+        border-radius: 6px 0 0 6px;
+      }
+
+      &:last-child {
+        border-radius: 0 6px 6px 0;
       }
 
       &--active {
-        background: #EDE5D8;
+        background: #ede5d8;
       }
 
       p {
         font-size: 14px;
-        color: #343A40;
+        color: #343a40;
       }
     }
 
@@ -97,7 +102,6 @@
         }
       }
 
-
       input {
         color: #000;
         font-size: 16px;
@@ -105,6 +109,14 @@
         border: none;
         outline: none;
         padding: 10px;
+      }
+
+      &--error {
+        border: 1px solid red;
+      }
+
+      &--message {
+        color: red;
       }
     }
 
@@ -132,9 +144,9 @@
 
     &__button {
       outline: none;
-      border: 0.5px solid #7F7462;
+      border: 0.5px solid #7f7462;
       border-radius: 6px;
-      color: #7F7462;
+      color: #7f7462;
       flex: 1;
       height: 44px;
       display: flex;
@@ -144,7 +156,7 @@
       background-color: #fff;
 
       &--brown {
-        background-color: #7F7462;
+        background-color: #7f7462;
         color: #fff;
       }
     }
@@ -156,18 +168,20 @@
 
     &--bottom {
       gap: 19px;
+      font-weight: 500;
       align-items: center;
-      width: fit-content;
-      align-self: flex-end;
+      justify-content: flex-end;
     }
   }
 
   &__block {
     flex: 1;
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: 41px;
+
+    &--left {
+      justify-content: flex-end;
+    }
   }
 
   .text {
@@ -175,6 +189,11 @@
 
     &--small {
       font-size: 14px;
+      font-weight: 500;
+    }
+
+    &--big {
+      font-size: 22px;
     }
 
     &--input {
@@ -183,6 +202,10 @@
       &:focus {
         background-color: #f9f9f9;
       }
+    }
+
+    &--icon {
+      margin: 0 40px;
     }
   }
 
@@ -203,8 +226,16 @@
     flex-direction: column;
     gap: 5px;
 
+    &:last-child {
+      margin-right: 0;
+    }
+
     &--estimatedCost {
       width: 257px;
+    }
+
+    &--discount {
+      margin-right: 40px;
     }
   }
 }

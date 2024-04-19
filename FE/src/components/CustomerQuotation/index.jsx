@@ -1,35 +1,36 @@
 import React, { useEffect, useState } from 'react'
-import { useHistory, useParams } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import dayjs from 'dayjs'
 
+import { alertActions } from 'src/slices/alert'
 import { useCustomerSlice } from 'src/slices/customer'
-import { validateFilterRequest } from 'src/helper/validation'
-import { downloadCSVFromCSVString, formatCustomerName, normalizeString } from 'src/helper/helper'
-import { ACTIONS, FILTER, MESSAGE, PAGINATION, STATUS } from 'src/constants/config'
+import { useQuotationSlice } from 'src/slices/quotation'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
+import { formatDate, normalizeString } from 'src/helper/helper'
+import { ACTIONS, ALERT, FILTER, MESSAGE, PAGINATION, PERMISSION, QUOTATION, STATUS } from 'src/constants/config'
 
 import Checkbox from '../Checkbox'
 import Pagination from '../Pagination'
-import FilterModal from '../FilterModal'
-import TableButtons from '../TableButtons'
 import ConfirmDeleteModal from '../ConfirmDeleteModal'
 import CustomerTableAction from '../CustomerTableAction'
+import FilterScrapModal from '../ScrapForms/FilterScrapModal'
 
 const CustomerQuotation = ({
-  customerName = '',
-  setMessage,
+  id,
 }) => {
-  const { actions } = useCustomerSlice()
-
-  const { id } = useParams()
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const csvData = useSelector(state => state.customer.csvData)
+  const { actions } = useCustomerSlice()
+  const { actions: quotationActions } = useQuotationSlice()
+
+  const { fetchedQuotation } = useSelector(state => state.customer)
+  const permissionData = useSelector(state => state.user.permissionData)
   const customerQuotationData = useSelector(state => state.customer.customerQuotation)
 
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([])
   const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [messageError, setMessageError] = useState('')
@@ -40,38 +41,53 @@ const CustomerQuotation = ({
   const [isSelectedAll, setIsSelectedAll] = useState(false)
   const [totalDataNumber, setTotalDataNumber] = useState(0)
   const [startDateFilter, setStartDateFilter] = useState('')
-  const [isInputChanged, setIsInputChanged] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
   const [isShowFilterModal, setIsShowFilterModal] = useState(false)
-  const [selectedFieldFilter, setSelectedFieldFilter] = useState([])
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState([])
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
-
-  const onSuccess = () => {
-    setMessageError('')
-    setSubmitting(false)
-    setIsDisableSubmit(false)
-    setIsShowFilterModal(false)
-    setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
-    }
-  }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = customerQuotationData.current_page === customerQuotationData.last_page
+    const hasNoItem = customerQuotationData.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
+    }
+
+    if (id) {
+      const params = {
+        customer_id: +id,
+        page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+        search: normalizeString(searchText),
+        start_date: startDateFilter && dayjs(startDateFilter).format('YYYY/MM/DD'),
+        end_date: endDateFilter && dayjs(endDateFilter).format('YYYY/MM/DD'),
+        onError,
+      }
+      dispatch(actions.getCustomerQuotationList(params))
+    }
+    setSelectedDeleteIds([])
   }
 
   useEffect(() => {
-    if (id) {
+    if (id && !fetchedQuotation) {
       dispatch(actions.getCustomerQuotationList({ customer_id: +id }))
     }
-  }, [id])
+  }, [id, fetchedQuotation])
 
   useEffect(() => {
-    if (customerQuotationData && Object.keys(customerQuotationData)?.length > 0) {
+    if (customerQuotationData && Object.keys(customerQuotationData).length > 0) {
       setCurrentPageNumber(customerQuotationData.current_page)
       setTotalDataNumber(customerQuotationData?.total || 0)
     }
@@ -86,17 +102,23 @@ const CustomerQuotation = ({
   }, [selectedIds, customerQuotationData?.data])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
     setSubmitting(false)
     setMessageError(null)
     setIsDisableSubmit(false)
-  }, [isInputChanged, isShowFilterModal])
+  }, [isShowFilterModal])
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+        setIsShowFilterModal(false)
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (messageError?.length > 0) {
@@ -106,14 +128,13 @@ const CustomerQuotation = ({
     }
   }, [messageError])
 
-  useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      const filename = formatCustomerName(customerName) + '_quotation'
-      downloadCSVFromCSVString(csvData, filename)
-      setSubmitting(false)
-      dispatch(actions.clearCSVDataCustomer())
-    }
-  }, [submitting, csvData])
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
 
   const handleSelectItem = (isChecked, itemId) => {
     if (isChecked) {
@@ -131,34 +152,22 @@ const CustomerQuotation = ({
     }
   }
 
-  const handleSelectFieldFilter = (value) => {
-    if (submitting) return;
-    if (selectedFieldFilter?.includes(value)) {
-      setSelectedFieldFilter(selectedFieldFilter?.filter(id => id !== value));
+  const handleClickDeleteItem = (deleteId) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      if (deleteId) {
+        setSelectedDeleteIds([deleteId])
+        setIsShowConfirmDeleteModal(true);
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.UNKNOWN_ID,
+        }));
+      }
     } else {
-      setSelectedFieldFilter([...selectedFieldFilter, value]);
+      dispatchAlertWithPermissionDenied()
     }
-    setIsInputChanged(!isInputChanged)
-  }
-
-  const handleSelectDeleteInfo = (typeName, deleteId) => {
-    if (!typeName || (typeName !== ACTIONS.NAME.DELETE && typeName !== ACTIONS.NAME.MULTI_DELETE)) return;
-    if (typeName === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: typeName,
-        deleteId: deleteId,
-      });
-    } else if (typeName === ACTIONS.NAME.MULTI_DELETE && (!selectedIds || selectedIds.length === 0)) {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
-    } else {
-      setDeleteInfo({
-        actionType: typeName,
-      });
-    }
-    setIsShowConfirmDeleteModal(true);
   }
 
   const handleClickChangePage = (pageNumber) => {
@@ -168,73 +177,103 @@ const CustomerQuotation = ({
     const params = {
       customer_id: +id,
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
-    if (selectedFieldFilter?.length > 0) {
-      params.status = selectedFieldFilter;
+    if (selectedStatusFilter?.length > 0) {
+      params.status = selectedStatusFilter;
     }
     if (searchText?.length > 0) {
       params.search = normalizeString(searchText);
     }
     if (startDateFilter) {
-      params.start_date = dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.start_date = dayjs(startDateFilter).format('YYYY-MM-DD');
     }
     if (endDateFilter) {
-      params.end_date = dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD');
+      params.end_date = dayjs(endDateFilter).format('YYYY-MM-DD');
     }
 
     dispatch(actions.getCustomerQuotationList(params));
   }
 
-  const handleInputDateFilter = (date, field) => {
-    if (submitting) return;
-    if (field === 'startDate') {
-      setStartDateFilter(date);
-    } else {
-      setEndDateFilter(date);
-    }
-    setIsInputChanged(!isInputChanged);
-  }
-
   const handleSearch = () => {
-    handleFilterSearchApply(normalizeString(searchText))
-    setSelectedIds([])
+    if (!id) return
+    const data = {
+      customer_id: +id,
+      search: normalizeString(searchText),
+      status: selectedStatusFilter,
+      page: PAGINATION.START_PAGE,
+      start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+      end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
+    };
+    const errors = validateFilterRequest(data);
+    if (Object.keys(errors).length > 0) {
+      setMessageError(errors);
+    } else {
+      if (isShowFilterModal) {
+        setIsFiltering(true);
+      }
+      dispatch(actions.getCustomerQuotationList({ ...data, onError }));
+      setSelectedIds([]);
+      setSubmitting(true);
+      setMessageError('');
+      setIsShowFilterModal(false)
+    }
   }
 
-  const handleFilterSearchApply = (searchText) => {
-    if (isErrorExist || isDisableSubmit) return;
-    if (selectedFieldFilter?.length === 0 && !startDateFilter && !endDateFilter) {
-      setIsShowFilterModal(false);
-      setIsFiltering(false);
-      dispatch(actions.getCustomerQuotationList({
-        customer_id: +id,
-        search: searchText || '',
-        page: PAGINATION.START_PAGE,
-        onSuccess,
-        onError,
-      }));
+  const handleInputValue = (field, value) => {
+    if (isDisableSubmit) return;
+    const fieldSetters = {
+      start_date: setStartDateFilter,
+      end_date: setEndDateFilter,
+    };
+    const setter = fieldSetters[field];
+    if (setter) {
+      setter(value);
+      setMessageError({})
+    }
+  }
+
+  const handleCheckBoxChange = (value) => {
+    if (selectedStatusFilter.includes(value)) {
+      setSelectedStatusFilter(selectedStatusFilter.filter(id => id !== value))
+    } else {
+      setSelectedStatusFilter([...selectedStatusFilter, value])
+    }
+    setMessageError({})
+  }
+
+  const handleFilterSearchApply = () => {
+    if (isErrorExist || isDisableSubmit || !id) return;
+    const isEmptyRequest = !(
+      selectedStatusFilter.length > 0 ||
+      startDateFilter ||
+      endDateFilter
+    );
+    if (isEmptyRequest) {
+      setMessageError({
+        message: 'Please select your request.'
+      })
     } else {
       const data = {
         customer_id: +id,
-        search: searchText || '',
-        status: selectedFieldFilter || [],
+        search: normalizeString(searchText),
+        status: selectedStatusFilter,
         page: PAGINATION.START_PAGE,
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+        start_date: startDateFilter && dayjs(startDateFilter).format('YYYY-MM-DD'),
+        end_date: endDateFilter && dayjs(endDateFilter).format('YYYY-MM-DD'),
       };
       const errors = validateFilterRequest(data);
       if (Object.keys(errors).length > 0) {
         setMessageError(errors);
-        setIsDisableSubmit(true);
       } else {
         if (isShowFilterModal) {
           setIsFiltering(true);
         }
-        dispatch(actions.getCustomerQuotationList({ ...data, onSuccess, onError, }));
+        dispatch(actions.getCustomerQuotationList({ ...data, onError }));
         setSelectedIds([]);
         setSubmitting(true);
         setMessageError('');
-        setIsDisableSubmit(true);
+        setIsShowFilterModal(false)
       }
     }
   }
@@ -244,43 +283,70 @@ const CustomerQuotation = ({
     setEndDateFilter('')
     setStartDateFilter('')
     setIsFiltering(false)
-    setSelectedFieldFilter([])
+    setSelectedStatusFilter([])
+    setIsShowFilterModal(false)
+    dispatch(actions.getCustomerQuotationList({
+      customer_id: +id,
+      page: PAGINATION.START_PAGE,
+      search: normalizeString(searchText),
+      onError,
+    }))
   }
+
+  const handleCheckQuotationDeletable = (id, data) => {
+    const quotation = data.find(item => item.id === id);
+    const isDeletable = +quotation.status === QUOTATION.STATUS_VALUE.DRAFT ||
+      +quotation.status === QUOTATION.STATUS_VALUE.REJECTED
+    return isDeletable;
+  };
 
   const handleClickApply = (actionType) => {
     if (submitting) return;
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportCustomerQuotationCSV({
-        status: selectedFieldFilter || [],
-        search: normalizeString(searchText),
-        start_date: startDateFilter && dayjs(startDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        end_date: endDateFilter && dayjs(endDateFilter, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        quotation_id: selectedIds || [],
-        customer_id: +id,
-        onError
-      }))
-      setSubmitting(true)
-      setSelectedAction(null)
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          const isDeletable = selectedIds.every(id => handleCheckQuotationDeletable(id, customerQuotationData.data))
+          if (isDeletable) {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(true)
+          } else {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                QUOTATION.MESSAGE_ERROR.INCLUDE_PROGRESS_ITEM : QUOTATION.MESSAGE_ERROR.ITEM_UNDER_PROGRESS,
+            }))
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(quotationActions.getExportQuotationCSV({ quotation_ids: selectedIds }))
+        setSelectedAction(null)
+      } else if (actionType === ACTIONS.NAME.DOWNLOAD) {
+        dispatch(actions.downloadPDF({ quotation_ids: selectedIds }))
+        setSelectedAction(null)
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }));
     }
   }
 
-  const handleDelete = (e, actionType, deleteId) => {
-    if (isDisableSubmit || !actionType) return;
-    if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      const data = { quotation_id: selectedIds };
-      dispatch(actions.deleteCustomerQuotation({ ...data, onSuccess, onError }));
-      setSelectedIds([])
-      setIsDisableSubmit(true)
-    } else if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      e.stopPropagation()
-      dispatch(actions.deleteCustomerQuotation({ quotation_id: [deleteId], onSuccess, onError }));
-      setIsDisableSubmit(true)
-      if (selectedIds?.includes(deleteId)) {
-        setSelectedIds(selectedIds?.filter(id => id !== deleteId));
-      }
-    }
+  const handleDelete = () => {
+    if (isDisableSubmit || selectedDeleteIds.length === 0) return;
+    const data = { quotation_id: selectedDeleteIds };
+    dispatch(actions.deleteCustomerQuotation({
+      ...data,
+      onDeleteSuccess,
+      onError,
+    }));
+    setIsDisableSubmit(true)
+    setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
   }
 
   const goToDetailPage = (quotationId) => {
@@ -289,18 +355,28 @@ const CustomerQuotation = ({
     }
   }
 
-  const handleClickDownload = () => {
+  const handleClickDownload = (quotationId) => {
+    if (quotationId) {
+      dispatch(quotationActions.downloadPDF({ quotation_ids: [+quotationId], onError }))
+    }
   }
 
   const goToCreateNewQuotationPage = () => {
-    history.push('/quotation/create-quotation')
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.CREATE)
+    if (isAllowed) {
+      history.push('/quotation/create-quotation')
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
   }
 
   const renderTableList = () => {
     return customerQuotationData?.data?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
-      const formattedDate = data.created_at ? dayjs(data.created_at).format('DD MMM YYYY') : 'NA';
+      const isChecked = !!selectedIds?.includes(data.id);
+      const formattedDate = data?.issue_date && formatDate(data.issue_date)
       const status = STATUS.QUOTATION[data.status]
+      const isShowDelete = (data.status === QUOTATION.STATUS_VALUE.DRAFT ||
+        data.status === QUOTATION.STATUS_VALUE.REJECTED)
 
       return (
         <tr key={index} className={isChecked ? 'csQuotationTable__selected' : ''}>
@@ -323,15 +399,35 @@ const CustomerQuotation = ({
           <td className="csQuotationTable__td">{formattedDate}</td>
           <td className="csQuotationTable__td">
             <div className="csQuotationTable__td--buttons">
-              <TableButtons
-                data={data}
-                isShowEdit={true}
-                isShowDelete={true}
-                isShowDownLoad={true}
-                clickEdit={goToDetailPage}
-                clickDownLoad={handleClickDownload}
-                clickDelete={handleSelectDeleteInfo}
-              />
+              <div
+                className="tableButtons__icon"
+                onClick={() => handleClickDownload(data?.id)}
+              >
+                <img
+                  src="/icons/download.svg"
+                  alt="download"
+                />
+              </div>
+              <div
+                className="tableButtons__icon"
+                onClick={() => goToDetailPage(+data.id)}
+              >
+                <img
+                  src="/icons/edit.svg"
+                  alt="edit"
+                />
+              </div>
+              {isShowDelete &&
+                <div
+                  className="tableButtons__icon"
+                  onClick={() => handleClickDeleteItem(+data.id)}
+                >
+                  <img
+                    src="/icons/delete.svg"
+                    alt="delete"
+                  />
+                </div>
+              }
             </div>
           </td>
         </tr>
@@ -361,6 +457,7 @@ const CustomerQuotation = ({
           />
         </div>
         <div className="csQuotation__table">
+          <div className="csQuotation__divider"></div>
           <table className="csQuotationTable">
             <thead>
               <tr className="csQuotationTable__th csQuotationTable__th--checkBox">
@@ -372,7 +469,7 @@ const CustomerQuotation = ({
                 </th>
                 <th className="csQuotationTable__th csQuotationTable__th--reference">REFERENCE NO.</th>
                 <th className="csQuotationTable__th csQuotationTable__th--status">STATUS</th>
-                <th className="csQuotationTable__th csQuotationTable__th--create">CREATED ON</th>
+                <th className="csQuotationTable__th csQuotationTable__th--create">ISSUED ON</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
@@ -393,27 +490,27 @@ const CustomerQuotation = ({
         <ConfirmDeleteModal
           isDetail={!!id}
           deleteTitle="quotation"
+          className="topPosition"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={(e) => handleDelete(e, deleteInfo?.actionType, Number(deleteInfo?.deleteId))}
+          onClickDelete={handleDelete}
         />
       )}
       {isShowFilterModal && (
-        <FilterModal
-          isDetail={!!id}
-          filterTitle="Filter Status"
-          searchText={searchText || ''}
-          submitting={submitting || false}
-          messageError={messageError || ''}
-          filterRequest={FILTER.STATUS || []}
-          endDateFilter={endDateFilter || ''}
-          startDateFilter={startDateFilter || ''}
-          isDisableSubmit={isDisableSubmit || false}
-          selectedFieldFilter={selectedFieldFilter || ''}
+        <FilterScrapModal
+          isDetail={true}
+          checkList={FILTER.QUOTATION}
+          isShowStatus={false}
+          isShowLength={false}
+          messageError={messageError}
+          endDateFilter={endDateFilter}
+          startDateFilter={startDateFilter}
+          isDisableSubmit={isDisableSubmit}
+          selectedStatus={selectedStatusFilter}
+          handleInputValue={handleInputValue}
           onClickApply={handleFilterSearchApply}
-          handleInputDateFilter={handleInputDateFilter}
+          handleCheckBoxChange={handleCheckBoxChange}
           handleClickResetFilter={handleClickResetFilter}
-          handleSelectFieldFilter={handleSelectFieldFilter}
           onClickCancel={() => setIsShowFilterModal(false)}
         />
       )}

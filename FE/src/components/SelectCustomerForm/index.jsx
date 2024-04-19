@@ -65,12 +65,6 @@ const SelectCustomerForm = ({
     }
   }, [data])
 
-  useEffect(() => {
-    if (searchText?.length > 0 && isEmptyObject(selectedCustomer)) {
-      setIsShowItemList(true)
-    }
-  }, [searchText, selectedCustomer])
-
   const fetchMoreData = () => {
     if (hasMore) {
       const newItems = data.concat(searchResults.slice(data.length, data.length + 10));
@@ -85,6 +79,7 @@ const SelectCustomerForm = ({
 
   const handleSelectItem = (item) => {
     setSelectedCustomer(item)
+    setCustomerName(item.name)
     setIsShowItemList(false)
     setSearchText(item?.[displayProperties] || '')
     setIsDisableSubmit(false)
@@ -97,6 +92,13 @@ const SelectCustomerForm = ({
     setIsShowItemList(true)
     handleTypeSearchChange(e)
     setIsDisableSubmit(false)
+  }
+
+  const handleClickOutInputCustomer = () => {
+    if (selectedCustomer.name) {
+      isDetail ? setCustomerName(selectedCustomer.name)
+        : setSearchText(selectedCustomer.name)
+    }
   }
 
   const handleClickChangeCustomer = (customerName) => {
@@ -114,6 +116,8 @@ const SelectCustomerForm = ({
     setIsShowCreateNewCustomer(false)
     setSearchText('')
     setCustomerName('')
+    setSelectedCustomer()
+    setIsInputChanged(!isInputChange)
     dispatch(customerActions.clearCustomerDetail())
     dispatch(actions.clearCustomerQuotationDetail())
   }
@@ -140,6 +144,7 @@ const SelectCustomerForm = ({
                   className="selectCustomerForm__action--input"
                   value={searchText || ''}
                   onChange={(e) => handleClickInputSearch(e)}
+                  onBlur={handleClickOutInputCustomer}
                   autoFocus={searchText}
                 />
                 {(isShowItemList && isSearching) && (

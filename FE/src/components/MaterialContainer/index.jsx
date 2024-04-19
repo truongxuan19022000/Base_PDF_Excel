@@ -1,20 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { CCollapse } from '@coreui/react'
-import { Link, useHistory } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 
-import { INVENTORY, QUOTATION } from 'src/constants/config'
-import { formatPriceWithTwoDecimals } from 'src/helper/helper'
+import { alertActions } from 'src/slices/alert'
+import { validatePermission } from 'src/helper/validation'
+import { useQuotationSectionSlice } from 'src/slices/quotationSection'
+import { ALERT, INVENTORY, MESSAGE, PERMISSION, QUOTATION } from 'src/constants/config'
+import { formatNumberWithTwoDecimalPlaces, formatPriceWithTwoDecimals } from 'src/helper/helper'
 
 import ItemContainer from '../ItemContainer'
 import MoveAndToggleIcon from '../MoveAndToggleIcon'
 
 const MaterialContainer = ({
   material = {},
-  setMessage,
   handleRemoveMaterial,
-  productHeight = 0,
-  productWidth = 0,
+  product = {},
+  isEditable = false,
+  setIsShowAddProductModal,
+  setIsShowEditProductModal,
+  sectionId = null,
+  setIsShowCreateProductItemModal,
 }) => {
+  const dispatch = useDispatch()
+  const { actions } = useQuotationSectionSlice();
+  const { actions: quotationSectionActions } = useQuotationSectionSlice();
+
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
   const [itemList, setItemList] = useState([]);
   const [isShowMoveIcon, setIsShowMoveIcon] = useState(false)
   const [isHoveringMoveIcon, setIsHoveringMoveIcon] = useState(false)
@@ -22,41 +39,51 @@ const MaterialContainer = ({
 
   const [quantity, setQuantity] = useState(0);
   const [quantityUnit, setQuantityUnit] = useState(INVENTORY.UNIT_LABEL.SQUARE_METER);
-  const [materialWidth, setMaterialWidth] = useState(productWidth);
-  const [materialHeight, setMaterialHeight] = useState(productHeight);
+  const [materialWidth, setMaterialWidth] = useState(+product.width);
+  const [materialHeight, setMaterialHeight] = useState(+product.height);
 
-  const { location } = useHistory()
   const isShowMaterialList = useMemo(() => {
     return showDetailMaterialIds.includes(material.id)
   }, [showDetailMaterialIds, material.id])
 
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
+  useEffect(() => {
+    if (product.width) {
+      setMaterialWidth(+product.width);
+    }
+    if (product.height) {
+      setMaterialHeight(+product.height);
+    }
+  }, [product.height, product.width]);
+
   useEffect(() => {
     if (material.type === QUOTATION.MATERIAL_VALUE.GLASS && material.no_of_panels) {
-      const calculatedMaterialWidth = +productWidth / +material.no_of_panels;
+      const calculatedMaterialWidth = +product.width / +material.no_of_panels;
       const roundedMaterialWidth = Math.round(calculatedMaterialWidth);
       setMaterialWidth(roundedMaterialWidth);
     }
-  }, [material, productWidth]);
-
-  useEffect(() => {
-    if (productHeight) {
-      setMaterialHeight(productHeight);
-    }
-  }, [productHeight]);
-
-  useEffect(() => {
-    if (productWidth) {
-      setMaterialWidth(productWidth);
-    }
-  }, [productWidth]);
+  }, [material, product.width]);
 
   useEffect(() => {
     if (materialHeight && materialWidth) {
-      const calculatedQuantity = (+materialWidth / 1000) * (+materialHeight / 1000);
-      const roundedQuantity = Number(calculatedQuantity.toFixed(2));
-      setQuantity(roundedQuantity);
+      if (material.type === QUOTATION.MATERIAL_VALUE.EXTRA_ORDER) {
+        const unit = INVENTORY.UNIT[material.quantity_unit]?.label;
+        setQuantity(material.quantity);
+        setQuantityUnit(unit)
+      } else {
+        const calculatedQuantity = (+materialWidth / 1000) * (+materialHeight / 1000);
+        const roundedQuantity = formatNumberWithTwoDecimalPlaces(calculatedQuantity);
+        setQuantity(roundedQuantity);
+      }
     }
-  }, [materialWidth, materialHeight]);
+  }, [material, materialWidth, materialHeight]);
 
   useEffect(() => {
     if (material?.product_template) {
@@ -75,17 +102,6 @@ const MaterialContainer = ({
     }
   }
 
-  const handleRemoveItem = (e, itemId) => {
-    e.stopPropagation()
-    if (itemId) {
-      setItemList(itemList.filter(item => item.material_id !== itemId))
-    } else {
-      setMessage({
-        failed: 'No found the item Id.'
-      })
-    }
-  }
-
   const handleMouseEnter = (e) => {
     e.stopPropagation()
     setIsHoveringMoveIcon(true)
@@ -96,8 +112,45 @@ const MaterialContainer = ({
     setIsHoveringMoveIcon(false)
   }
 
+  const handleOpenAddItemModal = (materialId) => {
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (sectionId && materialId) {
+        dispatch(quotationSectionActions.handleSetSelectedProduct({
+          productId: product.productId,
+          productItemId: materialId,
+          productWidth: product.width,
+          productHeight: product.height,
+          productTemplateId: material.product_template_id,
+        }))
+        setIsShowAddProductModal(true)
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
+  const handleClickEditProductItem = (e, material) => {
+    e.stopPropagation()
+    if (isEditAllowed) {
+      if (!isEditable) return;
+      if (material) {
+        const productItem = {
+          ...material,
+          width: product.width,
+          height: product.height,
+        }
+        dispatch(actions.handleSetSelectedProductItem(productItem))
+        setIsShowCreateProductItemModal(true)
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  }
+
   const title = QUOTATION.MATERIAL_TITLE[material.type]?.label || 'TITLE';
   const isGlassItem = material.type === QUOTATION.MATERIAL_VALUE.GLASS;
+  const isExtraItem = material.type === QUOTATION.MATERIAL_VALUE.EXTRA_ORDER;
   const isShowAddItemButton = material.type === QUOTATION.MATERIAL_VALUE.PRODUCT;
 
   return (
@@ -110,8 +163,8 @@ const MaterialContainer = ({
       >
         <div className="materialContainer__toggle">
           <MoveAndToggleIcon
-            isShowToggleIcon={material.type === QUOTATION.MATERIAL_VALUE.PRODUCT}
-            isShowMoveIcon={isShowMoveIcon}
+            isShowToggleIcon={+material.type === QUOTATION.MATERIAL_VALUE.PRODUCT}
+            isShowMoveIcon={isShowMoveIcon && isEditAllowed && isEditable}
             isOpen={isShowMaterialList}
             handleMouseEnterIcon={handleMouseEnter}
             handleMouseLeaveIcon={handleMouseLeave}
@@ -121,7 +174,7 @@ const MaterialContainer = ({
           <table className="materialProductTable">
             <thead>
               <tr>
-                <th className={`materialProductTable__th materialProductTable__th--title${isGlassItem ? ' materialProductTable__th--titlePanel' : ''}`}>
+                <th className={`materialProductTable__th materialProductTable__th--title${isGlassItem ? ' materialProductTable__th--titlePanel' : ''}${isExtraItem ? ' materialProductTable__th--extraItem' : ''}`}>
                   {title}
                 </th>
                 {material.type === QUOTATION.MATERIAL_VALUE.GLASS &&
@@ -129,9 +182,11 @@ const MaterialContainer = ({
                     NO. OF PANELS
                   </th>
                 }
-                <th className="materialProductTable__th materialProductTable__th--size">
-                  SIZE (mm)
-                </th>
+                {material.type !== QUOTATION.MATERIAL_VALUE.EXTRA_ORDER &&
+                  <th className="materialProductTable__th materialProductTable__th--size">
+                    SIZE (mm)
+                  </th>
+                }
                 <th className="materialProductTable__th materialProductTable__th--quantity">
                   QUANTITY
                 </th>
@@ -157,11 +212,13 @@ const MaterialContainer = ({
                     </div>
                   </td>
                 }
-                <td className="materialProductTable__td">
-                  <div className="materialProductTable__td--text materialProductTable__td--size">
-                    {materialWidth || 0} x {materialHeight || 0}
-                  </div>
-                </td>
+                {material.type !== QUOTATION.MATERIAL_VALUE.EXTRA_ORDER &&
+                  <td className="materialProductTable__td">
+                    <div className="materialProductTable__td--text materialProductTable__td--size">
+                      {materialWidth || 0} x {materialHeight || 0}
+                    </div>
+                  </td>
+                }
                 <td className="materialProductTable__td">
                   <div className="materialProductTable__td--text materialProductTable__td--quantity">
                     {quantity || 0} {quantity > 0 && quantityUnit}
@@ -169,12 +226,12 @@ const MaterialContainer = ({
                 </td>
                 <td className="materialProductTable__td">
                   <div className="materialProductTable__td--text materialProductTable__td--unitPrice">
-                    $ {formatPriceWithTwoDecimals(material.unit_price) || 0}
+                    $ {formatPriceWithTwoDecimals(+material.unit_price)}
                   </div>
                 </td>
                 <td className="materialProductTable__td">
                   <div className="materialProductTable__td--text materialProductTable__td--subTotal">
-                    $ {formatPriceWithTwoDecimals(material.sub_total) || 0}
+                    $ {formatPriceWithTwoDecimals(+material.sub_total)}
                   </div>
                 </td>
               </tr>
@@ -182,7 +239,10 @@ const MaterialContainer = ({
           </table>
         </div>
         <div className="materialContainer__actions">
-          <div className="materialContainer__actions--button">
+          <div
+            className="materialContainer__actions--button"
+            onClick={(e) => handleClickEditProductItem(e, material)}
+          >
             <img
               src="/icons/edit.svg"
               alt="edit"
@@ -190,7 +250,7 @@ const MaterialContainer = ({
           </div>
           <div
             className="materialContainer__actions--button"
-            onClick={(e) => handleRemoveMaterial(e, material.id)}
+            onClick={(e) => handleRemoveMaterial(e, +material.id)}
           >
             <img
               src="/icons/x-mark.svg"
@@ -206,20 +266,25 @@ const MaterialContainer = ({
               <div className="materialContainer__list--material" key={index}>
                 <ItemContainer
                   item={item}
-                  itemWidth={productWidth}
-                  itemHeight={productHeight}
-                  handleRemoveItem={handleRemoveItem}
+                  itemWidth={+product.width}
+                  itemHeight={+product.height}
+                  sectionId={sectionId}
+                  isEditable={isEditable}
+                  productId={product?.productId}
+                  productItemId={material?.id}
+                  setIsShowEditProductModal={setIsShowEditProductModal}
                 />
               </div>
             ))}
           </div>
           {isShowAddItemButton &&
             <div className="materialContainer__footer">
-              <Link to={`${location.pathname}/create-item`}>
-                <div className="materialContainer__footer--button">
-                  +  Add Item
-                </div>
-              </Link>
+              <div
+                className="materialContainer__footer--button"
+                onClick={() => handleOpenAddItemModal(material.id)}
+              >
+                +  Add Item
+              </div>
             </div>
           }
         </div>

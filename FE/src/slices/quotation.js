@@ -3,6 +3,7 @@ import { useInjectReducer, useInjectSaga } from 'src/utils/redux-injector';
 import dayjs from 'dayjs';
 
 import quotationSaga from 'src/sagas/quotation';
+import { QUOTATION } from 'src/constants/config';
 
 export const initialState = {
   list: {},
@@ -12,18 +13,32 @@ export const initialState = {
   searchedData: [],
   quotationList: [],
   quotationData: {},
+  selectedQuotationData: {},
   fetched: false,
   fetchedAll: false,
   isSearching: false,
-  totalOtherFees: 0,
-  discount: 0,
+  submitting: false,
   bottomBarData: {
-    quotationCost: 17288.30, // this is quotationCost demo
-    total: 0,
-    discountType: {},
-    estimatedCost: 0,
+    otherFees: 0,
+    discountAmount: 0,
+    discountType: QUOTATION.PERCENT_VALUE,
+    sumSections: 0,
+    grandTotal: 0,
+    estimateScrapCost: 0,
     discountPercent: 0,
+    totalBeforeGST: 0,
   },
+  revenueData: {
+    draft: 0,
+    pending: 0,
+    rejected: 0,
+    cancelled: 0,
+    approved: 0,
+  },
+  newQuotationNumber: 0,
+  totalQuotation: 0,
+  approvedList: [],
+  fetchedApprovalList: false,
 };
 
 const slice = createSlice({
@@ -33,9 +48,28 @@ const slice = createSlice({
     getQuotationList(state, action) {
     },
     getQuotationListSuccess(state, action) {
-      state.list = action.payload?.data?.quotations || {}
-      state.fetched = true;
-      state.isSearching = false;
+      if (action.payload) {
+        const { data } = action.payload;
+        const revenue = data?.estimated_revenue;
+        const revenueData = {
+          draft: revenue?.draft,
+          pending: revenue?.pending_approval,
+          rejected: revenue?.rejected,
+          cancelled: revenue?.cancelled,
+          approved: revenue?.approved,
+        };
+        state.list = data?.quotations || {};
+        state.revenueData = revenueData;
+        state.newQuotationNumber = data?.number_quotation_new;
+        state.fetched = true;
+        state.isSearching = false;
+      }
+    },
+    getTotalAmountQuotation() { },
+    getTotalAmountQuotationSuccess(state, action) {
+      if (action?.payload) {
+        state.totalQuotation = action.payload?.data
+      }
     },
     createQuotation(state, action) {
     },
@@ -49,10 +83,12 @@ const slice = createSlice({
       }
     },
     getQuotationDetail(state, action) {
+      state.isSearching = true;
     },
     getQuotationDetailSuccess(state, action) {
       if (action?.payload) {
         state.detail = action.payload
+        state.isSearching = false;
       }
     },
     multiDeleteQuotation() { },
@@ -71,7 +107,7 @@ const slice = createSlice({
         const updatedData = {
           id: Number(payload.quotation_id),
           name: payload.name,
-          status: payload.payment_status,
+          status: payload.status,
           created_at: payload.created_at,
           reference_no: payload.reference_no
         }
@@ -145,14 +181,24 @@ const slice = createSlice({
         state.fetchedAll = true;
       }
     },
-    setBottomBarData(state, action) {
-      state.bottomBarData.quotationCost = action.payload
+    getApprovedList() { },
+    getApprovedListSuccess(state, action) {
+      if (action?.payload) {
+        state.approvedList = action.payload?.data?.quotations || [];
+        state.fetchedApprovalList = true;
+      }
     },
-    setTotalOtherFees(state, action) {
-      state.totalOtherFees = action.payload
+    handleSetBottomBarData(state, action) {
+      state.bottomBarData = action.payload
     },
-    setDiscountAmount(state, action) {
-      state.discount = action.payload
+    handleSetTotalOtherFees(state, action) {
+      state.bottomBarData.otherFees = action.payload;
+      state.bottomBarData.totalBeforeGST = +state.bottomBarData.sumSections + +action.payload;
+      state.bottomBarData.grandTotal = +state.bottomBarData.sumSections + +action.payload - + +state.bottomBarData.discountAmount;
+    },
+    handleSetDiscountAmount(state, action) {
+      state.bottomBarData.discountAmount = action.payload.discountAmount;
+      state.bottomBarData.discountType = action.payload.discountType;
     },
     clearCustomerQuotationDetail(state) {
       if (!state.detail) {
@@ -163,6 +209,83 @@ const slice = createSlice({
       }
       state.detail.quotation.customer = {};
     },
+    resetBottomBarData(state, action) {
+      state.bottomBarData = {
+        otherFees: 0,
+        discountAmount: 0,
+        discountType: QUOTATION.PERCENT_VALUE,
+        sumSections: 0,
+        grandTotal: 0,
+        estimateScrapCost: 0,
+        totalBeforeGST: 0,
+      }
+    },
+    downloadPDF() { },
+    resetFetchedList(state) {
+      state.fetched = false;
+    },
+    handleDiscountChange(state, action) { },
+    handleDiscountChangeSuccess(state, action) {
+      if (action?.payload && action.payload?.discount_amount && state.bottomBarData.totalBeforeGST) {
+        state.bottomBarData.discountType = action.payload?.discount_type;
+        state.bottomBarData.discountAmount = action.payload.discount_amount;
+        state.bottomBarData.grandTotal = +state.bottomBarData.totalBeforeGST - +action.payload.discount_amount;
+      }
+    },
+    getRevenue() { },
+    getRevenueSuccess(state, action) {
+      if (action?.payload) {
+        state.revenueData = {
+          ...action.payload,
+          pending: action.payload?.pending_approval,
+        };
+      }
+    },
+    handleSendToApproval(state, action) {
+      state.submitting = true;
+    },
+    handleSendToApprovalSuccess(state, action) {
+      const newStatus = QUOTATION.STATUS_VALUE.PENDING;
+      state.detail.quotation.status = newStatus;
+      state.submitting = false;
+      if (action?.payload) {
+        state.detail.activities = [action.payload, ...state.detail.activities]
+      }
+    },
+    handleApproveQuotation(state) {
+      state.submitting = true;
+    },
+    handleApproveQuotationSuccess(state, action) {
+      if (action?.payload && state.detail) {
+        const newStatus = +action.payload?.status;
+        state.detail.quotation.status = newStatus;
+        if (newStatus === QUOTATION.STATUS_VALUE.REJECTED) {
+          const updatedData = {
+            ...state.detail?.quotation,
+            reject_reason: action.payload?.reject_reason,
+          };
+          state.detail = {
+            ...state.detail,
+            quotation: updatedData,
+          };
+        }
+        state.detail.activities = [action.payload.logsInfo, ...state.detail.activities]
+      }
+      state.submitting = false;
+    },
+    resetSubmittingState(state) {
+      state.submitting = false;
+    },
+    handleSetSelectedQuotation(state, action) {
+      state.selectedQuotationData = action?.payload;
+    },
+    clearSelectedQuotationData(state) {
+      state.selectedQuotationData = {};
+    },
+    handleSendEmail() { },
+    handleResetFetchedAll(state) {
+      state.fetchedAll = false;
+    }
   },
 })
 

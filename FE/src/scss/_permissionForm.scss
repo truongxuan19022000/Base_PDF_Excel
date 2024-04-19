@@ -1,4 +1,3 @@
-
 .permissionForm {
   width: 100%;
   height: calc(100vh - 134px);
@@ -66,10 +65,11 @@
       width: 100%;
       display: flex;
       margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 28px;
 
       .roleForm {
         width: fit-content;
-        margin-right: 28px;
         min-width: 380px;
         border-radius: 8px;
         border: 1px solid #eaecf0;

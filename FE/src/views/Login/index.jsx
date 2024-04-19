@@ -29,7 +29,7 @@ const Login = () => {
 
   const onError = (data) => {
     setMessage(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -73,7 +73,6 @@ const Login = () => {
       if (errors?.username) {
         setErrorUsername(errors?.username)
       }
-      setIsDisableSubmit(true)
     } else {
       dispatch(actions.login({ username, password, onSuccess, onError }))
       setIsDisableSubmit(true)

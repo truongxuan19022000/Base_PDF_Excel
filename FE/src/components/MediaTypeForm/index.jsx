@@ -14,7 +14,6 @@ const MediaTypeForm = ({
     }
     return []
   }, [message])
-
   const renderMediaContent = () => {
     const contentType = message.content?.type;
     const mediaContent = message.content[contentType];
@@ -30,7 +29,7 @@ const MediaTypeForm = ({
       case 'video':
         const videoSource = preview ? URL.createObjectURL(preview) : mediaContent?.link || '';
         return (
-          <video preload="metadata" controls="controls">
+          <video key={message.id} preload="metadata" controls="controls">
             <source
               src={videoSource}
               alt="message media"

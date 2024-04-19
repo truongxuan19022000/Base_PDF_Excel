@@ -14,8 +14,9 @@
     width: 100%;
     position: relative;
     margin-top: 12px;
-    max-height: 672px;
     overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
 
     .customerTable {
       width: 100%;
@@ -25,24 +26,19 @@
         height: 60px;
         z-index: 1;
 
-        tr {
-          border: 1px solid $color_black3;
-        }
-
         th {
           position: sticky;
           top: 0;
           background-color: $color_white2;
-          border-bottom: 2px solid $color_black3;
           z-index: 1;
-          user-select: none;
+          border-radius: 8px;
         }
       }
 
       tbody {
         tr {
           transition: 0.3s all ease-in;
-          border: 1px solid $color_black3;
+          border-top: 1px solid $color_black3;
         }
       }
 
@@ -115,7 +111,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    top: 814px;
+    top: 825px;
     left: 0;
   }
 

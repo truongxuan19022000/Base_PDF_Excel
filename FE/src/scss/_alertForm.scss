@@ -1,0 +1,80 @@
+.alertForm {
+  position: fixed;
+  top: 75%;
+  right: 25px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    .alertNotify {
+      width: fit-content;
+      min-width: 304px;
+      max-width: 400px;
+      padding: 18px 17px;
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: space-between;
+      border: 1px solid #b42318;
+      border-radius: 10px;
+      background-color: white;
+      animation: slideRight 0.4s ease 0s 1 normal forwards;
+      cursor: pointer;
+
+      &--success {
+        color: #027a48;
+        border: 1px solid #027a48;
+        background-color: #ecfdf3;
+      }
+
+      &--failed {
+        color: #b42318;
+        border: 1px solid #b42318;
+        background-color: #fef3f2;
+      }
+
+      &--fadeOut {
+        animation: fadeOutRight 1.5s ease 0s 1 normal forwards;
+      }
+
+      &__content {
+        display: flex;
+        margin-right: 30px;
+      }
+
+      &__icon {
+        margin-right: 9px;
+      }
+
+      &__body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      &__title {
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 5px;
+        padding-top: 3px;
+      }
+
+      &__description {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+}
+
+.fadeOutRight {
+  opacity: 0;
+  transform: translateX(100%);
+}

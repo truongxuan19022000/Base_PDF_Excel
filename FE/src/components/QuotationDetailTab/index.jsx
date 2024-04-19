@@ -1,26 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
 import ActivityLogsForm from '../ActivityLogsForm';
 import CustomerInfoForm from '../CustomerInfoForm';
-import StatusQuotationForm from '../StatusQuotationForm';
 
-import { COUNTRY_CODE, QUOTATION } from 'src/constants/config';
+import { ACTIVITY, COUNTRY_CODE, DEFAULT_VALUE, PERMISSION, QUOTATION } from 'src/constants/config';
 import { formatPhoneNumber, isEmptyObject } from 'src/helper/helper';
+import { useCustomerSlice } from 'src/slices/customer';
+import { validatePermission } from 'src/helper/validation';
 
 const QuotationDetailTab = ({
   data = {},
+  status = {},
+  isEditable = false,
   messageError = {},
   handleChange,
   setSearchText,
-  setPayStatus,
   setIsInputChanged,
   setSelectedCustomer,
   setIsDisableSubmit,
   handleTypeSearchChange,
   setIsShowCreateNewCustomer,
 }) => {
+  const dispatch = useDispatch();
+  const { actions: customerActions } = useCustomerSlice();
+
+  const fetchedAll = useSelector(state => state.customer.fetchedAll)
+  const permissionData = useSelector(state => state.user.permissionData)
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.QUOTATION, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
@@ -28,7 +42,14 @@ const QuotationDetailTab = ({
   const [address2, setAddress2] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneCode, setPhoneCode] = useState(COUNTRY_CODE[0].VALUE);
+  const [phoneCode, setPhoneCode] = useState(COUNTRY_CODE[DEFAULT_VALUE].label);
+  const [isShowInfoTooltip, setIsShowInfoTooltip] = useState(false);
+
+  useEffect(() => {
+    if (!fetchedAll) {
+      dispatch(customerActions.getAllCustomerList())
+    }
+  }, [fetchedAll])
 
   const handleInputChange = (field, value) => {
     const fieldSetters = {
@@ -79,9 +100,9 @@ const QuotationDetailTab = ({
 
   return (
     <div className="quotationDetailTab">
-      <div className="quotationDetailTab__content">
-        <div className="quotationDetailTab__section">
-          <div className="quotationDetailTab__formData">
+      <div className={`quotationDetailTab__content${isEditAllowed ? '' : ' quotationDetailTab__content--disabled'}`}>
+        <div className={`quotationDetailTab__section${isEditAllowed ? '' : ' quotationDetailTab__section--disabled'}`}>
+          <div className={`quotationDetailTab__formData${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
             <label>Reference No.</label>
             <input
               type="text"
@@ -98,22 +119,43 @@ const QuotationDetailTab = ({
             }
           </div>
           <div className="quotationDetailTab__formData">
-            <label>Payment Status</label>
-            <StatusQuotationForm
-              data={QUOTATION.STATUS}
-              selectedStatus={data.payStatus}
-              setSelectedStatus={setPayStatus}
-              isInputChanged={data.isInputChanged}
-              setIsInputChanged={setIsInputChanged}
+            <label>Quotation Status</label>
+            <input
+              type="text"
+              className="quotationDetailTab__input quotationDetailTab__input--disabled"
+              placeholder="Quotation Status"
+              name="quotation_status"
+              value={status.label || ''}
+              readOnly
             />
-            {messageError?.payment_status &&
+            {(status.value === QUOTATION.STATUS_VALUE.REJECTED && data.rejectedReason) &&
+              <img
+                onMouseEnter={() => setIsShowInfoTooltip(true)}
+                onMouseLeave={() => setIsShowInfoTooltip(false)}
+                src="/icons/info-icon.svg"
+                alt="info"
+                width="18"
+                height="18"
+              />
+            }
+            {(isShowInfoTooltip && data.rejectedReason) &&
+              <div className="quotationDetailTab__infoBox">
+                <div className="quotationDetailTab__innerBox">
+                  <p>
+                    {data.rejectedReason}
+                  </p>
+                </div>
+                <div className="quotationDetailTab__shape"></div>
+              </div>
+            }
+            {messageError?.status &&
               <p className="quotationDetailTab__error">
-                {messageError.payment_status || ''}
+                {messageError.status || ''}
               </p>
             }
           </div>
         </div>
-        <div className="quotationDetailTab__customerGroup">
+        <div className={`quotationDetailTab__customerGroup${isEditAllowed ? '' : ' quotationDetailTab__customerGroup--disabled'}`}>
           <CustomerInfoForm
             name={name}
             email={email}
@@ -123,6 +165,7 @@ const QuotationDetailTab = ({
             phoneCode={phoneCode}
             postalCode={postalCode}
             phoneNumber={phoneNumber}
+            isEditable={isEditable}
             isDetail={data.id}
             searchText={data.searchText}
             isSearching={data.isSearching}
@@ -133,6 +176,7 @@ const QuotationDetailTab = ({
             messageError={messageError}
             setSearchText={setSearchText}
             setName={setName}
+            setPhoneCode={setPhoneCode}
             handleInputChange={handleInputChange}
             setIsInputChanged={setIsInputChanged}
             setIsDisableSubmit={setIsDisableSubmit}
@@ -141,8 +185,8 @@ const QuotationDetailTab = ({
             setIsShowCreateNewCustomer={setIsShowCreateNewCustomer}
           />
         </div>
-        <div className="quotationDetailTab__section">
-          <div className="quotationDetailTab__formData">
+        <div className={`quotationDetailTab__section${isEditAllowed ? '' : ' quotationDetailTab__section--disabled'}`}>
+          <div className={`quotationDetailTab__formData${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
             <label>Issue Date</label>
             <DatePicker
               selected={data.issueDate || ''}
@@ -158,7 +202,7 @@ const QuotationDetailTab = ({
               </p>
             }
           </div>
-          <div className="quotationDetailTab__formData">
+          <div className={`quotationDetailTab__formData${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
             <label>Valid Till</label>
             <DatePicker
               selected={data.validTillDate || ''}
@@ -175,8 +219,8 @@ const QuotationDetailTab = ({
             }
           </div>
         </div>
-        <div className="quotationDetailTab__section">
-          <div className="quotationDetailTab__formData">
+        <div className={`quotationDetailTab__section${isEditAllowed ? '' : ' quotationDetailTab__section--disabled'}`}>
+          <div className={`quotationDetailTab__formData${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
             <label>Terms of Payment (Upon Confirmation)</label>
             <input
               type="number"
@@ -188,6 +232,7 @@ const QuotationDetailTab = ({
               name="terms_of_payment_confirmation"
               value={data.paymentTermNumber || ''}
             />
+            <div className="quotationDetailTab__input--unit">%</div>
             {messageError?.terms_of_payment_confirmation &&
               <div className="quotationDetailTab__error">
                 {messageError?.terms_of_payment_confirmation || ''}
@@ -198,19 +243,20 @@ const QuotationDetailTab = ({
             <label>Terms of Payment (Balance)</label>
             <input
               type="number"
-              className="quotationDetailTab__input"
+              className="quotationDetailTab__input quotationDetailTab__input--disabled"
               min="0"
               max="100"
               placeholder="0"
               onChange={(e) => handleChange('payment_balance', e.target.value)}
               name="payment_balance"
-              disabled={true}
+              readOnly
               value={data.paymentTermBalance || ''}
             />
+            <div className="quotationDetailTab__input--unit">%</div>
           </div>
         </div>
         <div className="quotationDetailTab__section quotationDetailTab__section--textarea">
-          <div className="quotationDetailTab__formData quotationDetailTab__formData--textArea">
+          <div className={`quotationDetailTab__formData quotationDetailTab__formData--textArea${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
             <label>Project Description</label>
             <textarea
               className="quotationDetailTab__input quotationDetailTab__input--textArea"
@@ -218,6 +264,7 @@ const QuotationDetailTab = ({
               onChange={(e) => handleChange('description', e.target.value)}
               name="description"
               value={data.description || ''}
+              readOnly={!isEditAllowed}
             />
             {messageError?.description &&
               <p className="quotationDetailTab__error">
@@ -226,10 +273,29 @@ const QuotationDetailTab = ({
             }
           </div>
         </div>
+        <div className="quotationDetailTab__section quotationDetailTab__section--textarea">
+          <div className={`quotationDetailTab__formData quotationDetailTab__formData--textArea${isEditable ? '' : ' quotationDetailTab__formData--disabled'}`}>
+            <label>Quotation Description</label>
+            <textarea
+              className="quotationDetailTab__input quotationDetailTab__input--textArea"
+              placeholder="Project Description"
+              onChange={(e) => handleChange('quotation_description', e.target.value)}
+              name="Quotation Description"
+              value={data.quotationDescription || ''}
+              readOnly={!isEditAllowed}
+            />
+            {messageError?.quotation_description &&
+              <p className="quotationDetailTab__error">
+                {messageError.quotation_description}
+              </p>
+            }
+          </div>
+        </div>
       </div>
       <div className="quotationDetailTab__activity">
         <ActivityLogsForm
-          constantData={QUOTATION.LOGS}
+          logsNameList={ACTIVITY.LOGS.LABEL}
+          actionNameList={ACTIVITY.LOGS.QUOTATION_ACTION}
           logsData={data.quotationDetail?.activities}
         />
       </div>

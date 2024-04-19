@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory, useParams } from 'react-router-dom'
 
+import { alertActions } from 'src/slices/alert'
 import { useProductSlice } from 'src/slices/product'
 import { useMaterialSlice } from 'src/slices/material'
-import { FILTER, INVENTORY, PAGINATION } from 'src/constants/config'
-import { validateCreateProductTemplate, validateUpdateProductTemplate } from 'src/helper/validation'
+import { ALERT, FILTER, INVENTORY, MESSAGE, PAGINATION, PERMISSION } from 'src/constants/config'
+import { validateCreateProductTemplate, validatePermission, validateUpdateProductTemplate } from 'src/helper/validation'
 import { downloadCSVFromCSVString, isEmptyObject, isSimilarObject, normalizeString } from 'src/helper/helper'
 
 import Checkbox from 'src/components/Checkbox'
@@ -14,7 +15,6 @@ import HeadlineBar from 'src/components/HeadlineBar'
 import FilterModal from 'src/components/FilterModal'
 import InputBoxForm from 'src/components/InputBoxForm'
 import EditQuantityModal from 'src/components/EditQuantityModal'
-import ActionMessageForm from 'src/components/ActionMessageForm'
 import InventorySelectForm from 'src/components/InventorySelectForm'
 import TableActionTemplate from 'src/components/TableActionTemplate'
 
@@ -33,6 +33,7 @@ const TemplateForm = () => {
   const csvData = useSelector(state => state.material.csvData)
 
   const productDetail = useSelector(state => state.product.detail)
+  const permissionData = useSelector(state => state.user.permissionData)
 
   const [isCalled, setIsCalled] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -47,7 +48,6 @@ const TemplateForm = () => {
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
 
   const [item, setItem] = useState('')
-  const [message, setMessage] = useState({})
   const [profile, setProfile] = useState({})
   const [quantity, setQuantity] = useState(null)
   const [headlineTitle, setHeadlineTitle] = useState('')
@@ -65,21 +65,31 @@ const TemplateForm = () => {
     return !!params.id
   }, [params.id])
 
+  const isTemplateUsed = useMemo(() => {
+    if (!isEditMode) return false;
+    return productDetail?.product_item_use !== INVENTORY.UN_USED_VALUE;
+  }, [isEditMode, productDetail]);
+
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.TEMPLATE, PERMISSION.ACTION.UPDATE)
+    return (isAllowed && isEditMode)
+  }, [permissionData, isEditMode])
+
   const onSuccess = () => {
     history.push('/inventory/product-templates')
   }
 
   const onUpdatedSuccess = (data) => {
-    setMessage({ success: data.message })
     setOriginalProductInfo(data.data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   const onError = (data) => {
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      setMessageError(data)
+    }
+    setIsDisableSubmit(false)
     setSubmitting(false)
-    setMessageError(data)
-    setIsDisableSubmit(true)
-    setMessage({ failed: data })
   }
 
   useEffect(() => {
@@ -111,7 +121,13 @@ const TemplateForm = () => {
   }, [fetched])
 
   useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    return () => {
+      dispatch(actions.resetFetchedList())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list.total || 0)
     }
@@ -123,13 +139,6 @@ const TemplateForm = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [messageError]);
-
-  useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timeoutId = setTimeout(() => setMessage({}), 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [message]);
 
   useEffect(() => {
     if (!isFiltering) {
@@ -184,87 +193,144 @@ const TemplateForm = () => {
   }, [selectedItemToEdit])
 
   const handleSelectAllItems = (isChecked) => {
-    if (isChecked) {
-      const isExistItem = list.data.some(item => selectedProductList.some(product => product.material_id === item.id));
-      if (isExistItem) {
-        setMessageError({
-          select_item: INVENTORY.MESSAGE_ERROR.ITEM_SELECTED_EXISTED
-        });
+    if (isEditAllowed) {
+
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
       } else {
-        setTempoSelectedList(list.data || [])
+        if (isChecked) {
+          const isExistItem = list.data.some(item => selectedProductList.some(product => product.material_id === item.id));
+          if (isExistItem) {
+            setMessageError({
+              select_item: INVENTORY.MESSAGE_ERROR.ITEM_SELECTED_EXISTED
+            });
+          } else {
+            setTempoSelectedList(list.data || [])
+          }
+        } else {
+          setTempoSelectedList([]);
+        }
       }
     } else {
-      setTempoSelectedList([]);
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleSelectAllProductList = (isChecked) => {
-    if (isChecked) {
-      setTempoSelectProductIds(selectedProductList.map(item => item.material_id))
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (isChecked) {
+          setTempoSelectProductIds(selectedProductList.map(item => item.material_id))
+        } else {
+          setTempoSelectProductIds([])
+        }
+      }
     } else {
-      setTempoSelectProductIds([])
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleSelectProduct = (isChecked, itemId) => {
-    if (isChecked) {
-      setTempoSelectProductIds([...tempoSelectProductIds, itemId])
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (isChecked) {
+          setTempoSelectProductIds([...tempoSelectProductIds, itemId])
+        } else {
+          setTempoSelectProductIds(tempoSelectProductIds?.filter(id => id !== itemId) || [])
+        }
+      }
     } else {
-      setTempoSelectProductIds(tempoSelectProductIds?.filter(id => id !== itemId) || [])
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleSelectItem = (isChecked, item) => {
-    if (isChecked) {
-      const isItemExisted = !!selectedProductList.find(product => product.material_id === item.id)
-      if (isItemExisted) {
-        setMessageError({
-          select_item: `"${item.item}"` + INVENTORY.MESSAGE_ERROR.SELECT_ITEM
-        });
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
       } else {
-        setTempoSelectedList([...tempoSelectedList, item])
+        if (isChecked) {
+          const isItemExisted = !!selectedProductList.find(product => product.id === item.id)
+          if (isItemExisted) {
+            setMessageError({
+              select_item: `"${item.item}"` + INVENTORY.MESSAGE_ERROR.SELECT_ITEM
+            });
+          } else {
+            setTempoSelectedList([...tempoSelectedList, item])
+          }
+        } else {
+          setTempoSelectedList(tempoSelectedList?.filter(product => product.id !== item.id) || [])
+        }
       }
     } else {
-      setTempoSelectedList(tempoSelectedList?.filter(product => product.material_id !== item.id) || [])
+      dispatchAlertWithPermissionDenied()
     }
   }
 
   const handleAddToSelectedList = () => {
-    if (tempoSelectedList?.length > 0) {
-      const convertedArray = tempoSelectedList.map(item => ({
-        ...item,
-        quantity: 1,
-        material_id: +item.id,
-      }));
-      setSelectedProductList([...convertedArray, ...selectedProductList]);
-      setTempoSelectedList([]);
-      setIsCalled(!isCalled)
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (tempoSelectedList?.length > 0) {
+          const convertedArray = tempoSelectedList.map(item => ({
+            ...item,
+            quantity: 1,
+            material_id: +item.id,
+          }));
+          setSelectedProductList([...convertedArray, ...selectedProductList]);
+          setTempoSelectedList([]);
+          setIsCalled(!isCalled)
+        } else {
+          setMessageError({
+            add_item: INVENTORY.MESSAGE_ERROR.ADD_ITEM
+          })
+        }
+      }
     } else {
-      setMessageError({
-        add_item: INVENTORY.MESSAGE_ERROR.ADD_ITEM
-      })
+      dispatchAlertWithPermissionDenied()
     }
   };
 
   const handleClickRemoveProduct = () => {
-    if (tempoSelectProductIds.length > 0) {
-      setSelectedProductList(selectedProductList.filter(product =>
-        !tempoSelectProductIds.includes(product.material_id)
-      ));
-      setIsCalled(!isCalled);
-      setTempoSelectProductIds([]);
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (tempoSelectProductIds.length > 0) {
+          setSelectedProductList(selectedProductList.filter(product =>
+            !tempoSelectProductIds.includes(product.material_id)
+          ));
+          setIsCalled(!isCalled);
+          setTempoSelectProductIds([]);
+        } else {
+          setMessageError({
+            remove_item: INVENTORY.MESSAGE_ERROR.REMOVE_ITEM
+          });
+        }
+      }
     } else {
-      setMessageError({
-        remove_item: INVENTORY.MESSAGE_ERROR.REMOVE_ITEM
-      });
+      dispatchAlertWithPermissionDenied()
     }
   };
 
   const handleClickEditQuantity = (item) => {
-    if (item) {
-      setSelectedItemToEdit(item)
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (item) {
+          setSelectedItemToEdit(item)
+        }
+        setIsShowEditQuantityModal(true)
+      }
+    } else {
+      dispatchAlertWithPermissionDenied()
     }
-    setIsShowEditQuantityModal(true)
   }
 
   const handleClickChangePage = (pageNumber) => {
@@ -338,35 +404,47 @@ const TemplateForm = () => {
   }
 
   const handleInputChange = (field, value) => {
-    const fieldSetters = {
-      item: setItem,
-    };
-    const setter = fieldSetters[field];
-    if (setter) {
-      setter(value);
-      setIsCalled(!isCalled)
+    if (isTemplateUsed) {
+      dispatchAlertTemplateUsed()
+    } else {
+      const fieldSetters = {
+        item: setItem,
+      };
+      const setter = fieldSetters[field];
+      if (setter) {
+        setter(value);
+        setIsCalled(!isCalled)
+      }
     }
   }
 
   const handleChangeQuantity = (value) => {
-    setQuantity(value)
-    setIsCalled(!isCalled)
+    if (isTemplateUsed) {
+      dispatchAlertTemplateUsed()
+    } else {
+      setQuantity(value)
+      setIsCalled(!isCalled)
+    }
   }
 
   const handleSaveQuantityChanged = () => {
-    if (!isEmptyObject(selectedItemToEdit)) {
-      if (+quantity < 1) {
-        setMessageError({
-          quantity: INVENTORY.MESSAGE_ERROR.CHANGE_QUANTITY
-        })
-      } else {
-        const updatedInfo = { ...selectedItemToEdit, quantity: +quantity }
-        setSelectedProductList(selectedProductList.map(product =>
-          product.material_id === updatedInfo.material_id ? updatedInfo : product
-        ))
-        setSelectedItemToEdit({})
-        setIsShowEditQuantityModal(false)
-        setIsCalled(!isCalled)
+    if (isTemplateUsed) {
+      dispatchAlertTemplateUsed()
+    } else {
+      if (!isEmptyObject(selectedItemToEdit)) {
+        if (+quantity < 1) {
+          setMessageError({
+            quantity: INVENTORY.MESSAGE_ERROR.CHANGE_QUANTITY
+          })
+        } else {
+          const updatedInfo = { ...selectedItemToEdit, quantity: +quantity }
+          setSelectedProductList(selectedProductList.map(product =>
+            product.material_id === updatedInfo.material_id ? updatedInfo : product
+          ))
+          setSelectedItemToEdit({})
+          setIsShowEditQuantityModal(false)
+          setIsCalled(!isCalled)
+        }
       }
     }
   }
@@ -385,73 +463,116 @@ const TemplateForm = () => {
     const errors = validateCreateProductTemplate(data)
     if (Object.keys(errors).length > 0) {
       setMessageError(errors)
-      setIsDisableSubmit(true)
     } else {
       dispatch(productActions.createProductTemplate({ ...data, onSuccess, onError }))
       setMessageError({})
       setIsDisableSubmit(true)
     }
   }
+
   const handleSaveChanged = () => {
-    if (isDisableSubmit) return;
-    const removeIds = productDetail.product_template_material
+    if (isEditAllowed) {
+      if (isTemplateUsed) {
+        dispatchAlertTemplateUsed()
+      } else {
+        if (isDisableSubmit) return;
+        const removeIds = getRemoveIds();
+        const newItems = getNewItems();
+        const updatedItems = getUpdatedItems();
+
+        const data = {
+          item,
+          id: +params.id,
+          profile: profile.value,
+          product_template_id: +params.id,
+          product_template_material: selectedProductList,
+          delete: removeIds,
+          create: newItems,
+          update: updatedItems,
+        };
+
+        const validObject = {
+          item,
+          profile: data.profile,
+          product_template_material: selectedProductList.map(item => ({
+            material_id: +item.material_id,
+            quantity: item.quantity,
+          })),
+        };
+
+        if (isSimilarObject(originalProductInfo, validObject)) {
+          dispatch(alertActions.openAlert({
+            type: ALERT.FAILED_VALUE,
+            title: 'Action Failed',
+            description: INVENTORY.MESSAGE_ERROR.NO_CHANGED
+          }));
+        } else {
+          handleUpdateProduct(data);
+        }
+      }
+
+    } else {
+      dispatchAlertWithPermissionDenied()
+    }
+  };
+
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
+  const dispatchAlertTemplateUsed = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: INVENTORY.MESSAGE_ERROR.TEMPLATE_USED
+    }));
+  };
+
+  const getRemoveIds = () => {
+    return productDetail.product_template_material
       .filter(item => !selectedProductList.find(selectedItem => selectedItem.material_id === item.material_id))
       .map(item => item.material_id);
+  };
 
-    const newItems = selectedProductList
-      .filter(selectedItem => !productDetail.product_template_material.find(item => item.material_id === selectedItem.material_id));
+  const getNewItems = () => {
+    return selectedProductList
+      .filter(selectedItem => !productDetail.product_template_material.find(item => item.material_id === selectedItem.material_id))
+      .map(item => ({
+        material_id: +item.material_id,
+        quantity: item.quantity,
+      }));
+  };
 
-    const updatedItems = selectedProductList
+  const getUpdatedItems = () => {
+    return selectedProductList
       .filter(selectedItem => {
         const matchingItem = productDetail.product_template_material.find(item => item.material_id === selectedItem.material_id);
         return matchingItem && matchingItem.quantity !== selectedItem.quantity;
-      });
-
-    const data = {
-      item,
-      id: +params.id,
-      profile: profile.value,
-      product_template_id: +params.id,
-      product_template_material: selectedProductList,
-      delete: removeIds,
-      create: newItems.map(item => ({
-        material_id: +item.material_id,
-        quantity: item.quantity,
-      })),
-      update: updatedItems.map(item => ({
-        material_id: +item.material_id,
-        quantity: item.quantity,
-      })),
-    };
-
-    const validObject = {
-      item,
-      profile: data.profile,
-      product_template_material: selectedProductList.map(item => ({
-        material_id: +item.material_id,
-        quantity: item.quantity,
-      })),
-    };
-
-    if (!isSimilarObject(originalProductInfo, validObject)) {
-      const errors = validateUpdateProductTemplate(data);
-      if (Object.keys(errors).length > 0) {
-        setMessageError(errors);
-      } else {
-        dispatch(productActions.updateProductDetail({ ...data, onUpdatedSuccess, onError }));
-        setMessageError({});
-        setIsDisableSubmit(true);
-      }
-    } else {
-      setMessage({
-        failed: INVENTORY.MESSAGE_ERROR.NO_CHANGED
       })
+      .map(item => ({
+        material_id: +item.material_id,
+        quantity: item.quantity,
+      }));
+  };
+
+  const handleUpdateProduct = (data) => {
+    const errors = validateUpdateProductTemplate(data);
+    if (Object.keys(errors).length > 0) {
+      setMessageError(errors);
+    } else {
+      dispatch(productActions.updateProductDetail({ ...data, onUpdatedSuccess, onError }));
+      setMessageError({});
+      setIsDisableSubmit(true);
     }
   };
 
   const renderProductList = () => {
     return selectedProductList.map((data, index) => {
-      const isChecked = tempoSelectProductIds?.includes(data.material_id)
+      const isChecked = tempoSelectProductIds.includes(data.material_id)
       const profileName = INVENTORY.PROFILES[data.profile]?.label
       return (
         <tr key={index} className={isChecked ? 'templateGroupTable__selected' : ''}>
@@ -504,7 +625,7 @@ const TemplateForm = () => {
     })
   }
 
-  const renderTableList = () => {
+  const renderMaterialList = () => {
     return list.data?.map((data, index) => {
       const isChecked = !!tempoSelectedList.find(item => item.id === data.id)
       const profileName = INVENTORY.PROFILES[data.profile]?.label
@@ -543,14 +664,6 @@ const TemplateForm = () => {
 
   return (
     <div className="templateForm">
-      {!isEmptyObject(message) &&
-        <div className="templateForm__successMessage">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <div className="templateForm__headlineBar">
         <HeadlineBar
           buttonName={isEditMode ? 'Save' : 'Create'}
@@ -562,7 +675,7 @@ const TemplateForm = () => {
       <div className="templateForm__content">
         <div className="templateGroup">
           <div className={`inventoryCell${messageError?.profile ? ' inventoryCell--error' : ''}`}>
-            <div className="inventoryCell__item inventoryCell__item--itemPlate">
+            <div className={`inventoryCell__item${(isTemplateUsed || isEditAllowed) ? ' inventoryCell__item--disabled' : ''} inventoryCell__item--itemPlate`}>
               <InputBoxForm
                 value={item}
                 keyValue="item"
@@ -573,7 +686,7 @@ const TemplateForm = () => {
                 handleInputChange={handleInputChange}
               />
             </div>
-            <div className="inventoryCell__item inventoryCell__item--profilePlate">
+            <div className={`inventoryCell__item${(isTemplateUsed || isEditAllowed) ? ' inventoryCell__item--disabled' : ''} inventoryCell__item--profilePlate`}>
               <div className="inventoryCell__item--select">
                 <div className="inventoryCell__item--label">
                   Profile
@@ -592,20 +705,20 @@ const TemplateForm = () => {
                 />
               </div>
               {messageError?.profile && (
-                <div className="inventoryCell__item--messageSelect">{messageError?.profile}</div>
+                <div className="inventoryCell__item--messageSelect">{messageError.profile}</div>
               )}
             </div>
           </div>
         </div>
         <div className="templateGroup templateGroup--selected">
           {messageError?.create && (
-            <div className="templateGroup__errorMessage">{messageError?.create}</div>
+            <div className="templateGroup__errorMessage">{messageError.create}</div>
           )}
           {messageError?.remove_item && (
-            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError?.remove_item}</div>
+            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError.remove_item}</div>
           )}
           {messageError?.failed && (
-            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError?.failed}</div>
+            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError.failed}</div>
           )}
           <div className="templateGroup__bar">
             <div className="templateGroup__bar--title">
@@ -642,10 +755,10 @@ const TemplateForm = () => {
         </div>
         <div className="templateGroup">
           {messageError?.select_item && (
-            <div className="templateGroup__errorMessage">{messageError?.select_item}</div>
+            <div className="templateGroup__errorMessage">{messageError.select_item}</div>
           )}
           {messageError?.add_item && (
-            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError?.add_item}</div>
+            <div className="templateGroup__errorMessage templateGroup__errorMessage--right">{messageError.add_item}</div>
           )}
           <div className="templateGroup__tableAction">
             <TableActionTemplate
@@ -675,7 +788,7 @@ const TemplateForm = () => {
                 </tr>
               </thead>
               <tbody>
-                {renderTableList()}
+                {renderMaterialList()}
               </tbody>
             </table>
           </div>
@@ -694,6 +807,7 @@ const TemplateForm = () => {
       {isShowFilterModal && (
         <FilterModal
           isDocumentFilter={true}
+          isHiddenSortOption={true}
           filterTitle="SORT CATEGORY BY"
           submitting={submitting}
           searchText={searchText || ''}

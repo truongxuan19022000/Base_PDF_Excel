@@ -1,0 +1,15 @@
+import { sendDelete, sendGet, sendPost } from './index'
+
+export const getPurchaseList = (params) => sendGet('admin/purchase-orders', params)
+export const deletePurchase = (params) => sendDelete('admin/purchase-orders/delete', params)
+export const deleteMultiPurchase = (params) => sendPost('admin/purchase-orders/multi-delete', params)
+export const getPurchaseDetail = (id) => sendGet(`admin/purchase-orders/${id}/edit`)
+export const createPurchase = (params) => sendPost('admin/purchase-orders/create', params)
+export const updateShippingFee = (params) => sendPost('admin/purchase-orders/update-shipping', params)
+export const updateDiscount = (params) => sendPost('admin/purchase-orders/update-discount', params)
+export const updateTax = (params) => sendPost('admin/purchase-orders/update-tax', params)
+export const handleOrderChange = (params) => sendPost('admin/purchase-orders/handle-items', params)
+export const updatePurchase = (params) => sendPost('admin/purchase-orders/update', params)
+export const downloadPurchasePDF = (params) => sendGet('admin/purchase-orders/export-pdf', params)
+export const exportPurchaseCSV = (params) => sendGet('admin/purchase-orders/export', params)
+export const updatePurchaseStatus = (params) => sendPost('admin/purchase-orders/update-status', params)

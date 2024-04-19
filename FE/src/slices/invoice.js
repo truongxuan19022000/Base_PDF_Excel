@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import { useInjectReducer, useInjectSaga } from 'src/utils/redux-injector';
 
 import invoiceSaga from 'src/sagas/invoice';
+import dayjs from 'dayjs';
 
 export const initialState = {
   list: {},
@@ -35,38 +36,47 @@ const slice = createSlice({
         if (state.list.data.length >= 10) {
           state.list.data.pop();
         }
-        state.list.data.unshift(action.payload);
+        state.list.data.unshift({
+          ...action.payload,
+          issue_date: action.payload.origin_date
+        });
         state.list.total++
       }
     },
     updateInvoice(state, action) { },
     updateInvoiceSuccess(state, action) {
-      if (action?.payload && state.list?.data && state.detail?.invoice) {
-        const invoiceIndex = state.list.data.findIndex(item => item.id === action.payload?.invoice_id);
-        if (invoiceIndex !== -1) {
-          state.list.data = state.list.data?.map(item =>
-            item.id === action.payload?.invoice_id ? action.payload : item
-          );
-        }
-        const updatedData = {
-          id: action.payload?.invoice_id,
-          invoice_no: action.payload?.invoice_no,
-          quotation_id: action.payload?.quotation_id,
-          quotation: {
-            id: action.payload?.quotation_id,
-            reference_no: action.payload?.reference_no,
-            customer_id: action.payload?.customer_id,
-            name: action.payload?.customer_name,
-            price: action.payload?.price,
-            description: action.payload?.description,
+      if (action?.payload && state.detail?.invoice) {
+        const payload = action.payload;
+        const { invoice } = state.detail;
+
+        if (state.list?.data) {
+          const invoiceIndex = state.list.data.findIndex(item => item.id === payload.invoice_id);
+          if (invoiceIndex !== -1) {
+            state.list.data = state.list.data?.map(item =>
+              item.id === payload.invoice_id ? payload : item
+            );
           }
         }
-        state.detail.invoice = updatedData;
+
+        const updatedInvoice = {
+          ...invoice,
+          invoice_no: payload.invoice_no,
+          quotation: payload.quotation,
+          quotation_id: payload.quotation_id,
+          issue_date: dayjs(payload.issue_date).format('DD/MM/YYYY'),
+        }
+
+        if (payload.payment_received_date) {
+          updatedInvoice.payment_received_date = dayjs(payload.payment_received_date).format('DD/MM/YYYY')
+        }
+
+        state.detail.invoice = updatedInvoice;
+        state.detail.activities = [payload.logsInfo, ...state.detail.activities];
       }
     },
     clearInvoiceList(state, action) {
       state.list.data = {};
-      state.fetched = true;
+      state.fetched = false;
     },
     multiDeleteInvoice() {
     },
@@ -77,15 +87,33 @@ const slice = createSlice({
       }
       state.fetched = false;
     },
-    getExportInvoiceCSV() { },
-    getExportInvoiceCSVSuccess(state, action) {
-      if (action?.payload) {
-        state.csvData = action?.payload;
-      }
-    },
     clearCSVData(state) {
       state.csvData = {};
     },
+    resetFetchedList(state) {
+      state.fetched = false;
+    },
+    clearInvoiceDetail(state, action) {
+      state.detail = {}
+    },
+    getExportInvoiceCSV() { },
+    getExportInvoiceCSVSuccess(state, action) {
+      if (state.detail?.activities && action?.payload) {
+        state.detail.activities = [action.payload, ...state.detail.activities];
+      }
+    },
+    downloadInvoicePDF() { },
+    downloadInvoicePDFSuccess(state, action) {
+      if (state.detail?.activities && action?.payload) {
+        state.detail.activities = [action.payload, ...state.detail.activities];
+      }
+    },
+    updateDetailTax(state, action) {
+      if (state.detail?.invoice?.tax && action?.payload) {
+        state.detail.invoice.tax = action.payload;
+      }
+    },
+    sendInvoicePDF(state, action) { }
   },
 })
 

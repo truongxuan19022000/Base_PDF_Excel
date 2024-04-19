@@ -6,9 +6,9 @@ import SelectRoleForm from '../SelectRoleForm'
 const UserForm = ({
   setRole,
   password,
-  name = 'NA',
-  email = 'NA',
-  username = 'NA',
+  name = '',
+  email = '',
+  username = '',
   role = {},
   thumb = null,
   roleList = [],
@@ -19,12 +19,15 @@ const UserForm = ({
   setIsDisableSubmit,
   handlePreviewThumb,
   handleGeneratePassword,
+  isEditAllowed = false,
+  isOwnerProfile = false,
+  confirmedPassword = '',
 }) => {
 
   return (
     <div className="userForm">
-      <div className="box">
-        <div className="box__left">
+      <div className={`box${(isEditAllowed || isOwnerProfile) ? '' : ' box--disabled'}`}>
+        <div className="box__innerBox">
           <div className="box__title">Name</div>
           <input
             value={name || ''}
@@ -38,9 +41,9 @@ const UserForm = ({
             <div className="box__message">{messageError?.name}</div>
           )}
         </div>
-        <div className="box__right">
+        <div className="box__innerBox">
           <div className="box__title">Role</div>
-          <div className={`box__role${messageError?.role_id ? ' box__role--error' : ''}`}>
+          <div className={`box__role${messageError?.role_id ? ' box__role--error' : ''}${(!isEditAllowed && isOwnerProfile) ? ' box__role--disabled' : ''}`}>
             <SelectRoleForm
               role={role}
               setRole={setRole}
@@ -48,46 +51,31 @@ const UserForm = ({
               submitting={submitting}
               messageError={messageError?.role_id}
               setIsDisableSubmit={setIsDisableSubmit}
+              isDisabled={!isEditAllowed && isOwnerProfile}
             />
           </div>
           {messageError?.role_id && (
-            <div className="box__message">{messageError?.role_id}</div>
+            <div className="box__message">{messageError.role_id}</div>
           )}
         </div>
       </div>
-      <div className="box">
-        <div className="box__left">
+      <div className={`box${(isEditAllowed || isOwnerProfile) ? '' : ' box--disabled'}`}>
+        <div className="box__innerBox">
           <div className="box__title">Username</div>
           <input
             value={username || ''}
             type="text"
-            className={`box__input${messageError?.username ? ' box__input--error' : ''}`}
+            className={`box__input${messageError?.username ? ' box__input--error' : ''}${(!isEditAllowed && isOwnerProfile) ? ' box__input--disabled' : ''}`}
             placeholder="Username"
             onChange={(e) => handleInputChange('username', e.target.value)}
             disabled={submitting}
+            readOnly={!isEditAllowed && isOwnerProfile}
           />
           {messageError?.username && (
-            <div className="box__message">{messageError?.username}</div>
+            <div className="box__message">{messageError.username}</div>
           )}
         </div>
-        <div className="box__right">
-          <div className="box__title">Password</div>
-          <input
-            value={password || ''}
-            type="text"
-            className={`box__input${messageError?.password ? ' box__input--error' : ''}`}
-            placeholder="Password"
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            disabled={submitting}
-          />
-          <div className="box__generator" onClick={handleGeneratePassword}>Generate</div>
-          {messageError?.password && (
-            <div className="box__message">{messageError?.password}</div>
-          )}
-        </div>
-      </div>
-      <div className="box">
-        <div className="box__left">
+        <div className="box__innerBox">
           <div className="box__title">Email</div>
           <input
             value={email || ''}
@@ -98,13 +86,45 @@ const UserForm = ({
             disabled={submitting}
           />
           {messageError?.email && (
-            <div className="box__message">{messageError?.email}</div>
+            <div className="box__message">{messageError.email}</div>
+          )}
+        </div>
+      </div>
+      <div className={`box${(isEditAllowed || isOwnerProfile) ? '' : ' box--disabled'}`}>
+        <div className="box__innerBox">
+          <div className="box__title">Set new password</div>
+          <div className={`box__inputBox${messageError?.password ? ' box__inputBox--error' : ''}`}>
+            <input
+              value={password || ''}
+              type="text"
+              placeholder="Password"
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              disabled={submitting}
+            />
+            <div className="box__generator" onClick={handleGeneratePassword}>Generate</div>
+          </div>
+          {messageError?.password && (
+            <div className="box__message">{messageError.password}</div>
+          )}
+        </div>
+        <div className="box__innerBox">
+          <div className="box__title">Confirm new password</div>
+          <input
+            value={confirmedPassword || ''}
+            type="text"
+            className={`box__input${messageError?.confirm_new_password ? ' box__input--error' : ''}`}
+            placeholder="Password"
+            onChange={(e) => handleInputChange('confirm_new_password', e.target.value)}
+            disabled={submitting}
+          />
+          {messageError?.confirm_new_password && (
+            <div className="box__message">{messageError.confirm_new_password}</div>
           )}
         </div>
       </div>
       <div className="thumb">
         <div className="thumb__title">Profile Picture (optional)</div>
-        <div className="thumb__box">
+        <div className={`thumb__box${(isEditAllowed || isOwnerProfile) ? '' : ' thumb__box--disabled'}`}>
           <ThumbnailForm
             submitting={submitting}
             thumb={thumb || null}

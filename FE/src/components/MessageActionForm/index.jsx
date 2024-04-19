@@ -64,7 +64,6 @@ const MessageActionForm = ({
     const errors = validateMessageAction(data)
     if (Object.keys(errors).length > 0) {
       setMessageError(errors)
-      setIsDisableSubmit(true)
     } else {
       dispatch(actions.multiStarredMessage({ ...data, onSuccess, onError }))
       setIsDisableSubmit(true)
@@ -83,7 +82,6 @@ const MessageActionForm = ({
     const errors = validateMessageAction(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
       dispatch(actions.multiDeleteMessage({ ...data, onSuccess, onError }));
       setMessageError({})

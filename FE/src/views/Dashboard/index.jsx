@@ -1,36 +1,33 @@
 import React from 'react'
+import { useSelector } from 'react-redux'
 
-import { DASHBOARD } from 'src/constants/config'
+import { ROLES } from 'src/constants/config'
+import { isEmptyObject } from 'src/helper/helper'
 
-import MessageBox from 'src/components/MessageBox'
-import RevenueDiagram from 'src/components/RevenueDiagram'
-import CustomerDiagram from 'src/components/CustomerDiagram'
+import NonAdminDashboard from './NonAdminDashboard'
+import AdminDashboard from './AdminDashboard'
 
 const Dashboard = () => {
+  const userData = useSelector((state) => state.user?.user)
 
-  const renderSummary = () => (
-    DASHBOARD.SUMMARY.map((item, index) => (
-      <div key={index} className="dashboardBox">
-        <div className="dashboardBox__icon"><img src={item.iconUrl} alt={item.iconName} /></div>
-        <div className="dashboardBox__value">{item.value}</div>
-        <div className="dashboardBox__title">{item.title}</div>
-      </div>
-    ))
-  )
+  const renderBody = () => {
+    if (isEmptyObject(userData)) {
+      return null;
+    } else {
+      switch (userData.role_id) {
+        case ROLES.ADMIN_ID:
+          return <AdminDashboard />;
+        default:
+          return <NonAdminDashboard />;
+      }
+    }
+  }
 
   return (
     <div className="dashboard">
-      <div className="dashboard__left">
-        <div className="dashboard__summary">
-          {renderSummary()}
-        </div>
-        <div className="dashboard__content">
-          <RevenueDiagram />
-          <CustomerDiagram />
-        </div>
-      </div>
-      <div className="dashboard__right">
-        <MessageBox />
+      <div className="dashboard__header">Welcome back, {userData?.name}</div>
+      <div className="dashboard__body">
+        {renderBody()}
       </div>
     </div>
   )

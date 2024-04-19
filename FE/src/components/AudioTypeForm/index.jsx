@@ -16,7 +16,7 @@ const AudioTypeForm = ({
         />
       )}
       {message.content?.type === 'audio' &&
-        <audio preload="metadata" controls="controls" id="audioElement">
+        <audio key={message.id} preload="metadata" controls="controls" id={`audioElement_${message.id}`}>
           <source
             src={message.content?.audio?.link || ''}
             alt="message audio"

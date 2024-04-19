@@ -1,0 +1,52 @@
+.filterDate {
+  &__filterWrapper {
+    position: relative;
+    cursor: pointer;
+  }
+
+  &__filter {
+    width: 112px;
+    height: 24px;
+    border: 1px solid #bdbdbd;
+    border-radius: 16px;
+    color: #343a40;
+    font-size: 14px;
+    padding: 0 11px;
+    align-items: center;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+
+    img {
+      width: 8px;
+    }
+  }
+
+  &__filterBox {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: fit-content;
+    border: 0.5px solid rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    top: 30px;
+    left: 0;
+  }
+
+  &__filterItem {
+    padding: 7px 11px 4px 11px;
+    font-size: 13px;
+    color: #000;
+
+    &--select {
+      background-color: #ede5d8;
+    }
+
+    &:hover {
+      background-color: #ede5d8;
+    }
+  }
+}

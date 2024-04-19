@@ -1,6 +1,7 @@
 import React from 'react'
 
 import SelectSearchForm from '../SelectSearchForm'
+import PriceInputForm from '../InputForm/PriceInputForm'
 
 const NewGlassForm = ({
   data = {},
@@ -12,6 +13,8 @@ const NewGlassForm = ({
   setSelectedGlassItem,
   handleTypeSearchChange,
   setSelectedGlassTitle,
+  handleAmountChange,
+  handleClickOutAmount,
 }) => {
   return (
     <div className="createProductItemModal__body">
@@ -140,13 +143,13 @@ const NewGlassForm = ({
             UNIT PRICE
           </div>
           <div className={`cellBox__item--inputBox${data.messageError?.unit_price ? ' cellBox__item--error' : ''}`}>
-            <div className="cellBox__item--unit">$</div>
-            <input
-              value={data.unitPrice || ''}
-              type="number"
-              placeholder="0.00"
-              className="cellBox__item--inputUnitPrice"
-              onChange={(e) => handleInputChange('unit_price', e.target.value)}
+            <div className="cellBox__item--unitMoney">$</div>
+            <PriceInputForm
+              inputValue={data.unitPrice}
+              field="unit_price"
+              placeholderTitle="0.00"
+              handleAmountChange={handleAmountChange}
+              handleClickOutAmount={handleClickOutAmount}
             />
             <span className="cellBox__item--unit">/m²</span>
           </div>
@@ -155,6 +158,9 @@ const NewGlassForm = ({
           )}
         </div>
       </div>
+      {data.messageError?.message &&
+        <div className="cellBox__message">{data.messageError.message}</div>
+      }
     </div>
   )
 }

@@ -27,8 +27,7 @@
 @import "customerDetail";
 @import "customerDiagram";
 @import "customerForm";
-@import "customerInfo";
-@import "customerInfoModal";
+@import "customerDetailTab";
 @import "customerResult";
 @import "emoji";
 @import "filterModal";
@@ -49,7 +48,6 @@
 @import "messageBox";
 @import "msgActionForm";
 @import "pagination";
-@import "paymentRecord";
 @import "permissionForm";
 @import "popoverMessage";
 @import "sectionItemModal";
@@ -79,7 +77,6 @@
 @import "quotationNote";
 @import "selectNoteForm";
 @import "tabQuotation";
-@import "sectionItemCreateModal";
 @import "sectionItemSelectForm";
 @import "selectQuotationForm";
 @import "quotationSectionDraggableItem";
@@ -104,6 +101,25 @@
 @import "createProductItemModal";
 @import "selectSearchForm";
 @import "itemDetailForm";
+@import "phoneCodeForm";
+@import "customerClaim";
+@import "editClaimModal";
+@import "revenueClaim";
+@import "claimBottom";
+@import "filterScrapModal";
+@import "purchaseOrder";
+@import "gstModal";
+@import "orderBottom";
+@import "alertForm";
+@import "createPurchase";
+@import "dateForm";
+@import "discountModal";
+@import "uploadFileModal";
+@import "latestQuotation";
+@import "filterDate";
+@import "confirmSend";
+@import "confirmReject";
+@import "claimAmountModal";
 
 //Import scss file of view screen
 @import "createQuotation";
@@ -132,3 +148,12 @@
 @import "quotationBottom";
 @import "addItemWindow";
 @import "addItemForm";
+@import "claims";
+@import "createClaim";
+@import "tabClaim";
+@import "scrap";
+@import "editScrap";
+@import "vendor";
+@import "vendorDetail";
+@import "createVendor";
+@import "purchaseOrderDetail";

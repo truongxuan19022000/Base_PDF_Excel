@@ -1,19 +1,30 @@
 .csDocument {
   width: 100%;
   height: 100%;
-  position: relative;
   padding: 23px 32px;
+  max-height: calc(100vh - 179px);
+  overflow: auto;
+  position: relative;
 
   &__actionBar {
     width: 100%;
     padding-bottom: 19px;
   }
 
+  &__divider {
+    width: 100%;
+    position: sticky;
+    top: 0px;
+    border: 0.5px solid white;
+    z-index: 2;
+  }
+
   &__table {
     width: 100%;
     position: relative;
-    max-height: 500px;
     overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
 
     .csDocumentTable {
       width: 100%;
@@ -22,10 +33,6 @@
       thead {
         height: 60px;
         z-index: 1;
-
-        tr {
-          border: 1px solid $color_black3;
-        }
 
         th {
           position: sticky;
@@ -40,7 +47,7 @@
       tbody {
         tr {
           transition: 0.3s all ease-in;
-          border: 1px solid $color_black3;
+          border-top: 1px solid $color_black3;
         }
       }
 
@@ -82,15 +89,19 @@
         }
 
         &--file {
-          width: 25%;
+          width: 24.7%;
         }
 
         &--type {
-          width: 21%;
+          width: 13.7%;
+        }
+
+        &--reference {
+          width: 26.9%;
         }
 
         &--upload {
-          width: 24%;
+          width: 16.1%;
         }
       }
 
@@ -110,12 +121,9 @@
   }
 
   &__paginate {
-    width: 100%;
     position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    top: 615px;
+    width: 100%;
+    top: 768px;
     left: 0;
   }
 

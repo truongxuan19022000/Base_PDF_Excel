@@ -9,6 +9,7 @@ import SpinnerLoading from '../SpinnerLoading';
 import ClickOutSideWrapper from 'src/hook/ClickOutSideWrapper';
 
 const SelectSearchForm = ({
+  borderStyle = '',
   searchText = '',
   messageError = '',
   selectedItemTitle = '',
@@ -25,6 +26,7 @@ const SelectSearchForm = ({
   setIsInputChanged,
   setIsDisableSubmit,
   handleTypeSearchChange,
+  isDisabledChange = false,
 }) => {
   const [data, setData] = useState([]);
   const [hasMore, setHasMore] = useState(true);
@@ -66,11 +68,13 @@ const SelectSearchForm = ({
   };
 
   const handleSelectItem = (item) => {
+    if (isDisabledChange) return;
     setIsDisableSubmit(false)
     setSelectedItem(item)
     setIsShowItemList(false)
-    setSearchText(item.item)
+    setSearchText(item[displayProperty])
     setIsInputChanged(!isInputChanged)
+
   }
 
   const handleClickInputSearch = (e) => {
@@ -82,6 +86,7 @@ const SelectSearchForm = ({
   }
 
   const handleClickChangeItem = (selectedItemTitle) => {
+    if (isDisabledChange) return;
     if (selectedItemTitle.length > 0) {
       setSearchText(selectedItemTitle)
       setSelectedItemTitle('')
@@ -91,13 +96,15 @@ const SelectSearchForm = ({
 
   const handleClickClose = (e) => {
     e.stopPropagation()
+    if (isDisabledChange) return;
     setIsShowItemList(false)
     setSearchText('')
     setSelectedItemTitle('')
+    setSelectedItem({})
   }
 
   return (
-    <div className={`selectSearchForm${isShowTemplateList ? ' selectSearchForm--active' : ''}${messageError ? ' selectSearchForm--error' : ''}`}>
+    <div className={`selectSearchForm${borderStyle && ` selectSearchForm--${borderStyle}`}${isDisabledChange ? ' selectSearchForm--disabled' : ''}${isShowTemplateList ? ' selectSearchForm--active' : ''}${messageError ? ' selectSearchForm--error' : ''}`}>
       <div
         className="selectSearchForm__label"
         onClick={() => handleClickChangeItem(selectedItemTitle)}
@@ -115,6 +122,7 @@ const SelectSearchForm = ({
               value={searchText || ''}
               onChange={(e) => handleClickInputSearch(e)}
               autoFocus={searchText}
+              disabled={isDisabledChange}
             />
             {(isShowTemplateList && isSearching) && (
               <span className="selectSearchForm__action--spinner">
@@ -139,10 +147,10 @@ const SelectSearchForm = ({
       </div>
       {isShowTemplateList &&
         <ClickOutSideWrapper onClickOutside={() => setIsShowItemList(false)}>
-          <div className="selectSearchForm__list">
+          <div className={`selectSearchForm__list${borderStyle && ` selectSearchForm__list--${borderStyle}`}`}>
             {isSearching ? (
               <div className="selectSearchForm__option selectSearchForm__option--message">
-                Looking for template...
+                Looking for...
               </div>
             ) : (
               <>

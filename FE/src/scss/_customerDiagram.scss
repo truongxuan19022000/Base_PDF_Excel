@@ -1,17 +1,41 @@
-
 .customerDiagram {
-  width: 100%;
+  height: 320px;
   display: flex;
   flex-direction: column;
+  position: relative;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding-top: 1.5rem;
 
   &__header {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 14px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #453516CC;
+    margin-left: 21px;
+    text-transform: capitalize;
   }
 
   &__diagram {
-    width: 482px;
-    height: 306px;
+    height: 274px;
+    padding-left: 10px;
+    border-radius: 8px;
+  }
+
+  &__filter {
+    position: absolute;
+    top: 1.5rem;
+    right: 1rem;
+
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background: URL("../../public/icons/arrow_down.svg") no-repeat;
+      background-size: 10px 6px;
+      background-position: calc(100% - 8px) center;
+      border: 1px solid #bbb3b3;
+      border-radius: 16px;
+      padding: 4px 24px 4px 8px;
+    }
   }
 }

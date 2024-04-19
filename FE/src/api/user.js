@@ -11,3 +11,7 @@ export const multiDeleteUser = (params) => sendPost('admin/users/multi-delete', 
 export const getUser = () => sendGet('/admin/users/profile')
 export const logout = (params) => sendPost('/admin/logout', params)
 export const getExportUserCSV = (params) => sendGet('admin/users/export', params)
+export const getNotifications = (params) => sendGet('admin/notifications', params)
+export const updateNotificationsStatus = (params) => sendPost('admin/notifications/update', params)
+export const getMessages = (params) => sendGet('admin/whatsapp/conversations/latest-unread-message', params)
+export const updateMessageStatus = (params) => sendPost('admin/notifications/update', params)

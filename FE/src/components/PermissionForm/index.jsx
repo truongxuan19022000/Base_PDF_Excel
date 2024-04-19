@@ -1,32 +1,35 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+
 import { useRoleSlice } from 'src/slices/role'
+import { alertActions } from 'src/slices/alert'
+import { validatePermission } from 'src/helper/validation'
 import { isEmptyObject, normalizeString } from 'src/helper/helper'
-import { ACTIONS, ROLES } from 'src/constants/config'
+import { ACTIONS, ALERT, MESSAGE, PERMISSION, ROLES } from 'src/constants/config'
 
 import ToggleSwitch from '../ToggleSwitch'
 
 const PermissionForm = ({
+  id,
   roleName = '',
-  roleDetail = null,
-  messageError = null,
+  roleDetail = {},
+  messageError = {},
   isAdmin = false,
   isEditingRole = false,
-  isInputChanged = false,
-  setIsInputChanged,
-  handleInputChange,
   setMessageError,
+  handleInputChange,
 }) => {
   const { actions } = useRoleSlice()
 
   const dispatch = useDispatch()
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const initialRole = {
-    role_name: roleName || '',
-    role_setting: {}
-  }
+  const isEditAllowed = useMemo(() => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.ROLE, PERMISSION.ACTION.UPDATE)
+    return isAllowed
+  }, [permissionData])
 
-  const [roleSetting, setRoleSetting] = useState(initialRole?.role_setting);
+  const [roleSetting, setRoleSetting] = useState({});
 
   const permissionList = useMemo(() => {
     const permissionsByCategory = {
@@ -68,13 +71,37 @@ const PermissionForm = ({
     }
   }, [roleDetail])
 
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
   const toggleSetAllFeature = useCallback((keyCode, value) => {
-    if (normalizeString(roleName) === ROLES.ADMIN) {
-      setMessageError({
-        role_setting: 'Cannot change permissions of Admin.'
-      })
+    if (!isEditAllowed) {
+      dispatchAlertWithPermissionDenied()
+      return;
+    }
+
+    if (+id === ROLES.ADMIN_ID) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: 'Cannot change permissions of Admin.'
+      }));
+      return;
+    }
+    let roleCode = { ...roleSetting };
+    if (keyCode === ROLES.SCRAP_CODE) {
+      roleCode[keyCode] = {
+        ...roleCode[keyCode],
+        code: keyCode,
+        update: value,
+        delete: value,
+      };
     } else if (ROLES.CODE_HAVE_SEND_FEATURE.includes(keyCode)) {
-      const roleCode = { ...roleSetting };
       roleCode[keyCode] = {
         ...roleCode[keyCode],
         code: keyCode,
@@ -83,10 +110,7 @@ const PermissionForm = ({
         delete: value,
         send: value,
       };
-      setRoleSetting(roleCode);
-      setIsInputChanged(!isInputChanged);
     } else {
-      const roleCode = { ...roleSetting };
       roleCode[keyCode] = {
         ...roleCode[keyCode],
         code: keyCode,
@@ -94,16 +118,23 @@ const PermissionForm = ({
         update: value,
         delete: value,
       };
-      setRoleSetting(roleCode);
-      setIsInputChanged(!isInputChanged);
     }
-  }, [roleSetting, isInputChanged, roleName]);
+    setRoleSetting(roleCode);
+    setMessageError({})
+  }, [roleSetting, roleName, id, isEditAllowed]);
 
   const toggleChangePermission = useCallback((category, field, value) => {
-    if (normalizeString(roleName) === ROLES.ADMIN) {
-      setMessageError({
-        role_setting: 'Cannot change permissions of Admin.'
-      })
+    if (!isEditAllowed) {
+      dispatchAlertWithPermissionDenied()
+      return;
+    }
+
+    if (+id === ROLES.ADMIN_ID) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: 'Cannot change permissions of Admin.'
+      }));
     } else {
       setRoleSetting((prevRoleSetting) => ({
         ...prevRoleSetting,
@@ -112,9 +143,9 @@ const PermissionForm = ({
           [field]: value,
         },
       }));
-      setIsInputChanged(!isInputChanged);
+      setMessageError({})
     }
-  }, [roleSetting]);
+  }, [roleSetting, id, isEditAllowed]);
 
   const renderPermissions = () => {
     return (
@@ -148,16 +179,18 @@ const PermissionForm = ({
                     </div>
                   </div>
                   <div className="roleForm__body">
-                    <div className="roleForm__item">
-                      <div className="roleForm__feature">Create new {normalizeString(role.label)}</div>
-                      <ToggleSwitch
-                        index={index}
-                        keyCode={ACTIONS.NAME.CREATE}
-                        keyId={role.id}
-                        isChecked={roleSetting[role.code]?.create === ROLES.ACCEPTED}
-                        onChange={(e) => toggleChangePermission(role.code, ACTIONS.NAME.CREATE, e.target.checked ? ROLES.ACCEPTED : ROLES.NOT_ACCEPT)}
-                      />
-                    </div>
+                    {role.code !== ROLES.SCRAP_CODE &&
+                      <div className="roleForm__item">
+                        <div className="roleForm__feature">Create new {normalizeString(role.label)}</div>
+                        <ToggleSwitch
+                          index={index}
+                          keyCode={ACTIONS.NAME.CREATE}
+                          keyId={role.id}
+                          isChecked={roleSetting[role.code]?.create === ROLES.ACCEPTED}
+                          onChange={(e) => toggleChangePermission(role.code, ACTIONS.NAME.CREATE, e.target.checked ? ROLES.ACCEPTED : ROLES.NOT_ACCEPT)}
+                        />
+                      </div>
+                    }
                     <div className="roleForm__item">
                       <div className="roleForm__feature">Edit {normalizeString(role.label)}</div>
                       <ToggleSwitch
@@ -178,9 +211,9 @@ const PermissionForm = ({
                         onChange={(e) => toggleChangePermission(role.code, ACTIONS.NAME.DELETE, e.target.checked ? ROLES.ACCEPTED : ROLES.NOT_ACCEPT)}
                       />
                     </div>
-                    {ROLES.CODE_HAVE_SEND_FEATURE.includes(role.code) && (
+                    {!!ROLES.CODE_HAVE_SEND_FEATURE.includes(role.code) && (
                       <div className="roleForm__item">
-                        <div className="roleForm__feature">{role.title === 'customers' ? 'WhatsApp' : 'Send'} {normalizeString(role.label)}</div>
+                        <div className="roleForm__feature">Send {normalizeString(role.label)}</div>
                         <ToggleSwitch
                           index={index}
                           keyCode={ACTIONS.NAME.SEND}

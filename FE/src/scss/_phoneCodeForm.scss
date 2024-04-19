@@ -1,0 +1,123 @@
+.phoneCodeForm {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &--active {
+    border-radius: 6px 6px 0 0;
+  }
+
+  &__label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 11px;
+    cursor: pointer;
+
+    img {
+      width: 10px;
+      transition: 0.1s all ease-in;
+      user-select: none;
+    }
+  }
+
+  &__arrowDown {
+    &--rotate {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__action {
+    font-size: 16px;
+    font-weight: 400;
+    text-transform: capitalize;
+    user-select: none;
+
+    &--selected {
+      width: 100%;
+      color: #000000;
+    }
+
+    &--input {
+      width: 100%;
+      text-transform: capitalize;
+    }
+
+    &--spinner {
+      margin-right: 10px;
+    }
+  }
+
+  &__list {
+    width: calc(100% + 17px);
+    height: fit-content;
+    position: absolute;
+    top: 38px;
+    left: -1px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 0 6px;
+    border: 0.5px solid #00000033;
+    background-color: $color_white;
+    overflow-y: auto;
+    z-index: 2;
+
+    &--scroll {
+      height: 200px;
+      padding-bottom: 20px;
+    }
+
+    &--detail {
+      width: calc(100% + 14px);
+      left: -1px;
+    }
+
+    &--create {
+      width: calc(100% + 14px);
+    }
+
+    &--endMessageText {
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+    }
+  }
+
+  &__listWrapper {
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+  }
+
+  &__option {
+    width: 100%;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    padding: 5px 0 5px 15px;
+    color: #000000;
+    text-transform: capitalize;
+    user-select: none;
+    cursor: pointer;
+
+    &:last-child {
+      margin-bottom: 5px;
+    }
+
+    &:not(.selectCustomerForm__option--message):hover {
+      border-top: none;
+      border-bottom: none;
+      background-color: #ede5d8;
+    }
+
+    &--message {
+      text-transform: none;
+    }
+  }
+}

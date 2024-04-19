@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useHistory } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 
-import { INVENTORY } from 'src/constants/config'
+import { ALERT, INVENTORY, MESSAGE, PERMISSION } from 'src/constants/config'
+import { validatePermission } from 'src/helper/validation'
+import { alertActions } from 'src/slices/alert'
 
 import SelectForm from '../SelectForm'
 import SelectInventoryAction from '../SelectInventoryAction'
@@ -20,14 +23,19 @@ const TableAction = ({
   isShowFilterModal = false,
   isInventorySite = false,
   isShowFilter = true,
+  isScrap = false,
+  isShowCreateButton = true,
   setIsShowFilterModal,
   selectedInventoryAction = {},
   setSelectedInventoryAction,
   tableUnit = '',
   createURL = '',
   buttonTitle = '',
+  permissionKey = '',
 }) => {
   const history = useHistory()
+  const dispatch = useDispatch()
+  const permissionData = useSelector(state => state.user.permissionData)
 
   const [countUnit, setCountUnit] = useState(tableUnit)
 
@@ -35,7 +43,6 @@ const TableAction = ({
     onClickApply(actionType)
     setSelectedItem({})
   }
-
   useEffect(() => {
     if (selectedQuantity > 0) {
       setCountUnit(selectedQuantity > 1 ? `${tableUnit}s` : `${tableUnit}`)
@@ -46,7 +53,16 @@ const TableAction = ({
     if (redirectURL === 'handleUpload') {
       return
     } else {
-      history.push(redirectURL)
+      const isAllowed = validatePermission(permissionData, permissionKey, PERMISSION.ACTION.CREATE)
+      if (isAllowed) {
+        history.push(redirectURL)
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Action Deny',
+          description: MESSAGE.ERROR.AUTH_ACTION,
+        }))
+      }
     }
   }
 
@@ -83,7 +99,7 @@ const TableAction = ({
             <span>Filters</span>
           </div>
         )}
-        <div className="tableAction__select">
+        <div className={`tableAction__select${isScrap ? ' tableAction__select--scrap' : ''}`}>
           <SelectForm
             data={actionList}
             selectedItem={selectedItem}
@@ -110,12 +126,13 @@ const TableAction = ({
               />
             </div>
           ) : (
-            <div
-              className="tableAction__button--new"
-              onClick={() => redirectToCreatePage(createURL)}
-            >
-              + {buttonTitle}
-            </div>
+            isShowCreateButton &&
+              <div
+                className="tableAction__button--new"
+                onClick={() => redirectToCreatePage(createURL)}
+              >
+                + {buttonTitle}
+              </div>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 .createInvoice {
   width: 100%;
-  height: calc(100vh - 63px);
+  height: calc(100vh - 123px);
   display: flex;
   flex-direction: column;
 
@@ -21,6 +21,8 @@
     display: flex;
     flex-direction: column;
     gap: 30px;
+    overflow: auto;
+    padding-bottom: 50px;
 
     &--edit {
       padding-left: 32px;
@@ -30,6 +32,10 @@
   &__col {
     display: flex;
     gap: 74px;
+
+    &--disabled {
+      pointer-events: none;
+    }
   }
 
   &__formGroup {
@@ -37,6 +43,17 @@
     display: flex;
     flex-direction: column;
     gap: 7px;
+
+    &--address {
+      gap: 6px;
+      display: flex;
+      flex-direction: column;
+      width: 931px;
+    }
+
+    &--calender {
+      position: relative;
+    }
   }
 
   &__label {
@@ -54,18 +71,21 @@
     margin-bottom: 6px;
     border: 0.5px solid $color_black2;
 
+    &--fullWidth {
+      width: 100%;
+    }
+
     &:disabled {
-      background-color: #F4F4F4;
+      background-color: #f4f4f4;
     }
 
     &--textArea {
       width: 931px;
-      height: 184px;
-      max-height: 200px;
-      min-height: 140px;
+      height: 155px;
+      resize: none;
       padding-top: 13px;
       padding-left: 15px;
-      background-color: #F4F4F4;
+      background-color: #f4f4f4;
       stroke-width: 0.5px;
       stroke: #00000080;
     }
@@ -91,7 +111,7 @@
     font-weight: 400;
     border-radius: 6px;
     margin-bottom: 6px;
-    background-color: #F4F4F4;
+    background-color: #f4f4f4;
     border: 0.5px solid $color_black2;
     display: flex;
     align-items: center;
@@ -103,11 +123,59 @@
 
   &__error {
     color: red;
-    font-size: 13px;
   }
 
   &__activity {
     width: 335px;
     height: 100%;
+  }
+
+  &__phoneNumberWrapper {
+    width: 429px;
+    height: 40px;
+    font-size: 16px;
+    font-weight: 400;
+    border-radius: 6px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 0.5px solid $color_black2;
+    background-color: #f4f4f4;
+
+    input {
+      &:disabled {
+        background-color: transparent;
+      }
+    }
+  }
+
+  &__phoneCode {
+    height: 100%;
+    width: 88px;
+    padding-right: 15px;
+  }
+
+  &__divider {
+    width: 1px;
+    height: 25px;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+
+  &__phoneNumber {
+    width: 100%;
+    padding: 0 18px;
+  }
+
+  &__addressWrapper {
+    gap: 6px;
+  }
+
+  &__calenderIcon {
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    top: 39px;
+    right: 18px;
   }
 }

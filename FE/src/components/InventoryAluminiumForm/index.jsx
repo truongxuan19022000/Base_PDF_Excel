@@ -3,13 +3,13 @@ import React from 'react'
 import InputBoxForm from '../InputBoxForm'
 import InputSelectForm from '../InputSelectForm'
 import InventorySelectForm from '../InventorySelectForm'
+import PriceInputForm from '../InputForm/PriceInputForm'
 
 import { INVENTORY } from 'src/constants/config'
 
 const InventoryAluminiumForm = ({
   data = {},
   setProfile,
-  setPriceUnit,
   setWindowType,
   setWeightUnit,
   setLengthUnit,
@@ -17,11 +17,14 @@ const InventoryAluminiumForm = ({
   setMessageError,
   handleSideChange,
   handleInputChange,
-  setCoatingPriceUnit,
   handleBoxApplyCoating,
   isEditMode = false,
   isInputChanged = false,
+  isMaterialUsed = false,
   setIsInputChanged,
+  handleAmountChange,
+  handleClickOutAmount,
+  isEditAllowed = false,
 }) => {
   const renderSideOptions = () => {
     return INVENTORY.SIDE.map((item, index) => {
@@ -47,7 +50,7 @@ const InventoryAluminiumForm = ({
 
   const renderCoatingPriceStatus = () => {
     return INVENTORY.COATING_PRICE_STATUS.map((item, index) => {
-      const isChecked = !!data.coatingPriceStatus
+      const isChecked = data.coatingPriceStatus === INVENTORY.CHECKED
       return (
         <div
           key={index}
@@ -68,8 +71,8 @@ const InventoryAluminiumForm = ({
 
   return (
     <>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.item}
             keyValue="item"
@@ -83,7 +86,7 @@ const InventoryAluminiumForm = ({
             <div className="inventoryCell__item--message">{data.messageError.item}</div>
           }
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.code}
             keyValue="code"
@@ -98,8 +101,8 @@ const InventoryAluminiumForm = ({
           }
         </div>
       </div>
-      <div className={`inventoryCell${data.messageError?.profile ? ' inventoryCell--error' : ''}`}>
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${data.messageError?.profile ? ' inventoryCell--error' : ''}${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputBoxForm
             value={data.category}
             keyValue="category"
@@ -113,7 +116,7 @@ const InventoryAluminiumForm = ({
             <div className="inventoryCell__item--message">{data.messageError.category}</div>
           }
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <div className="inventoryCell__item--select">
             <div className="inventoryCell__item--label">
               Profile
@@ -136,8 +139,8 @@ const InventoryAluminiumForm = ({
           }
         </div>
       </div>
-      <div className={`inventoryCell${data.messageError?.door_window_type ? ' inventoryCell--error' : ''}`}>
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${data.messageError?.door_window_type ? ' inventoryCell--error' : ''}${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <div className="inventoryCell__item--label">
             Door / Window Type
           </div>
@@ -159,7 +162,7 @@ const InventoryAluminiumForm = ({
             <div className="inventoryCell__item--message">{data.messageError.door_window_type}</div>
           }
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <div className="inventoryCell__item--label">
             Inner / Outer Side
           </div>
@@ -168,8 +171,8 @@ const InventoryAluminiumForm = ({
           </div>
         </div>
       </div>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.weight}
             unit={data.weightUnit}
@@ -186,7 +189,7 @@ const InventoryAluminiumForm = ({
             setIsInputChanged={setIsInputChanged}
           />
         </div>
-        <div className="inventoryCell__item">
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.length}
             unit={data.lengthUnit}
@@ -204,8 +207,8 @@ const InventoryAluminiumForm = ({
           />
         </div>
       </div>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <InputSelectForm
             value={data.rawGirth}
             unit={data.rawGirthUnit}
@@ -221,50 +224,58 @@ const InventoryAluminiumForm = ({
             setIsInputChanged={setIsInputChanged}
           />
         </div>
-        <div className="inventoryCell__item">
-          <InputSelectForm
-            value={data.price}
-            unit={data.priceUnit}
-            setUnit={setPriceUnit}
-            defaultUnit="/pcs"
-            keyValue="price"
-            labelName="Price"
-            inputType="number"
-            selectKey="price_unit"
-            placeholderTitle="0.00"
-            unitData={INVENTORY.PRICE_UNIT}
-            messageError={data.messageError}
-            handleInputChange={handleInputChange}
-            isInputChanged={isInputChanged}
-            setIsInputChanged={setIsInputChanged}
-          />
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
+          <div className="inventoryCell__item--label">
+            Price
+          </div>
+          <div className={`inventoryCell__inputBox${data.messageError?.price ? ' inventoryCell__inputBox--error' : ''}`}>
+            <div className="inventoryCell__input">
+              <div className="inventoryCell__symbol">S$</div>
+              <PriceInputForm
+                inputValue={data.price}
+                field="price"
+                placeholderTitle="0.00"
+                handleAmountChange={handleAmountChange}
+                handleClickOutAmount={handleClickOutAmount}
+              />
+            </div>
+            <div className="inventoryCell__unitPrice">/pcs</div>
+          </div>
+          {data.messageError?.price &&
+            <div className="inventoryCell__message">
+              {data.messageError.price}
+            </div>
+          }
         </div>
       </div>
-      <div className="inventoryCell">
-        <div className="inventoryCell__item">
+      <div className={`inventoryCell${isEditAllowed ? '' : ' inventoryCell--disabled'}`}>
+        <div className={`inventoryCell__item${isMaterialUsed ? ' inventoryCell__item--disabled' : ''}`}>
           <div className="inventoryCell__item--label">
             Coating Price
           </div>
           <div className="inventoryCell__item--selectBox">
             {renderCoatingPriceStatus()}
-            {(data.coatingPriceStatus) &&
-              <InputSelectForm
-                value={data.coatingPrice}
-                unit={data.coatingPriceUnit}
-                setUnit={setCoatingPriceUnit}
-                selectKey='coating_price_unit'
-                keyValue="coating_price"
-                inputType="number"
-                defaultUnit="/m²"
-                placeholderTitle="0.00"
-                unitData={INVENTORY.COATING_PRICE_UNIT}
-                messageError={data.messageError}
-                handleInputChange={handleInputChange}
-                isInputChanged={isInputChanged}
-                setIsInputChanged={setIsInputChanged}
-              />
+            {data.coatingPriceStatus === INVENTORY.CHECKED &&
+              <div className={`inventoryCell__inputBox${data.messageError?.coating_price ? ' inventoryCell__inputBox--error' : ''}`}>
+                <div className="inventoryCell__input">
+                  <div className="inventoryCell__symbol">S$</div>
+                  <PriceInputForm
+                    inputValue={data.coatingPrice}
+                    field="coating_price"
+                    placeholderTitle="0.00"
+                    handleAmountChange={handleAmountChange}
+                    handleClickOutAmount={handleClickOutAmount}
+                  />
+                </div>
+                <div className="inventoryCell__unitPrice">/m²</div>
+              </div>
             }
           </div>
+          {data.messageError?.coating_price &&
+            <div className="inventoryCell__message">
+              {data.messageError.coating_price}
+            </div>
+          }
         </div>
       </div>
     </>

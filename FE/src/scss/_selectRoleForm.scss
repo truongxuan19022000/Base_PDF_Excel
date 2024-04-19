@@ -20,6 +20,10 @@
     border: 0.5px solid $color_red;
   }
 
+  &--disabled {
+    background-color: #f4f4f4;
+  }
+
   &__label {
     width: 100%;
     height: 100%;

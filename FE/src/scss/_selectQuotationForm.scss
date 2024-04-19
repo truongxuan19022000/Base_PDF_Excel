@@ -60,11 +60,11 @@
   }
 
   &__list {
-    width: calc(100% + 4px);
+    width: calc(100% + 2px);
     height: fit-content;
     position: absolute;
     top: 38px;
-    left: -2px;
+    left: -1px;
     display: flex;
     flex-direction: column;
     border-radius: 0 0 6px 6px;

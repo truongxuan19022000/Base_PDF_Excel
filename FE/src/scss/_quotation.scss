@@ -1,7 +1,7 @@
 .quotation {
-  padding: 35px 32px;
-  padding-bottom: 50px;
   position: relative;
+  padding: 35px 28px;
+  padding-bottom: 50px;
 
   &__message {
     position: absolute;
@@ -26,7 +26,6 @@
 
       &__wrapper {
         flex: 1;
-        min-width: 1035px;
         height: 100%;
         border-radius: 15px;
         display: flex;
@@ -55,6 +54,7 @@
 
       &__headerText {
         font-size: 15px;
+        font-weight: 500;
         color: #343a40;
       }
 
@@ -109,12 +109,12 @@
       }
 
       &__count {
-        width: 244px;
+        max-width: 244px;
         height: 100%;
         border-radius: 15px;
         display: flex;
         flex-direction: column;
-        background-color: $color_brown5;
+          -color: $color_brown5;
         padding: 24px;
       }
 
@@ -139,34 +139,37 @@
       }
 
       &__reportInnerText {
+        width: max-content;
         font-size: 22px;
         font-weight: bold;
         color: #121415;
+        padding-right: 12px;
       }
 
       &__status {
-        width: fit-content;
+        width: max-content;
         font-size: 14px;
         font-weight: 500;
         border-radius: 16px;
+        padding-right: 12px;
         text-transform: capitalize;
         color: rgba(0, 0, 0, 0.6);
         border: none;
 
-        &--partial {
+        &--pending {
           color: #bf8932;
         }
 
-        &--unpaid {
-          color: #b42318;
+        &--draft {
+          color: #1877de;
         }
 
-        &--paid {
+        &--approved {
           color: #027a48;
         }
 
         &--rejected {
-          color: #1877de;
+          color: #b42318;
         }
 
         &--cancelled {
@@ -192,9 +195,45 @@
     }
   }
 
+  .download {
+    position: absolute;
+    top: 95px;
+    right: 6%;
+    width: 80px;
+    height: 70px;
+    box-shadow: 0px 0px 2px 0px #00000040;
+    border-radius: 6px;
+    background-color: white;
+    z-index: 10;
+
+    &__option {
+      font-size: 16px;
+      padding: 8px 15px;
+      border-radius: 6px 6px 0 0;
+      transition: 0.3s all ease-in;
+      cursor: pointer;
+
+      &:last-child {
+        border-radius: 0 0 6px 6px;
+      }
+
+      &:hover {
+        background-color: #ede5d8;
+      }
+    }
+  }
+
   &__content {
     width: 100%;
     height: fit-content;
+  }
+
+  &__divider {
+    width: 100%;
+    position: sticky;
+    top: 0px;
+    border: 0.5px solid white;
+    z-index: 2;
   }
 
   &__table {
@@ -202,6 +241,9 @@
     margin-top: 12px;
     max-height: 480px;
     overflow-x: auto;
+    position: relative;
+    border-radius: 6px;
+    border: 1px solid $color_black3;
 
     .quotationTable {
       width: 100%;
@@ -211,10 +253,6 @@
         height: 60px;
         z-index: 1;
         background-color: $color_white;
-
-        tr {
-          border: 1px solid $color_black3;
-        }
 
         th {
           position: sticky;
@@ -229,7 +267,7 @@
       tbody {
         tr {
           transition: 0.3s all ease-in;
-          border: 1px solid $color_black3;
+          border-top: 1px solid $color_black3;
         }
       }
 
@@ -271,6 +309,9 @@
           height: 100%;
           display: flex;
           align-items: center;
+          overflow: unset;
+          gap: 21px;
+          padding-right: 10px;
         }
       }
 
@@ -285,11 +326,23 @@
         }
 
         &--reference {
-          width: 30%;
+          width: 23.6%;
         }
 
         &--customer {
-          width: 20%;
+          width: 19.7%;
+        }
+
+        &--amount {
+          width: 13.9%;
+        }
+
+        &--status {
+          width: 12.7%;
+        }
+
+        &--date {
+          width: 11.6%;
         }
       }
 
@@ -298,7 +351,7 @@
       }
 
       &__status {
-        width: fit-content;
+        width: max-content;
         padding: 5px 12px;
         font-size: 14px;
         font-weight: 500;
@@ -306,24 +359,24 @@
         text-transform: capitalize;
         border: none;
 
-        &--partial {
+        &--pending {
           color: #bf8932;
           background-color: rgba(235, 208, 145, 0.2);
         }
 
-        &--unpaid {
-          color: #b42318;
-          background-color: #fef3f2;
+        &--draft {
+          color: #1877de;
+          background-color: #e7f2fe;
         }
 
-        &--paid {
+        &--approved {
           color: #027a48;
           background-color: #ecfdf3;
         }
 
         &--rejected {
-          color: #1877de;
-          background-color: #e7f2fe;
+          color: #b42318;
+          background-color: #fef3f2;
         }
 
         &--cancelled {
@@ -340,7 +393,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    top: 814px;
+    top: 825px;
     left: 0;
   }
 }

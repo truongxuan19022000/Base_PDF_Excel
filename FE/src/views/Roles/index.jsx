@@ -2,17 +2,17 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 
+import { alertActions } from 'src/slices/alert'
 import { useRoleSlice } from 'src/slices/role'
-import { downloadCSVFromCSVString, isEmptyObject, normalizeString } from 'src/helper/helper'
-import { ACTIONS, LINKS, MESSAGE, PAGINATION } from 'src/constants/config'
-import { validateFilterRequest, validateRoleDeleteRequest } from 'src/helper/validation'
+import { normalizeString } from 'src/helper/helper'
+import { ACTIONS, ALERT, LINKS, MESSAGE, PAGINATION, PERMISSION, ROLES, USER } from 'src/constants/config'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
 
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
 import TableAction from 'src/components/TableAction'
 import TableButtons from 'src/components/TableButtons'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
-import ActionMessageForm from 'src/components/ActionMessageForm'
 
 const Roles = () => {
   const { actions } = useRoleSlice()
@@ -22,42 +22,57 @@ const Roles = () => {
 
   const list = useSelector(state => state.role.list)
   const fetched = useSelector(state => state.role.fetched)
-  const currentURL = history.location.pathname.split('/')[1]
   const roleList = useSelector(state => state.role.list?.data)
   const isRoleChange = useSelector(state => state.role.roleStatusChange)
-  const csvRoleData = useSelector(state => state.role.csvData)
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const [message, setMessage] = useState({})
   const [searchText, setSearchText] = useState('')
   const [messageError, setMessageError] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedUserInfo, setSelectedUserInfo] = useState(null)
   const [isChanged, setIsChanged] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [isErrorExist, setIsErrorExist] = useState(false)
   const [isSelectedAll, setIsSelectedAll] = useState(false)
   const [isDisableSubmit, setIsDisableSubmit] = useState(false)
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [totalDataNumber, setTotalDataNumber] = useState(0)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([]);
 
   const onSuccess = () => {
     setMessageError({})
     setSubmitting(false)
     setIsDisableSubmit(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
-      dispatch(actions.setRoleStatusChange())
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = list.current_page === list.last_page
+    const hasNoItem = list.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
     }
+
+    const params = {
+      page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+      search: normalizeString(searchText),
+      onError,
+    }
+
+    dispatch(actions.getCustomerList(params))
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -67,19 +82,19 @@ const Roles = () => {
   }, [fetched])
 
   useEffect(() => {
+    return () => {
+      dispatch(actions.resetFetchedList())
+    }
+  }, [])
+
+  useEffect(() => {
     if (isRoleChange) {
       dispatch(actions.getRoleList())
     }
   }, [isRoleChange])
 
   useEffect(() => {
-    if (currentURL) {
-      dispatch(actions.resetFetchedList())
-    }
-  }, [currentURL])
-
-  useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list?.total || 0)
     }
@@ -94,27 +109,11 @@ const Roles = () => {
   }, [selectedIds])
 
   useEffect(() => {
-    if (selectedIds?.length > 0) {
-      const foundUserInfos = roleList?.filter(user => selectedIds?.includes(user.id))
-      setSelectedUserInfo(foundUserInfos)
-    } else {
-      setSelectedUserInfo(roleList)
-    }
-  }, [selectedIds, roleList])
-
-  useEffect(() => {
-    if (messageError && Object.keys(messageError)?.length > 0) {
+    if (messageError && Object.keys(messageError).length > 0) {
       const timer = setTimeout(() => setMessageError({}), 3000);
       return () => clearTimeout(timer);
     }
   }, [messageError]);
-
-  useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [message])
 
   useEffect(() => {
     setMessageError({})
@@ -122,19 +121,16 @@ const Roles = () => {
   }, [isChanged])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
-    if (csvRoleData?.length > 0 && submitting) {
-      downloadCSVFromCSVString(csvRoleData, currentURL)
-      setSubmitting(false)
-      dispatch(actions.clearCSVRoleData())
-    }
-  }, [submitting, csvRoleData, currentURL])
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowConfirmDeleteModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -162,7 +158,7 @@ const Roles = () => {
 
     const params = {
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
     if (searchText?.length > 0) {
       params.search = normalizeString(searchText);
@@ -179,93 +175,131 @@ const Roles = () => {
   }
 
   const handleFilterSearchApply = (searchText) => {
-    if (isErrorExist || isDisableSubmit) return;
+    if (isDisableSubmit) return;
     const data = {
-      search: searchText || '',
+      search: normalizeString(searchText),
       page: PAGINATION.START_PAGE,
     };
     const errors = validateFilterRequest(data);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
-      dispatch(actions.getRoleList({ ...data, onSuccess, onError, }));
+      dispatch(actions.getRoleList({ ...data, onError, onSuccess }));
       setSelectedIds([]);
       setSubmitting(true);
-      setMessageError({});
       setIsDisableSubmit(true);
+      setMessageError({});
     }
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
 
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
+  const handleClickDelete = (data) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.ROLE, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      const isAdminRole = normalizeString(data.role_name) === ROLES.ADMIN;
+      const hasUser = data.number_user > 0;
+
+      if (isAdminRole) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: MESSAGE.ERROR.ADMIN_DELETE
+        }))
+      } else if (hasUser) {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          description: USER.MESSAGE_ERROR.HAS_USER
+        }))
+      } else {
+        setSelectedDeleteIds([data.id])
+        setIsShowConfirmDeleteModal(true)
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
-    }
-    setIsShowConfirmDeleteModal(true);
-  }
-
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      const data = { role_id: deleteInfo?.deleteIds || [] };
-      const errors = validateRoleDeleteRequest(data, roleList)
-      if (Object.keys(errors).length > 0) {
-        setMessageError(errors)
-        setIsShowConfirmDeleteModal(false)
-        setIsDisableSubmit(true)
-      } else {
-        dispatch(actions.multiDeleteRole({ ...data, onSuccess, onError }));
-        setMessageError({})
-        setIsDisableSubmit(true)
-        setSubmitting(true)
-        setSelectedIds([])
-      }
-    } else if (deleteInfo?.actionType === ACTIONS.NAME.DELETE && deleteInfo?.deleteIds) {
-      const data = { role_id: deleteInfo?.deleteIds || [] };
-      const errors = validateRoleDeleteRequest(data, roleList)
-      if (Object.keys(errors).length > 0) {
-        setMessageError(errors)
-        setIsShowConfirmDeleteModal(false)
-        setIsDisableSubmit(true)
-      } else {
-        dispatch(actions.multiDeleteRole({ ...data, onSuccess, onError }));
-        setSubmitting(true)
-        setMessageError({})
-        setIsDisableSubmit(true)
-        if (deleteInfo?.deleteIds) {
-          setSelectedIds(selectedIds?.filter(id => !deleteInfo?.deleteIds?.includes(id)))
-        }
-      }
+      dispatchAlertWithPermissionDenied()
     }
   }
+
+  const handleAcceptedDelete = () => {
+    if (isDisableSubmit) return;
+    if (selectedDeleteIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }))
+    } else {
+      dispatch(actions.multiDeleteRole({ role_id: selectedDeleteIds, onDeleteSuccess, onError }));
+      setIsShowConfirmDeleteModal(false)
+      setIsDisableSubmit(true)
+      setMessageError({})
+      setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
+    }
+  }
+
+  const handleCheckIncludeAdmin = (id, data) => {
+    const item = data.find(item => item.id === id);
+    const isDeletable = normalizeString(item.role_name) === ROLES.ADMIN
+    return isDeletable;
+  };
+
+  const handleCheckUserExistence = (id, data) => {
+    const item = data.find(item => item.id === id);
+    const isDeletable = item.number_user > 0
+    return isDeletable;
+  };
 
   const handleClickApply = (actionType) => {
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportRoleCSV({
-        search: normalizeString(searchText),
-        role_id: selectedIds || [],
-        onError
-      }))
-      setSubmitting(true)
-      setSelectedItem(null)
+    if (selectedIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION
+      }));
+    } else {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.ROLE, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          const isIncludeAdmin = selectedIds.find(id => handleCheckIncludeAdmin(id, list.data))
+          const isExistUser = selectedIds.every(id => handleCheckUserExistence(id, list.data))
+
+          if (isIncludeAdmin) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                USER.MESSAGE_ERROR.INCLUDE_ADMIN : USER.MESSAGE_ERROR.DELETE_ADMIN_ROLE
+            }))
+          } else if (isExistUser) {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                USER.MESSAGE_ERROR.INCLUDE_USER : USER.MESSAGE_ERROR.HAS_USER
+            }))
+          } else {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(true)
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportRoleCSV({
+          role_ids: selectedIds,
+          onError
+        }))
+        setSelectedItem(null)
+      }
     }
   }
 
@@ -277,7 +311,7 @@ const Roles = () => {
 
   const renderRoleItem = () => {
     return roleList?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       return (
         <tr key={index} className={isChecked ? 'roleTable__selected' : ''}>
           <td className="roleTable__td roleTable__td--checkbox">
@@ -303,7 +337,7 @@ const Roles = () => {
                 isShowEdit={true}
                 isShowDelete={true}
                 clickEdit={goToEditPage}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleClickDelete(data)}
               />
             </div>
           </td>
@@ -314,14 +348,6 @@ const Roles = () => {
 
   return (
     <div className="role">
-      {!isEmptyObject(message) &&
-        <div className="role__message">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <TableAction
         searchText={searchText}
         selectedItem={selectedItem}
@@ -336,6 +362,7 @@ const Roles = () => {
         createURL={LINKS.CREATE.ROLE}
         buttonTitle="New Role"
         tableUnit="role"
+        permissionKey={PERMISSION.KEY.ROLE}
       />
       <div className="role__table">
         {messageError?.user && (
@@ -376,7 +403,7 @@ const Roles = () => {
           deleteTitle="role"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleAcceptedDelete}
         />
       )}
     </div>

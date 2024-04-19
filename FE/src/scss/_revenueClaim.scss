@@ -1,0 +1,164 @@
+.revenueClaim {
+  height: 165px;
+  width: 100%;
+  display: flex;
+  gap: 13px;
+
+  &__wrapper {
+    flex: 1;
+    height: 100%;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: $color_brown5;
+    padding: 24px;
+  }
+
+  &__header {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+
+    img {
+      width: 34px;
+      height: 34px;
+    }
+  }
+
+  &__headerTitle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__headerText {
+    font-size: 15px;
+    font-weight: 500;
+    color: #343a40;
+  }
+
+  &__filterWrapper {
+    position: relative;
+    cursor: pointer;
+  }
+
+  &__filter {
+    width: 103px;
+    height: 24px;
+    border-radius: 16px;
+    color: #343a40;
+    font-size: 14px;
+    padding: 0 11px;
+    align-items: center;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+
+    img {
+      width: 8px;
+    }
+  }
+
+  &__filterBox {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: fit-content;
+    border: 0.5px solid rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    top: 30px;
+    left: 0;
+  }
+
+  &__filterItem {
+    padding: 7px 11px 4px 11px;
+    font-size: 13px;
+    color: #000;
+
+    &--select {
+      background-color: #ede5d8;
+    }
+
+    &:hover {
+      background-color: #ede5d8;
+    }
+  }
+
+  &__count {
+    flex: 1;
+    height: 100%;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    background-color: $color_brown5;
+    padding: 24px;
+  }
+
+  &__reportWrapper {
+    display: flex;
+    gap: 44px;
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  &__reportInner {
+    flex: 1;
+    border-right: 1px solid rgba(172, 172, 172, 0.5);
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    &:last-child {
+      border: none;
+    }
+  }
+
+  &__reportInnerText {
+    font-size: 22px;
+    font-weight: bold;
+    color: #121415;
+  }
+
+  &__status {
+    width: fit-content;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 16px;
+    text-transform: capitalize;
+    color: rgba(0, 0, 0, 0.6);
+    border: none;
+
+    &--pending {
+      color: #bf8932;
+    }
+
+    &--received {
+      color: #027a48;
+    }
+
+    &--cancelled {
+      color: #00000099;
+    }
+  }
+
+  &__icon {
+    margin-bottom: 14px;
+  }
+
+  &__value {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 500;
+    color: Gray;
+  }
+}

@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 
+import { useAlertSlice } from 'src/slices/alert'
 import { useProductSlice } from 'src/slices/product'
-import { validateFilterRequest } from 'src/helper/validation'
-import { ACTIONS, FILTER, INVENTORY, LINKS, MESSAGE, PAGINATION } from 'src/constants/config'
-import { downloadCSVFromCSVString, extractSecondNameInURL, isEmptyObject, normalizeString } from 'src/helper/helper'
+import { validateFilterRequest, validatePermission } from 'src/helper/validation'
+import { ACTIONS, ALERT, FILTER, INVENTORY, LINKS, MESSAGE, PAGINATION, PERMISSION, TEMPLATE } from 'src/constants/config'
+import { normalizeString } from 'src/helper/helper'
 
 import Checkbox from 'src/components/Checkbox'
 import Pagination from 'src/components/Pagination'
@@ -13,23 +14,19 @@ import TableAction from 'src/components/TableAction'
 import FilterModal from 'src/components/FilterModal'
 import TableButtons from 'src/components/TableButtons'
 import ConfirmDeleteModal from 'src/components/ConfirmDeleteModal'
-import ActionMessageForm from 'src/components/ActionMessageForm'
 
 const ProductTemplates = () => {
   const { actions } = useProductSlice()
+  const { actions: alertActions } = useAlertSlice()
 
   const history = useHistory()
   const dispatch = useDispatch()
 
-  const currentURL = history.location.pathname
-
   const list = useSelector(state => state.product.list)
-  const csvData = useSelector(state => state.product.csvData)
   const fetched = useSelector(state => state.product.fetched)
+  const permissionData = useSelector(state => state.user.permissionData)
 
-  const [message, setMessage] = useState({})
   const [searchText, setSearchText] = useState('')
-  const [deleteInfo, setDeleteInfo] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const [messageError, setMessageError] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -45,21 +42,41 @@ const ProductTemplates = () => {
   const [selectedInventoryAction, setSelectedInventoryAction] = useState({});
   const [isShowConfirmDeleteModal, setIsShowConfirmDeleteModal] = useState(false)
   const [currentPageNumber, setCurrentPageNumber] = useState(PAGINATION.START_PAGE)
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState([]);
 
   const onSuccess = () => {
     setMessageError({})
     setSubmitting(false)
     setIsDisableSubmit(false)
     setIsShowConfirmDeleteModal(false)
-    if (Object.keys(deleteInfo).length > 0) {
-      setDeleteInfo({})
+  }
+
+  const onDeleteSuccess = () => {
+    setMessageError('')
+    setIsDisableSubmit(false)
+    setIsShowConfirmDeleteModal(false)
+    const isLastPage = list.current_page === list.last_page
+    const hasNoItem = list.data.every(item => selectedDeleteIds.includes(item.id))
+    let tempoPageNumber = currentPageNumber;
+
+    // set to prev page if current page is last page and there has no item
+    if (isLastPage && hasNoItem) {
+      tempoPageNumber = currentPageNumber - 1;
     }
+    const params = {
+      page: +tempoPageNumber <= 0 ? 1 : +tempoPageNumber,
+      profile: selectedProfileFilter,
+      search: normalizeString(searchText),
+      onError,
+    }
+    dispatch(actions.getProductList(params))
+    setSelectedDeleteIds([])
   }
 
   const onError = (data) => {
     setSubmitting(false)
     setMessageError(data)
-    setIsDisableSubmit(true)
+    setIsDisableSubmit(false)
   }
 
   useEffect(() => {
@@ -69,14 +86,33 @@ const ProductTemplates = () => {
   }, [fetched])
 
   useEffect(() => {
-    if (list && Object.keys(list)?.length > 0) {
+    return () => {
+      dispatch(actions.resetFetchedList())
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setIsShowFilterModal(false);
+        setIsShowConfirmDeleteModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (list && Object.keys(list).length > 0) {
       setCurrentPageNumber(list.current_page)
       setTotalDataNumber(list.total || 0)
     }
   }, [list])
 
   useEffect(() => {
-    if (messageError && Object.keys(messageError)?.length > 0) {
+    if (messageError && Object.keys(messageError).length > 0) {
       const timer = setTimeout(() => setMessageError({}), 3000);
       return () => clearTimeout(timer);
     }
@@ -107,32 +143,10 @@ const ProductTemplates = () => {
   }, [selectedIds, list.data])
 
   useEffect(() => {
-    if (!isShowConfirmDeleteModal) {
-      setDeleteInfo({})
-      setIsDisableSubmit(false)
-    }
-  }, [isShowConfirmDeleteModal])
-
-  useEffect(() => {
-    if (!isEmptyObject(message)) {
-      const timer = setTimeout(() => setMessage({}), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [message])
-
-  useEffect(() => {
     setSubmitting(false)
     setMessageError(null)
     setIsDisableSubmit(false)
   }, [isInputChanged, isShowFilterModal])
-
-  useEffect(() => {
-    if (csvData?.length > 0 && submitting) {
-      downloadCSVFromCSVString(csvData, extractSecondNameInURL(currentURL))
-      setSubmitting(false)
-      dispatch(actions.clearCSVData())
-    }
-  }, [submitting, csvData, currentURL])
 
   const handleSelectAllItems = (isChecked) => {
     if (isChecked) {
@@ -155,7 +169,7 @@ const ProductTemplates = () => {
     setSelectedIds([])
     const params = {
       page: pageNumber || PAGINATION.START_PAGE,
-      onSuccess, onError,
+      onError,
     }
     if (selectedProfileFilter?.length > 0) {
       params.profile = selectedProfileFilter;
@@ -199,22 +213,20 @@ const ProductTemplates = () => {
     const errors = validateFilterRequest(params);
     if (Object.keys(errors).length > 0) {
       setMessageError(errors);
-      setIsDisableSubmit(true);
     } else {
-      dispatch(actions.getProductList({ ...params, onSuccess, onError, }));
+      dispatch(actions.getProductList({ ...params, onError, onSuccess }));
       if (params.category?.length > 0 || params.profile?.length > 0) {
         setIsFiltering(true)
       }
       setSelectedIds([]);
+      setIsDisableSubmit(true);
       setSubmitting(true);
       setMessageError('');
-      setIsDisableSubmit(true);
       setIsShowFilterModal(false);
     }
   }
 
   const handleClickResetFilter = () => {
-    setSearchText('')
     setSelectedIds([])
     setIsFiltering(false)
     setSelectedProfileFilter([])
@@ -222,77 +234,104 @@ const ProductTemplates = () => {
     setCurrentPageNumber(PAGINATION.START_PAGE)
     dispatch(actions.getProductList({
       page: PAGINATION.START_PAGE,
-      onSuccess, onError,
+      search: normalizeString(searchText),
+      onError,
     }));
   }
 
-  const handleSelectDeleteInfo = (actionType, deleteId) => {
-    if (!actionType) return;
-    if (actionType === ACTIONS.NAME.DELETE && deleteId) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: [deleteId],
-      });
-    } else if (actionType === ACTIONS.NAME.MULTI_DELETE && selectedIds?.length > 0) {
-      setDeleteInfo({
-        actionType: actionType,
-        deleteIds: selectedIds || [],
-      });
+  const dispatchAlertWithPermissionDenied = () => {
+    dispatch(alertActions.openAlert({
+      type: ALERT.FAILED_VALUE,
+      title: 'Action Deny',
+      description: MESSAGE.ERROR.AUTH_ACTION,
+    }));
+  };
+
+  const handleClickDelete = (item) => {
+    const isAllowed = validatePermission(permissionData, PERMISSION.KEY.TEMPLATE, PERMISSION.ACTION.DELETE)
+    if (isAllowed) {
+      if (isDisableSubmit) return;
+      const isDeletable = +item.product_item_use === INVENTORY.UN_USED_VALUE;
+      if (isDeletable) {
+        setSelectedDeleteIds([item.id])
+        setIsShowConfirmDeleteModal(true);
+      } else {
+        dispatch(alertActions.openAlert({
+          type: ALERT.FAILED_VALUE,
+          title: 'Deletion Failed',
+          isHovered: false,
+          description: INVENTORY.MESSAGE_ERROR.TEMPLATE_USED,
+        }))
+      }
     } else {
-      setMessage({
-        failed: MESSAGE.ERROR.NO_DELETE_ID
-      })
-      return;
+      dispatchAlertWithPermissionDenied()
     }
-    setIsShowConfirmDeleteModal(true);
   }
 
-  const handleDelete = (deleteInfo) => {
-    if (isDisableSubmit || !deleteInfo?.actionType) return;
-    const isLastItem = (list.data?.length === 1)
-    const isSelectAllItemOfLastPage = (isSelectedAll && list.current_page === list.last_page)
-    const isOutOfItemInPage = isLastItem || isSelectAllItemOfLastPage
-    let tempoPageNumber = null;
-    if ((list.last_page > PAGINATION.START_PAGE) && isOutOfItemInPage) {
-      tempoPageNumber = list.current_page - 1
+  const handleAcceptedDelete = () => {
+    if (isDisableSubmit) return;
+    if (selectedDeleteIds.length === 0) {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Deletion Failed',
+        isHovered: false,
+        description: MESSAGE.ERROR.EMPTY_ACTION,
+      }))
     } else {
-      tempoPageNumber = PAGINATION.START_PAGE
-    }
-    const data = {
-      page: +tempoPageNumber,
-      product_template_ids: deleteInfo?.deleteIds || [],
-    };
-    if (selectedProfileFilter?.length > 0) {
-      data.profile = selectedProfileFilter;
-    };
-    if (searchText?.length > 0) {
-      data.search = normalizeString(searchText);
-    };
-    setSubmitting(true)
-    setMessageError({})
-    setIsDisableSubmit(true)
-    setIsShowConfirmDeleteModal(false)
-    dispatch(actions.multiDeleteProduct({ ...data, onSuccess, onError }));
-    if (deleteInfo?.actionType === ACTIONS.NAME.MULTI_DELETE) {
-      setSelectedIds([])
-    }
-    if (deleteInfo?.deleteIds) {
-      setSelectedIds(selectedIds?.filter(id => !data.product_template_ids?.includes(id)))
+      setMessageError({})
+      setIsDisableSubmit(true)
+      setIsShowConfirmDeleteModal(false)
+      setSelectedIds(selectedIds.filter(id => !selectedDeleteIds.includes(id)))
+      dispatch(actions.multiDeleteProduct({
+        product_template_ids: selectedDeleteIds,
+        onDeleteSuccess,
+        onError
+      }));
     }
   }
+
+  const handleCheckHasNoUsedMaterial = (id, data) => {
+    const item = data.find(item => item.id === id);
+    return item && +item.product_item_use === INVENTORY.UN_USED_VALUE;
+  };
 
   const handleClickApply = (actionType) => {
-    if (actionType === ACTIONS.NAME.MULTI_DELETE) {
-      handleSelectDeleteInfo(actionType)
-    } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
-      dispatch(actions.getExportProductCSV({
-        search: normalizeString(searchText),
-        profile: selectedProfileFilter || [],
-        product_template_id: selectedIds || [],
-        onError
+    if (selectedIds.length > 0) {
+      if (actionType === ACTIONS.NAME.MULTI_DELETE) {
+        const isAllowed = validatePermission(permissionData, PERMISSION.KEY.TEMPLATE, PERMISSION.ACTION.DELETE)
+        if (isAllowed) {
+          const hasNoUsedItem = selectedIds.every(id => handleCheckHasNoUsedMaterial(id, list.data));
+
+          if (hasNoUsedItem) {
+            setSelectedDeleteIds(selectedIds)
+            setIsShowConfirmDeleteModal(false)
+          } else {
+            dispatch(alertActions.openAlert({
+              type: ALERT.FAILED_VALUE,
+              title: 'Deletion Failed',
+              description: selectedIds.length > 1 ?
+                TEMPLATE.MESSAGE_ERROR.INCLUDE_USED_ITEM : TEMPLATE.MESSAGE_ERROR.TEMPLATE_USED,
+            }))
+          }
+        } else {
+          dispatchAlertWithPermissionDenied()
+        }
+
+      } else if (actionType === ACTIONS.NAME.EXPORT_CSV) {
+        dispatch(actions.getExportProductCSV({
+          search: normalizeString(searchText),
+          profile: selectedProfileFilter || [],
+          product_template_ids: selectedIds || [],
+          onError
+        }))
+        setSelectedItem({})
+      }
+    } else {
+      dispatch(alertActions.openAlert({
+        type: ALERT.FAILED_VALUE,
+        title: 'Action Failed',
+        description: MESSAGE.ERROR.EMPTY_ACTION,
       }))
-      setSubmitting(true)
-      setSelectedItem({})
     }
   }
 
@@ -311,7 +350,7 @@ const ProductTemplates = () => {
 
   const renderTableList = () => {
     return list.data?.map((data, index) => {
-      const isChecked = selectedIds?.includes(data.id)
+      const isChecked = !!selectedIds?.includes(data.id);
       const profileName = INVENTORY.PROFILES[data.profile]?.label
       return (
         <tr key={index} className={isChecked ? 'productTable__selected' : ''}>
@@ -339,7 +378,7 @@ const ProductTemplates = () => {
                 isShowDelete={true}
                 isInventory={true}
                 clickEdit={goToEditPage}
-                clickDelete={handleSelectDeleteInfo}
+                clickDelete={() => handleClickDelete(data)}
               />
             </div>
           </td>
@@ -350,14 +389,6 @@ const ProductTemplates = () => {
 
   return (
     <div className="product">
-      {!isEmptyObject(message) &&
-        <div className="product__message">
-          <ActionMessageForm
-            successMessage={message.success}
-            failedMessage={message.failed}
-          />
-        </div>
-      }
       <TableAction
         searchText={searchText}
         isFiltering={isFiltering}
@@ -375,6 +406,7 @@ const ProductTemplates = () => {
         createURL={LINKS.CREATE.TEMPLATE}
         buttonTitle="New Template"
         tableUnit="template"
+        permissionKey={PERMISSION.KEY.TEMPLATE}
       />
       <div className="product__table">
         <table className="productTable">
@@ -409,7 +441,7 @@ const ProductTemplates = () => {
           deleteTitle="product"
           isShow={isShowConfirmDeleteModal}
           closeModal={() => setIsShowConfirmDeleteModal(false)}
-          onClickDelete={() => handleDelete(deleteInfo)}
+          onClickDelete={handleAcceptedDelete}
         />
       )}
       {isShowFilterModal && (

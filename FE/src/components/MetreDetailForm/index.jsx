@@ -1,37 +1,45 @@
 import React from 'react'
 
-const MetreDetailForm = () => {
+import { INVENTORY } from 'src/constants/config';
+import { formatNumberWithTwoDecimalPlaces, formatPriceWithTwoDecimals } from 'src/helper/helper';
+
+const MetreDetailForm = ({
+  item = {},
+  itemWidth = 0,
+  itemHeight = 0,
+}) => {
+  const costUnit = INVENTORY.UNIT[item?.cost_unit]?.label;
   return (
     <div className="itemDetailForm itemDetailForm--squareMetre">
       <div className="itemDetailForm__section">
         <div className="itemDetailForm__group">
-          <div className="itemDetailBox itemDetailBox--squareMetre">
+          <div className="itemDetailBox">
             <div className="itemDetailBox__label">WIDTH</div>
-            <div className="itemDetailBox__value">1.50 m</div>
+            <div className="itemDetailBox__value">{formatNumberWithTwoDecimalPlaces(+itemWidth / 1000)} m</div>
           </div>
-          <div className="itemDetailBox itemDetailBox--squareMetre">
-            <div className="itemDetailBox__label">QUANTITY</div>
-            <div className="itemDetailBox__value">2</div>
+          <div className="itemDetailBox">
+            <div className="itemDetailBox__label">WIDTH QUANTITY</div>
+            <div className="itemDetailBox__value">{item.quantity || 1}</div>
           </div>
-          <div className="itemDetailBox itemDetailBox--squareMetre">
+          <div className="itemDetailBox">
             <div className="itemDetailBox__label">HEIGHT</div>
-            <div className="itemDetailBox__value">3.00 m</div>
+            <div className="itemDetailBox__value">{formatNumberWithTwoDecimalPlaces(+itemHeight / 1000)} m</div>
           </div>
-          <div className="itemDetailBox itemDetailBox--squareMetre">
-            <div className="itemDetailBox__label">QUANTITY</div>
-            <div className="itemDetailBox__value">2</div>
+          <div className="itemDetailBox">
+            <div className="itemDetailBox__label">HEIGHT QUANTITY</div>
+            <div className="itemDetailBox__value">{item.quantity || 1}</div>
           </div>
           <div className="itemDetailBox">
             <div className="itemDetailBox__label">TOTAL RAW PERIMETER</div>
-            <div className="itemDetailBox__value">11.60 m</div>
+            <div className="itemDetailBox__value">{formatNumberWithTwoDecimalPlaces(item.total_perimeter)} m</div>
           </div>
-          <div className="itemDetailBox itemDetailBox--squareMetre">
+          <div className="itemDetailBox">
             <div className="itemDetailBox__label">COST OF ITEM</div>
-            <div className="itemDetailBox__value">$ 1.50 / m</div>
+            <div className="itemDetailBox__value">$ {formatPriceWithTwoDecimals(+item.cost_of_item)} / {costUnit}</div>
           </div>
-          <div className="itemDetailBox itemDetailBox--squareMetre">
+          <div className="itemDetailBox">
             <div className="itemDetailBox__label">TOTAL COST OF ITEM</div>
-            <div className="itemDetailBox__value">$ 13.50</div>
+            <div className="itemDetailBox__value">$ {formatPriceWithTwoDecimals(+item.total_cost_of_item)}</div>
           </div>
         </div>
       </div>

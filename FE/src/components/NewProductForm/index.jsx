@@ -52,6 +52,7 @@ const NewProductForm = ({
               setIsDisableSubmit={setIsDisableSubmit}
               setSelectedItemTitle={setSelectedTemplateTitle}
               handleTypeSearchChange={handleTypeSearchChange}
+              isDisabledChange={data.isDisabledChange}
             />
           </div>
           {data.messageError?.product_template_id &&
@@ -117,6 +118,9 @@ const NewProductForm = ({
           )}
         </div>
       </div>
+      {data.messageError?.message &&
+        <div className="cellBox__message">{data.messageError.message}</div>
+      }
     </div>
   )
 }
